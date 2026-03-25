@@ -1,0 +1,406 @@
+# 🏗️ Pulsebox Architecture & Data Flow
+
+## System Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    React Native (Expo)                      │
+│                                                             │
+│  ┌────────────────────────────────────────────────────────┐ │
+│  │              UI Layer (Components)                     │ │
+│  │                                                        │ │
+│  │  ┌──────────────┐  ┌──────────────┐  ┌────────────┐  │ │
+│  │  │   Dashboard  │  │  Bill Cards  │  │ StatCards  │  │ │
+│  │  └──────────────┘  └──────────────┘  └────────────┘  │ │
+│  │                                                        │ │
+│  │  ┌──────────────┐  ┌──────────────┐  ┌────────────┐  │ │
+│  │  │Feature Modal │  │ Empty States │  │ Showcase   │  │ │
+│  │  └──────────────┘  └──────────────┘  └────────────┘  │ │
+│  └────────────────────────────────────────────────────────┘ │
+│           ↓                                                  │
+│  ┌────────────────────────────────────────────────────────┐ │
+│  │           State Management (Zustand)                   │ │
+│  │                                                        │ │
+│  │  ┌─────────────────────────────────────────────────┐  │ │
+│  │  │ useDashboardStore                              │  │ │
+│  │  │ • metrics[]                                     │  │ │
+│  │  │ • bills[]                                       │  │ │
+│  │  │ • logs[]                                        │  │ │
+│  │  │ • loading, error                               │  │ │
+│  │  │ • Actions: fetch, add, update                  │  │ │
+│  │  └─────────────────────────────────────────────────┘  │ │
+│  └────────────────────────────────────────────────────────┘ │
+│           ↓                                                  │
+│  ┌────────────────────────────────────────────────────────┐ │
+│  │         Services Layer (Firebase Integration)          │ │
+│  │                                                        │ │
+│  │  ┌──────────────────────────────────────────────────┐ │ │
+│  │  │ AuthContext                                      │ │ │
+│  │  │ • Firebase Auth initialization                  │ │ │
+│  │  │ • User login/signup/logout                      │ │ │
+│  │  │ • Google Sign-in                                │ │ │
+│  │  │ • User profile management                       │ │ │
+│  │  └──────────────────────────────────────────────────┘ │ │
+│  │                                                        │ │
+│  │  ┌──────────────────────────────────────────────────┐ │ │
+│  │  │ FirebaseService                                  │ │ │
+│  │  │ • Firestore Metrics CRUD                        │ │ │
+│  │  │ • Firestore Bills CRUD                          │ │ │
+│  │  │ • Firestore Logs queries                        │ │ │
+│  │  │ • Real-time listeners                           │ │ │
+│  │  └──────────────────────────────────────────────────┘ │ │
+│  └────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────┘
+           ↓  (HTTP/WebSocket)
+┌─────────────────────────────────────────────────────────────┐
+│                    Firebase Backend                         │
+│                                                             │
+│  ┌────────────────────────────────────────────────────────┐ │
+│  │              Firebase Authentication                   │ │
+│  │  • Email/Password auth                               │ │
+│  │  • Google OAuth 2.0                                  │ │
+│  │  • Session management                               │ │
+│  │  • Token validation                                 │ │
+│  └────────────────────────────────────────────────────────┘ │
+│           ↓                                                  │
+│  ┌────────────────────────────────────────────────────────┐ │
+│  │              Firestore Database                        │ │
+│  │                                                        │ │
+│  │  ┌──────────────┐  ┌──────────────┐  ┌───────────┐   │ │
+│  │  │   users      │  │   metrics    │  │  bills    │   │ │
+│  │  │  collection  │  │  collection  │  │ collection   │ │
+│  │  └──────────────┘  └──────────────┘  └───────────┘   │ │
+│  │                                                        │ │
+│  │  ┌──────────────┐                                     │ │
+│  │  │   logs       │                                     │ │
+│  │  │  collection  │                                     │ │
+│  │  └──────────────┘                                     │ │
+│  └────────────────────────────────────────────────────────┘ │
+│           ↓                                                  │
+│  ┌────────────────────────────────────────────────────────┐ │
+│  │              Firebase Storage (Optional)               │ │
+│  │  • User profile images                               │ │
+│  │  • Receipts & documents                              │ │
+│  └────────────────────────────────────────────────────────┘ │
+│           ↓                                                  │
+│  ┌────────────────────────────────────────────────────────┐ │
+│  │              Firebase Analytics                        │ │
+│  │  • Event tracking                                     │ │
+│  │  • User behavior analysis                            │ │
+│  │  • Performance metrics                               │ │
+│  └────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## Data Flow Diagrams
+
+### User Authentication Flow
+
+```
+┌─────────┐
+│  User   │
+└────┬────┘
+     │
+     ├─→ [Email/Password] ──┐
+     │                       │
+     └─→ [Google OAuth] ────┤
+                            │
+                            ↓
+                ┌───────────────────────┐
+                │  Firebase Auth        │
+                │  - Validate           │
+                │  - Generate Token     │
+                └───────────────────────┘
+                            │
+                            ↓
+                ┌───────────────────────┐
+                │  Create User Doc      │
+                │  in Firestore         │
+                └───────────────────────┘
+                            │
+                            ↓
+                ┌───────────────────────┐
+                │  Store in AuthContext │
+                │  - user              │
+                │  - userProfile       │
+                └───────────────────────┘
+                            │
+                            ↓
+                    ┌──────────────┐
+                    │ Update UI    │
+                    │ Logged In! ✓ │
+                    └──────────────┘
+```
+
+### Real-time Data Sync Flow
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│                    User Action                               │
+│  (Add Bill / Update Metric / Add Log)                        │
+└────────────────────┬─────────────────────────────────────────┘
+                     │
+                     ↓
+        ┌────────────────────────┐
+        │  Call Service Method   │
+        │  firebaseService.*     │
+        └────────────┬───────────┘
+                     │
+                     ↓
+        ┌────────────────────────────────┐
+        │  Send to Firestore             │
+        │  - Add document                │
+        │  - Update document             │
+        │  - Write to collection         │
+        └────────────┬───────────────────┘
+                     │
+                     ↓
+        ┌────────────────────────┐
+        │ Firebase Listener      │
+        │ Detects Change         │
+        └────────────┬───────────┘
+                     │
+                     ↓
+        ┌────────────────────────┐
+        │  onSnapshot Callback   │
+        │  Updates Zustand Store │
+        └────────────┬───────────┘
+                     │
+                     ↓
+        ┌────────────────────────┐
+        │  useDashboardStore     │
+        │  (setState)            │
+        └────────────┬───────────┘
+                     │
+                     ↓
+        ┌────────────────────────┐
+        │  React Re-renders      │
+        │  Components Update ✓   │
+        └────────────────────────┘
+```
+
+### Component Data Flow
+
+```
+┌─────────────────────────────────┐
+│    AdvancedDashboard            │
+│    (Main Container)             │
+└────────────┬────────────────────┘
+             │
+      ┌──────┴──────┬──────────┐
+      ↓             ↓          ↓
+┌──────────┐  ┌──────────┐  ┌─────────────┐
+│ useAuth  │  │useEffect │  │useDashboard │
+│  (Get    │  │  (Fetch  │  │  Store      │
+│  user)   │  │  data)   │  │  (Get data) │
+└──────────┘  └──────────┘  └─────────────┘
+      │             │          │
+      └──────┬──────┴──────┬───┘
+             │             │
+             ↓             ↓
+     ┌──────────────────────────┐
+     │  Conditional Render      │
+     │  - Loading: Spinner      │
+     │  - Error: Error message  │
+     │  - Data: Show cards      │
+     └──────────┬───────────────┘
+                │
+       ┌────────┼────────┐
+       ↓        ↓        ↓
+   ┌────────┐ ┌──────┐ ┌──────┐
+   │ Summary│ │Metrics   │  Cards
+   │ Cards  │ │Display   │  Grid
+   └────────┘ └──────┘ └──────┘
+```
+
+## Firestore Collections Schema
+
+### users Collection
+```
+/users/{userId}
+│
+├── email: "user@example.com"
+├── displayName: "John Doe"
+├── photoURL: "https://..."
+├── createdAt: Timestamp(2026-03-20)
+├── lastLogin: Timestamp(2026-03-25)
+└── preferences: {
+    ├── theme: "light"
+    └── notifications: true
+    }
+```
+
+### metrics Collection
+```
+/metrics/{metricId}
+│
+├── userId: "user123" [INDEXED]
+├── title: "Power Consumption"
+├── value: 2450
+├── unit: "kWh"
+├── icon: "zap"
+├── color: "#F59E0B"
+├── category: "utility"
+├── trend: 5.2
+└── timestamp: Timestamp [INDEXED]
+```
+
+### bills Collection
+```
+/bills/{billId}
+│
+├── userId: "user123" [INDEXED]
+├── title: "Electricity Bill"
+├── amount: 1450
+├── dueDate: Timestamp(2026-04-10)
+├── status: "pending"
+├── category: "utilities"
+├── notes: "March consumption"
+├── createdAt: Timestamp
+└── updatedAt: Timestamp
+```
+
+### logs Collection
+```
+/logs/{logId}
+│
+├── userId: "user123" [INDEXED]
+├── action: "bill_payment"
+├── description: "Paid electricity bill"
+├── severity: "info"
+└── timestamp: Timestamp
+```
+
+## Component Hierarchy
+
+```
+App
+├── AuthProvider (Context)
+│   └── DashboardProvider (Tab Navigator)
+│       ├── Tab 1: Dashboard
+│       │   └── AdvancedDashboard
+│       │       ├── Summary Cards
+│       │       │   └── GlassContainer
+│       │       ├── Metrics Section
+│       │       │   └── StatCard[]
+│       │       │       ├── Animated View
+│       │       │       ├── IconContainer
+│       │       │       └── Trend Badge
+│       │       ├── Bills Section
+│       │       │   └── BillCard[]
+│       │       │       ├── StatusBadge
+│       │       │       └── Amount Display
+│       │       └── Quick Actions
+│       │           └── Action Button[]
+│       │
+│       ├── Tab 2: Explore
+│       │   └── FeatureShowcase
+│       │       ├── Feature Cards[]
+│       │       └── Detail Modal
+│       │
+│       └── Other Navigation
+│
+└── Modals
+    ├── Feature Detail Modal
+    ├── Add Bill Modal
+    └── Error Modal
+```
+
+## State Management Flow
+
+```
+┌─────────────────────────────────┐
+│      useDashboardStore          │
+│      (Zustand)                  │
+└─────────────────────────────────┘
+         │
+         ├─ State
+         │  ├─ metrics: DashboardMetric[]
+         │  ├─ bills: Bill[]
+         │  ├─ logs: SystemLog[]
+         │  ├─ loading: boolean
+         │  └─ error: string | null
+         │
+         └─ Actions
+            ├─ setMetrics(data)
+            ├─ setBills(data)
+            ├─ setLogs(data)
+            ├─ setLoading(bool)
+            ├─ setError(msg)
+            ├─ fetchMetrics(userId) ──→ FirebaseService
+            ├─ fetchBills(userId) ────→ FirebaseService
+            ├─ fetchLogs(userId) ─────→ FirebaseService
+            ├─ addNewMetric() ────────→ FirebaseService
+            ├─ addNewBill() ──────────→ FirebaseService
+            ├─ updateMetricData() ────→ FirebaseService
+            └─ updateBillData() ──────→ FirebaseService
+```
+
+## Authentication State Machine
+
+```
+                    ┌─────────────────┐
+                    │    Initial       │
+                    │    (loading)     │
+                    └────────┬─────────┘
+                             │
+              ┌──────────────┼──────────────┐
+              ↓              ↓              ↓
+        ┌──────────┐   ┌───────────┐  ┌──────────────┐
+        │ Not Auth │   │ Loading   │  │ Loading User │
+        │ (logged  │   │ Auth      │  │ Profile      │
+        │  out)    │   │           │  │              │
+        └──────────┘   └─────┬─────┘  └──────┬───────┘
+              ▲               │               │
+              │               ↓               ↓
+              └─ ─ ─ ─ ─ ─ ┌────────────────────┐
+                            │   Authenticated    │
+                            │   (logged in)      │
+                            │   • user object    │
+                            │   • profile loaded │
+                            └────────────────────┘
+                                     │
+                                     ↓ (logout)
+                                Back to Not Auth
+```
+
+## Security Layers
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                  Application Layer                      │
+│  - Input validation                                    │
+│  - Error handling                                      │
+└────────────────────┬────────────────────────────────────┘
+                     │
+┌─────────────────────────────────────────────────────────┐
+│              Authentication Layer                       │
+│  - Email/Password verification                        │
+│  - OAuth 2.0 tokens                                   │
+│  - Session management                                 │
+└────────────────────┬────────────────────────────────────┘
+                     │
+┌─────────────────────────────────────────────────────────┐
+│            Firestore Security Rules                     │
+│  - Verify auth.uid == request.auth.uid                │
+│  - Validate userId matches                            │
+│  - Enforce data types                                 │
+└────────────────────┬────────────────────────────────────┘
+                     │
+┌─────────────────────────────────────────────────────────┐
+│              Database Layer                            │
+│  - Encrypted at rest                                  │
+│  - HTTPS in transit                                   │
+│  - Indexed queries                                    │
+└─────────────────────────────────────────────────────────┘
+```
+
+---
+
+This architecture ensures:
+✅ **Scalability** - Firestore scales automatically
+✅ **Real-time** - WebSocket connections for live updates
+✅ **Security** - Multiple layers of protection
+✅ **Performance** - Optimized queries and state
+✅ **Maintainability** - Clear separation of concerns
+✅ **Testability** - Isolated components and services
