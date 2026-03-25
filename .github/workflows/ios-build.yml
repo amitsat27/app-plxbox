@@ -1,0 +1,49 @@
+name: Build Pulsebox for SideStore
+
+on:
+  workflow_dispatch: # On-demand trigger
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Prebuild iOS
+        run: npx expo prebuild --platform ios --no-install
+
+      - name: Install CocoaPods
+        run: cd ios && pod install
+
+      - name: Build Unsigned Archive
+        run: |
+          mkdir -p output
+          xcodebuild -workspace ios/Pulsebox.xcworkspace \
+            -scheme Pulsebox \
+            -configuration Release \
+            -sdk iphoneos \
+            -archivePath $(PWD)/output/Pulsebox.xcarchive \
+            archive \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO
+
+      - name: Prepare SideStore IPA
+        run: |
+          mkdir -p Payload
+          find output/Pulsebox.xcarchive -name "*.app" -exec cp -r {} Payload/ \;
+          zip -r Pulsebox.ipa Payload
+
+      - name: Upload Finished IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: Pulsebox-Installer
+          path: Pulsebox.ipa
