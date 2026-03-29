@@ -36,6 +36,8 @@ Notifications.setNotificationHandler({
     shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
   }),
 });
 
@@ -51,17 +53,17 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
 
   // Set up notification listeners
   useEffect(() => {
-    const notificationListener = Notifications.addNotificationReceivedListener((notification) => {
+    const notificationSubscription = Notifications.addNotificationReceivedListener((notification) => {
       handleNotificationReceived(notification);
     });
 
-    const responseListener = Notifications.addNotificationResponseReceivedListener((response) => {
+    const responseSubscription = Notifications.addNotificationResponseReceivedListener((response) => {
       handleNotificationResponse(response);
     });
 
     return () => {
-      Notifications.removeNotificationSubscription(notificationListener);
-      Notifications.removeNotificationSubscription(responseListener);
+      notificationSubscription.remove();
+      responseSubscription.remove();
     };
   }, []);
 
@@ -86,7 +88,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
       type: (notification.request.content.data?.type as any) || 'system',
       read: false,
       timestamp: new Date(),
-      actionUrl: notification.request.content.data?.actionUrl,
+      actionUrl: notification.request.content.data?.actionUrl as string | undefined,
     };
 
     setNotifications((prev) => [newNotification, ...prev]);
@@ -142,7 +144,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
           },
           badge: unreadCount + 1,
         },
-        trigger: { seconds: 1 },
+        trigger: { type: 'timeInterval', seconds: 1 } as any,
       });
 
       await trackAnalyticsEvent('notification_sent', {

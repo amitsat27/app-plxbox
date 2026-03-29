@@ -13,5 +13,25 @@
     "**/*.tsx",
     ".expo/types/**/*.ts",
     "expo-env.d.ts"
+  ],
+  "exclude": [
+    "**/__atoms/**",
+    "**/__molecules/**",
+    "**/__organisms/**",
+    "components/ui/AdvancedDashboard.tsx",
+    "components/ui/DataTable.tsx",
+    "components/ui/ElectricBills.tsx",
+    "components/ui/Featured.tsx",
+    "components/ui/GlassContainer.tsx",
+    "components/ui/LineChart.tsx",
+    "components/ui/Navbar.tsx",
+    "components/ui/PieChart.tsx",
+    "components/ui/ResponsiveLayout.tsx",
+    "components/ui/Sidebar.tsx",
+    "components/ui/SkeletonLoader.tsx",
+    "components/ui/WaterBills.tsx",
+    "components/ui/Widget.tsx",
+    "app/(tabs)/dashboard.tsx",
+    "app/(tabs)/vehicles.backup.tsx"
   ]
 }

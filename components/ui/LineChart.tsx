@@ -10,11 +10,11 @@ interface ChartDataPoint {
 interface LineChartProps {
   title: string;
   data: ChartDataPoint[];
-  lines: Array<{
+  lines: {
     key: string;
     label: string;
     color: string;
-  }>;
+  }[];
   yAxisLabel?: string;
 }
 

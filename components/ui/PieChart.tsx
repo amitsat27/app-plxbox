@@ -32,14 +32,14 @@ export const PieChart: React.FC<PieChartProps> = ({
   const radius = chartSize / 2;
 
   // Calculate pie segments
-  const segments: Array<{
+  const segments: {
     name: string;
     value: number;
     percentage: number;
     color: string;
     startAngle: number;
     endAngle: number;
-  }> = [];
+  }[] = [];
 
   let currentAngle = 0;
   data.forEach((item, index) => {

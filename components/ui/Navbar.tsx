@@ -1,7 +1,12 @@
-import React from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, SafeAreaView, Image } from 'react-native';
-import { Bell, Search, Menu } from 'lucide-react-native';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, View, Text, TouchableOpacity, SafeAreaView, Image, Alert } from 'react-native';
+import { Menu } from 'react-native-paper';
+import { Bell, Search, Menu as MenuIcon, LogOut, User } from 'lucide-react-native';
+import { BlurView } from 'expo-blur';
 import { Colors } from '../../theme/color';
+import { Spacing, Typography } from '../../constants/designTokens';
+import { useAuth } from '../../src/context/AuthContext';
+import { useUIStore } from '../../src/stores/uiStore';
 
 interface NavbarProps {
   title?: string;
@@ -24,17 +29,46 @@ export const Navbar: React.FC<NavbarProps> = ({
   userAvatar,
   userName = 'User',
 }) => {
+  const { logout } = useAuth();
+  const { isDarkMode } = useUIStore();
+  const isDark = isDarkMode;
+  const [userMenuVisible, setUserMenuVisible] = useState(false);
+
+  const handleLogout = () => {
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await logout();
+            } catch (error) {
+              Alert.alert('Error', 'Failed to logout');
+            }
+          },
+        },
+      ]
+    );
+    setUserMenuVisible(false);
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.navbar}>
+      <BlurView intensity={80} tint={isDark ? 'dark' : 'light'} style={styles.navbar}>
         {/* Left - Menu & Title */}
         <View style={styles.leftSection}>
-          <TouchableOpacity
-            style={styles.menuButton}
-            onPress={onMenuPress}
-          >
-            <Menu size={24} color={Colors.textPrimary} />
-          </TouchableOpacity>
+          {onMenuPress && (
+            <TouchableOpacity
+              style={styles.menuButton}
+              onPress={onMenuPress}
+            >
+              <MenuIcon size={24} color={Colors.textPrimary} />
+            </TouchableOpacity>
+          )}
           <Text style={styles.appName}>{title}</Text>
         </View>
 
@@ -63,39 +97,60 @@ export const Navbar: React.FC<NavbarProps> = ({
             )}
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.userButton}>
-            {userAvatar ? (
-              <Image
-                source={{ uri: userAvatar }}
-                style={styles.avatar}
-              />
-            ) : (
-              <View style={styles.avatarPlaceholder}>
-                <Text style={styles.avatarText}>
-                  {userName.charAt(0).toUpperCase()}
-                </Text>
-              </View>
-            )}
-          </TouchableOpacity>
+          {/* User Avatar with Menu */}
+          <Menu
+            visible={userMenuVisible}
+            onDismiss={() => setUserMenuVisible(false)}
+            anchor={
+              <TouchableOpacity
+                style={styles.userButton}
+                onPress={() => setUserMenuVisible(true)}
+              >
+                {userAvatar ? (
+                  <Image
+                    source={{ uri: userAvatar }}
+                    style={styles.avatar}
+                  />
+                ) : (
+                  <View style={styles.avatarPlaceholder}>
+                    <Text style={styles.avatarText}>
+                      {userName.charAt(0).toUpperCase()}
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            }
+          >
+            <Menu.Item
+              onPress={() => {
+                setUserMenuVisible(false);
+                // Navigate to profile screen ( TODO )
+              }}
+              title="Profile"
+              leadingIcon={() => <User size={20} color={Colors.textSecondary} />}
+            />
+            <Menu.Item
+              onPress={handleLogout}
+              title="Logout"
+              leadingIcon={() => <LogOut size={20} color={Colors.danger} />}
+            />
+          </Menu>
         </View>
-      </View>
+      </BlurView>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   safeArea: {
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    // backgroundColor will be set dynamically via BlurView
   },
   navbar: {
     height: 60,
-    paddingHorizontal: 16,
+    paddingHorizontal: Spacing.xl,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#fff',
   },
   leftSection: {
     flexDirection: 'row',
@@ -103,45 +158,47 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   menuButton: {
-    padding: 8,
-    marginRight: 12,
+    padding: Spacing.sm,
+    marginRight: Spacing.md,
   },
   appName: {
-    fontSize: 20,
+    fontSize: Typography.presets.title2.fontSize,
     fontWeight: '700',
     color: Colors.primary,
+    letterSpacing: -0.3,
   },
   rightSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: Spacing.sm,
   },
   iconButton: {
-    padding: 8,
+    padding: Spacing.sm,
   },
   notificationButton: {
-    padding: 8,
+    padding: Spacing.sm,
     position: 'relative',
   },
   notificationBadge: {
     position: 'absolute',
-    top: 4,
-    right: 4,
-    backgroundColor: Colors.danger,
+    top: 6,
+    right: 6,
+    backgroundColor: Colors.error,
     borderRadius: 10,
     minWidth: 20,
     height: 20,
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: 4,
   },
   badgeText: {
     color: '#fff',
-    fontSize: 10,
+    fontSize: Typography.presets.caption2.fontSize,
     fontWeight: '700',
-    paddingHorizontal: 4,
   },
   userButton: {
-    padding: 4,
+    padding: Spacing.xs,
+    marginLeft: Spacing.xs,
   },
   avatar: {
     width: 36,
@@ -158,7 +215,7 @@ const styles = StyleSheet.create({
   },
   avatarText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: Typography.fontSize.lg,
     fontWeight: '700',
   },
 });

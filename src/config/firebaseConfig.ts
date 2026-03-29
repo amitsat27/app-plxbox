@@ -1,6 +1,6 @@
 import { initializeApp, FirebaseApp } from 'firebase/app';
-import { 
-  getAuth, 
+import {
+  getAuth,
   Auth,
   setPersistence,
   browserLocalPersistence,
@@ -51,10 +51,12 @@ export const initializeFirebase = async () => {
         console.warn('Failed to set localStorage persistence:', error);
         await setPersistence(auth, inMemoryPersistence);
       }
-    } else if (isReactNative) {
+    } else {
+      // React Native - use inMemoryPersistence for simplicity
+      // For persistent storage, consider using expo-secure-store with custom persistence
       try {
         await setPersistence(auth, inMemoryPersistence);
-        console.log('✅ Firestore persistence: in-memory');
+        console.log('✅ Firebase Auth persistence: inMemory');
       } catch (error) {
         console.warn('Failed to set in-memory persistence:', error);
       }

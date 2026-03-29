@@ -1,26 +1,19 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { 
-  getAuth, 
-  onAuthStateChanged, 
-  signInWithEmailAndPassword, 
+import {
+  getAuth,
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
   signOut,
-  GoogleAuthProvider,
-  signInWithCredential,
   createUserWithEmailAndPassword,
   updateProfile
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
-import * as Google from 'expo-auth-session/providers/google';
-import * as WebBrowser from 'expo-web-browser';
-import { 
-  initializeFirebase, 
-  getFirebaseAuth, 
-  getFirebaseDb, 
-  trackAnalyticsEvent 
+import {
+  initializeFirebase,
+  getFirebaseAuth,
+  getFirebaseDb,
+  trackAnalyticsEvent
 } from '../config/firebaseConfig';
-
-// Required for Google Sign-in to work on mobile browsers
-WebBrowser.maybeCompleteAuthSession();
 
 // Initialize Firebase on module load
 let firebaseReady = false;
@@ -53,27 +46,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<any>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-
-  // Setup Google Auth Request
-  const [request, response, promptAsync] = Google.useAuthRequest({
-    iosClientId: process.env.EXPO_PUBLIC_FIREBASE_GOOGLE_IOS_CLIENT_ID,
-  });
-
-  // Handle Google Login Response
-  useEffect(() => {
-    if (response?.type === 'success' && firebaseReady) {
-      const { id_token } = response.params;
-      const credential = GoogleAuthProvider.credential(id_token);
-      const auth = getFirebaseAuth();
-      signInWithCredential(auth, credential)
-        .then(() => {
-          trackAnalyticsEvent('login', { method: 'google' });
-        })
-        .catch((error) => {
-          console.error('Google sign in error:', error);
-        });
-    }
-  }, [response]);
 
   // Monitor User State and sync with Firestore
   useEffect(() => {
@@ -180,15 +152,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
+    <AuthContext.Provider value={{
+      user,
       userProfile,
-      login, 
-      logout, 
+      login,
+      logout,
       signup,
-      loading, 
-      promptAsync, 
-      request,
+      loading,
       updateUserProfile,
     }}>
       {children}
