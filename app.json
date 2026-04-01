@@ -7,7 +7,7 @@
     "icon": "./assets/images/icon.png",
     "scheme": "pulsebox",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "ios": {
       "bundleIdentifier": "com.amitzope.pulsebox.dev",
       "supportsTablet": true,
@@ -15,8 +15,8 @@
         "NSFaceIDUsageDescription": "Allow $(PRODUCT_NAME) to use Face ID for biometric login.",
         "NSBiometricUsageDescription": "Allow $(PRODUCT_NAME) to use Touch ID / Face ID for biometric login.",
         "ITSAppUsesNonExemptEncryption": false
-      }
-    },
+      },
+      "jsEngine": "jsc",
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
@@ -28,9 +28,7 @@
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "USE_BIOMETRIC",
-        "USE_FINGERPRINT",
-        "android.permission.USE_BIOMETRIC",
-        "android.permission.USE_FINGERPRINT"
+        "USE_FINGERPRINT"
       ]
     },
     "web": {
@@ -73,4 +71,6 @@
       }
     }
   }
+}
+
 }
