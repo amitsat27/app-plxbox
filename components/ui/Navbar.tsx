@@ -141,6 +141,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   );
 };
 
+export default Navbar;
+
 const styles = StyleSheet.create({
   safeArea: {
     // backgroundColor will be set dynamically via BlurView

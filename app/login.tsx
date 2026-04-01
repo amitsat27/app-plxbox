@@ -15,7 +15,7 @@ import {
   Easing,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
+// LinearGradient temporarily disabled for Expo Go compatibility
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import * as LocalAuthentication from 'expo-local-authentication';
@@ -287,14 +287,13 @@ export default function LoginScreen() {
   };
 
   return (
-    <LinearGradient
-      colors={isDark
-        ? ['#0A0A0A', '#1C1C1E', '#0A0A0A']
-        : ['#F2F2F7', '#FFFFFF', '#F2F2F7']
-      }
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={styles.gradient}
+    <View
+      style={[
+        styles.gradient,
+        {
+          backgroundColor: isDark ? '#0A0A0A' : '#F2F2F7',
+        },
+      ]}
     >
       <SafeAreaView style={styles.safeArea}>
         <KeyboardAvoidingView
@@ -569,7 +568,7 @@ export default function LoginScreen() {
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
-    </LinearGradient>
+    </View>
   );
 }
 

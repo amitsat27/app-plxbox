@@ -10,7 +10,11 @@
     "newArchEnabled": true,
     "ios": {
       "bundleIdentifier": "com.amitzope.pulsebox.dev",
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSFaceIDUsageDescription": "Allow $(PRODUCT_NAME) to use Face ID for biometric login.",
+        "NSBiometricUsageDescription": "Allow $(PRODUCT_NAME) to use Touch ID / Face ID for biometric login."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -20,7 +24,11 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "USE_BIOMETRIC",
+        "USE_FINGERPRINT"
+      ]
     },
     "web": {
       "output": "static",
@@ -42,7 +50,14 @@
       ],
       "expo-web-browser",
       "@react-native-community/datetimepicker",
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Allow $(PRODUCT_NAME) to use Face ID for biometric login.",
+          "fallbackLabel": "Use Password"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

@@ -1,0 +1,54 @@
+{
+  "cli": {
+    "version": ">= 3.0.0"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "ios": {
+        "simulator": true
+      },
+      "android": {
+        "gradleCommand": ":app:assembleDebug"
+      }
+    },
+    "preview": {
+      "ios": {
+        "simulator": false,
+        "config": {
+          "infoPlist": {
+            "NSFaceIDUsageDescription": "Allow Pulsebox to use Face ID for biometric login.",
+            "NSBiometricUsageDescription": "Allow Pulsebox to use Touch ID / Face ID for biometric login."
+          }
+        }
+      },
+      "android": {
+        "permissions": [
+          "USE_BIOMETRIC",
+          "USE_FINGERPRINT"
+        ]
+      }
+    },
+    "production": {
+      "ios": {
+        "simulator": false,
+        "config": {
+          "infoPlist": {
+            "NSFaceIDUsageDescription": "Allow Pulsebox to use Face ID for biometric login.",
+            "NSBiometricUsageDescription": "Allow Pulsebox to use Touch ID / Face ID for biometric login."
+          }
+        }
+      },
+      "android": {
+        "permissions": [
+          "USE_BIOMETRIC",
+          "USE_FINGERPRINT"
+        ]
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}

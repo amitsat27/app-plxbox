@@ -1,6 +1,6 @@
 import { collection, addDoc, query, where, onSnapshot, getDocs, updateDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
 import { getFirebaseDb } from '../config/firebaseConfig';
-import type { DashboardMetric, Bill, SystemLog, Vehicle, Appliance, ServiceRecord } from '../types';
+import type { DashboardMetric, Bill, SystemLog, Vehicle, Appliance, ServiceRecord, BillStatus } from '../types';
 
 // Get Firestore instance lazily
 const getDb = () => getFirebaseDb();
@@ -373,7 +373,7 @@ class FirebaseService {
     for (const city of cities) {
       for (const col of billCollections) {
         try {
-          const snapshot = await getDocs(collection(db, ...col.path, city));
+          const snapshot = await getDocs(collection(db, ...(col.path as [string, string]), city));
           snapshot.forEach(doc => {
             const data = doc.data();
 
@@ -384,6 +384,11 @@ class FirebaseService {
               amount = parseFloat(amountRaw.replace(/,/g, '')) || 0;
             } else if (typeof amountRaw === 'number') {
               amount = amountRaw;
+            }
+            // Validate amount
+            if (!isFinite(amount) || isNaN(amount)) {
+              console.warn('Invalid bill amount, defaulting to 0:', doc.id, amountRaw);
+              amount = 0;
             }
 
             // Parse status (map to BillStatus)
@@ -405,6 +410,11 @@ class FirebaseService {
               } else if (typeof dateRaw === 'string' || typeof dateRaw === 'number') {
                 dueDate = new Date(dateRaw);
               }
+            }
+            // Validate dueDate
+            if (isNaN(dueDate.getTime())) {
+              console.warn('Invalid bill due date, defaulting to today:', doc.id, dateRaw);
+              dueDate = new Date();
             }
 
             bills.push({

@@ -65,6 +65,20 @@ export const Colors = {
   surfaceTinted: '#F9F9FA',
   surfaceTintedDark: '#2C2C2E',
 
+  // Card backgrounds (iOS 18 style)
+  cardBackground: '#FFFFFF',
+  cardBackgroundDark: '#1C1C1E',
+  cardBackgroundElevated: '#FFFFFF',
+  cardBackgroundElevatedDark: '#2C2C2E',
+  cardBorder: 'rgba(0, 0, 0, 0.05)',
+  cardBorderDark: 'rgba(255, 255, 255, 0.08)',
+
+  // Interactive states
+  interactive: 'rgba(0, 122, 255, 0.08)', // iOS light blue pressed
+  interactiveDark: 'rgba(10, 132, 255, 0.12)',
+  focus: 'rgba(0, 122, 255, 0.2)',
+  focusDark: 'rgba(10, 132, 255, 0.25)',
+
   // Text hierarchy - following iOS contrast ratios
   textPrimary: '#1C1C1E',       // iOS Label - Primary text
   textPrimaryDark: '#FFFFFF',
@@ -104,8 +118,6 @@ export const Colors = {
   highlightedDark: '#3A3A3C',
   disabled: '#F2F2F7',           // Disabled background
   disabledDark: '#1C1C1E',
-  focus: '#007AFF40',            // Focus ring color
-  focusDark: '#0A84FF50',
 
   // ============================================
   // CATEGORY COLORS (Bill Types)
@@ -144,19 +156,21 @@ export const Colors = {
   statusDraft: '#5AC8FA',
 
   // ============================================
-  // CHART COLORS (Data visualization)
+  // CHART COLORS (Data visualization - iOS 18+ palette)
   // ============================================
   chartColors: [
-    '#007AFF', // Blue
-    '#34C759', // Green
-    '#FF9500', // Orange
-    '#FF3B30', // Red
-    '#AF52DE', // Purple
-    '#5AC8FA', // Light Blue
-    '#FFCC00', // Yellow
-    '#FF6B9D', // Pink
-    '#30B0C0', // Teal
-    '#FF6B00', // Deep Orange
+    '#007AFF', // System Blue (primary)
+    '#34C759', // System Green (success)
+    '#FF9500', // System Orange (warning)
+    '#FF3B30', // System Red (error)
+    '#AF52DE', // System Purple
+    '#5AC8FA', // System Light Blue (info)
+    '#FFCC00', // System Yellow
+    '#FF6B9D', // System Pink
+    '#30B0C0', // System Teal
+    '#FF6B00', // System Deep Orange
+    '#30B0C7', // Cyan alternative
+    '#C7C7CC', // Gray for neutral data
   ],
 
   // ============================================

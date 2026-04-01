@@ -21,11 +21,12 @@ export const Spacing = {
   giant: 80,
   jumbo: 96,
 
-  // Semantic spacing
+  // Semantic spacing (iOS 18+ emphasis on generous spacing)
   compact: 8,
   comfortable: 16,
   spacious: 24,
   generous: 32,
+  expansive: 48,
 
   // Safe areas (iOS status bar, home indicator)
   safeAreaBottom: 34,
@@ -34,50 +35,51 @@ export const Spacing = {
   safeAreaRight: 0,
 
   // Navigation heights
-  navBarHeight: 44,
+  navBarHeight: 60, // Increased for iOS 18
   tabBarHeight: 83,
   toolbarHeight: 56,
   searchBarHeight: 44,
 
-  // Component-specific
-  cardPadding: 16,
-  cardRadius: 16,
+  // Component-specific (enhanced for iOS 18)
+  cardPadding: 20, // Increased from 16 for more breathing room
+  cardRadius: 20, // Increased from 16 for iOS 18 corner style
   buttonPaddingHorizontal: 20,
-  buttonPaddingVertical: 12,
-  inputPadding: 12,
+  buttonPaddingVertical: 14, // Increased for better touch target
+  inputPadding: 16,
   iconSize: 24,
-  avatarSize: 40,
+  avatarSize: 48, // Increased from 40
 
   // Grid
   gridGutter: 16,
   gridMaxWidth: 1200,
+  gridPadding: 20,
 };
 
 // ============================================
-// BORDER RADIUS (iOS corner radii)
+// BORDER RADIUS (iOS corner radii - iOS 18 style)
 // ============================================
 export const BorderRadius = {
   none: 0,
   xs: 6,
   sm: 8,
-  md: 10,
-  lg: 12,
-  xl: 14,
-  xxl: 16,
-  xxxl: 20,
+  md: 12, // Increased from 10 for iOS 18
+  lg: 16, // Increased from 12
+  xl: 20, // Increased from 14
+  xxl: 24,
+  xxxl: 28,
   full: 9999,
 
   // iOS specific
-  cornerSm: 8,
-  cornerMd: 12,
-  cornerLg: 16,
-  cornerXl: 20,
+  cornerSm: 10,
+  cornerMd: 14,
+  cornerLg: 18,
+  cornerXl: 24,
   cornerFull: 9999,
 
-  // Component radii
-  button: 10,
-  card: 16,
-  input: 10,
+  // Component radii (iOS 18 style)
+  button: 12, // Increased from 10
+  card: 20, // Increased from 16
+  input: 12, // Increased from 10
   badge: 9999,
   avatar: 9999,
   fab: 28,
@@ -220,7 +222,7 @@ export const getFontStyle = (
 };
 
 // ============================================
-// ELEVATION (Shadows - iOS style)
+// ELEVATION (Shadows - iOS 18 style - more pronounced but soft)
 // ============================================
 export const Elevation = {
   none: {
@@ -230,40 +232,40 @@ export const Elevation = {
     elevation: 0,
   },
   xs: {
-    shadowOpacity: 0.02,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 1 },
-    elevation: 1,
+    shadowOpacity: 0.04, // Increased from 0.02
+    shadowRadius: 6, // Increased from 4
+    shadowOffset: { width: 0, height: 2 }, // Increased from 1
+    elevation: 2, // Increased from 1
   },
   sm: {
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    shadowOpacity: 0.06, // Increased from 0.04
+    shadowRadius: 8, // Increased from 6
+    shadowOffset: { width: 0, height: 3 }, // Increased from 2
+    elevation: 3, // Increased from 2
   },
   md: {
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
+    shadowOpacity: 0.10, // Increased from 0.08
+    shadowRadius: 12, // Increased from 8
+    shadowOffset: { width: 0, height: 6 }, // Increased from 4
+    elevation: 6, // Increased from 4
   },
   lg: {
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 8,
+    shadowOpacity: 0.14, // Increased from 0.12
+    shadowRadius: 16, // Increased from 12
+    shadowOffset: { width: 0, height: 10 }, // Increased from 8
+    elevation: 10, // Increased from 8
   },
   xl: {
-    shadowOpacity: 0.16,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 12 },
-    elevation: 12,
-  },
-  xxl: {
-    shadowOpacity: 0.20,
-    shadowRadius: 24,
+    shadowOpacity: 0.18, // Increased from 0.16
+    shadowRadius: 24, // Increased from 16
     shadowOffset: { width: 0, height: 16 },
     elevation: 16,
+  },
+  xxl: {
+    shadowOpacity: 0.22, // Increased from 0.20
+    shadowRadius: 32, // Increased from 24
+    shadowOffset: { width: 0, height: 24 }, // Increased from 16
+    elevation: 24, // Increased from 16
   },
 };
 
@@ -425,13 +427,6 @@ export const ComponentTokens = {
     borderRadius: BorderRadius.avatar,
   },
 
-  chart: {
-    padding: Spacing.lg,
-    borderRadius: BorderRadius.lg,
-    minHeight: 280,
-    maxHeight: 400,
-  },
-
   fab: {
     size: 56,
     miniSize: 40,
@@ -445,6 +440,22 @@ export const ComponentTokens = {
     borderRadius: BorderRadius.chip,
     fontSize: Typography.fontSize.sm,
     minHeight: 32,
+  },
+
+  // Chart-specific tokens (iOS 18+)
+  chart: {
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.lg,
+    minHeight: 280,
+    maxHeight: 400,
+    lineWidth: 3,
+    dataPointRadius: 6,
+    gridColorLight: '#E5E5EA',
+    gridColorDark: '#3A3A3C',
+    axisColorLight: '#8E8E93',
+    axisColorDark: '#636366',
+    tooltipPadding: Spacing.sm,
+    tooltipRadius: 8,
   },
 
   tabBar: {
