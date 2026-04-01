@@ -13,7 +13,8 @@
       "supportsTablet": true,
       "infoPlist": {
         "NSFaceIDUsageDescription": "Allow $(PRODUCT_NAME) to use Face ID for biometric login.",
-        "NSBiometricUsageDescription": "Allow $(PRODUCT_NAME) to use Touch ID / Face ID for biometric login."
+        "NSBiometricUsageDescription": "Allow $(PRODUCT_NAME) to use Touch ID / Face ID for biometric login.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -27,7 +28,9 @@
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "USE_BIOMETRIC",
-        "USE_FINGERPRINT"
+        "USE_FINGERPRINT",
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT"
       ]
     },
     "web": {
@@ -62,6 +65,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "51667772-4b59-41d8-b6ef-f0bcb195ec4c"
+      }
     }
   }
 }

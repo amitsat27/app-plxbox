@@ -4,7 +4,7 @@
 import React from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Platform, Alert } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { PaperProvider, MD3LightTheme } from 'react-native-paper';
 import { AuthProvider, useAuth } from '../src/context/AuthContext';
@@ -15,9 +15,9 @@ import ErrorBoundary from '../components/ErrorBoundary';
 import { useEffect, useState } from 'react';
 import { Spacing } from '../constants/designTokens';
 import { Colors } from '../theme/color';
-import { biometricAuth } from '../src/services/BiometricAuth';
 import * as SplashScreen from 'expo-splash-screen';
 import SplashScreenContent from '../components/ui/SplashScreen';
+import { AlertTriangle } from 'lucide-react-native';
 
 // Theme configuration
 const theme = {
@@ -35,10 +35,9 @@ const theme = {
 
 // Main layout with auth-based navigation and splash screen control
 function MainLayout() {
-  const { user, loading, login } = useAuth();
+  const { user, loading, login, initError } = useAuth();
   const segments = useSegments();
   const router = useRouter();
-  const [biometricLoading, setBiometricLoading] = useState(false);
   const [appIsReady, setAppIsReady] = useState(false);
 
   // Prevent splash screen from auto-hiding
@@ -62,74 +61,6 @@ function MainLayout() {
     prepare();
   }, []);
 
-  // Auto-login with biometric if enrolled and not logged in
-  useEffect(() => {
-    const attemptBiometricLogin = async () => {
-      if (loading || user || biometricLoading || !appIsReady) return;
-
-      const inAuthGroup = segments[0] === 'login';
-      if (!inAuthGroup) return; // Only attempt on login screen
-
-      // Quick check: is biometric even available on this platform?
-      try {
-        const hasHardware = await biometricAuth.isAvailable();
-        if (!hasHardware) {
-          console.log('🔐 Biometric hardware not available on this device');
-          return;
-        }
-      } catch (e) {
-        console.log('🔐 Biometric availability check error:', e);
-        return; // Don't attempt if we can't even check
-      }
-
-      // Check if user has previously enrolled (stored credentials)
-      try {
-        const enrolled = await biometricAuth.isEnrolled();
-        if (!enrolled) {
-          console.log('🔐 Biometric not enrolled - skipping auto-login');
-          return; // Don't attempt if no credentials stored
-        }
-      } catch (e) {
-        console.log('🔐 Enrollment check failed:', e);
-        return;
-      }
-
-      setBiometricLoading(true);
-
-      // Add strict timeout - biometric auth should not block app startup
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Biometric timeout')), 3000); // 3 second timeout max
-      });
-
-      try {
-        const credentials = await Promise.race([
-          biometricAuth.authenticateAndLogin(),
-          timeoutPromise,
-        ] as const);
-
-        if (credentials) {
-          try {
-            await login(credentials.email, credentials.password);
-            // User will be redirected automatically by auth state change
-          } catch (error) {
-            console.log('🔐 Biometric login failed:', error);
-            // Fall through to manual login
-          }
-        } else {
-          console.log('🔐 No credentials from biometric auth');
-        }
-      } catch (error) {
-        console.log('🔐 Biometric auth failed/timeout:', error);
-        // Silently fall through - user can manually login
-      } finally {
-        setBiometricLoading(false);
-      }
-    };
-
-    // Delay biometric attempt until after router is stable
-    const timer = setTimeout(attemptBiometricLogin, 1000);
-    return () => clearTimeout(timer);
-  }, [loading, user, biometricLoading, segments, login, appIsReady]);
 
   // Handle redirection based on auth state
   useEffect(() => {
@@ -151,10 +82,42 @@ function MainLayout() {
     }
 
     // Hide splash screen with fade animation when everything is ready
-    if (appIsReady && !loading && !biometricLoading) {
+    if (appIsReady && !loading) {
       SplashScreen.hideAsync();
     }
-  }, [user, loading, segments, router, appIsReady, biometricLoading]);
+  }, [user, loading, segments, router, appIsReady]);
+
+  // Show Firebase initialization error if present (after splash)
+  if (initError && !loading && appIsReady) {
+    return (
+      <View style={[styles.container, { backgroundColor: Colors.backgroundDark }]}>
+        <View style={styles.errorContent}>
+          <AlertTriangle size={64} color={Colors.error} />
+          <Text style={[styles.errorTitle, { color: Colors.textPrimary }]}>
+            Initialization Failed
+          </Text>
+          <Text style={[styles.errorMessage, { color: Colors.textSecondary }]}>
+            {initError.message || 'Failed to initialize Firebase. Please check your configuration and restart the app.'}
+          </Text>
+          <TouchableOpacity
+            style={[styles.retryButton, { backgroundColor: Colors.primary }]}
+            onPress={() => {
+              // Reload the app to retry initialization
+              if (Platform.OS === 'web') {
+                window.location.reload();
+              } else {
+                // In native, use expo-updates if available
+                // For now, just show message
+                Alert.alert('Restart Required', 'Please close and reopen the app.');
+              }
+            }}
+          >
+            <Text style={styles.retryButtonText}>Restart App</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
 
   // Show custom splash content while app is preparing
   if (!appIsReady) {
@@ -190,6 +153,43 @@ export default function RootLayout() {
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Spacing.lg,
+  },
+  errorContent: {
+    alignItems: 'center',
+    maxWidth: 400,
+    width: '100%',
+  },
+  errorTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginTop: Spacing.lg,
+    marginBottom: Spacing.md,
+  },
+  errorMessage: {
+    fontSize: 16,
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: Spacing.xl,
+  },
+  retryButton: {
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.xl,
+    borderRadius: 12,
+    minHeight: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '600',
+  },
   splashContainer: {
     flex: 1,
     justifyContent: 'center',

@@ -46,55 +46,92 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<any>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [initError, setInitError] = useState<Error | null>(null);
 
-  // Monitor User State and sync with Firestore
+  // Monitor Firebase initialization and set up auth listener
   useEffect(() => {
-    if (!firebaseReady) return;
+    let mounted = true;
 
-    const auth = getFirebaseAuth();
-    const db = getFirebaseDb();
-
-    const unsubscribe = onAuthStateChanged(auth, async (u) => {
-      setUser(u);
-      
-      if (u) {
-        try {
-          // Update last login
-          await updateDoc(doc(db, 'users', u.uid), {
-            lastLogin: new Date(),
-          }).catch(() => {
-            // Create user doc if doesn't exist
-            return setDoc(doc(db, 'users', u.uid), {
-              uid: u.uid,
-              email: u.email,
-              displayName: u.displayName || 'User',
-              photoURL: u.photoURL,
-              createdAt: new Date(),
-              lastLogin: new Date(),
-              preferences: {
-                theme: 'light',
-                notifications: true,
-              },
-            });
-          });
-
-          // Fetch user profile
-          const docSnap = await getDoc(doc(db, 'users', u.uid));
-          if (docSnap.exists()) {
-            setUserProfile(docSnap.data() as UserProfile);
-          }
-
-          await trackAnalyticsEvent('user_logged_in', { uid: u.uid });
-        } catch (error) {
-          console.error('Error syncing user profile:', error);
+    const setupAuth = async () => {
+      // Wait for Firebase to be ready (with timeout)
+      const waitForFirebase = async (): Promise<boolean> => {
+        const startTime = Date.now();
+        while (!firebaseReady && Date.now() - startTime < 8000) {
+          await new Promise(resolve => setTimeout(resolve, 100));
         }
-      } else {
-        setUserProfile(null);
+        return firebaseReady;
+      };
+
+      const ready = await waitForFirebase();
+
+      if (!mounted) return;
+
+      if (!ready) {
+        const error = initError || new Error('Firebase initialization timeout');
+        setInitError(error);
+        console.error('❌ Firebase not ready:', error);
+        setLoading(false);
+        return;
       }
 
-      setLoading(false);
-    });
-    return unsubscribe;
+      try {
+        const auth = getFirebaseAuth();
+        const db = getFirebaseDb();
+
+        const unsubscribe = onAuthStateChanged(auth, async (u) => {
+          if (!mounted) return;
+          setUser(u);
+
+          if (u) {
+            try {
+              // Update last login
+              await updateDoc(doc(db, 'users', u.uid), {
+                lastLogin: new Date(),
+              }).catch(() => {
+                // Create user doc if doesn't exist
+                return setDoc(doc(db, 'users', u.uid), {
+                  uid: u.uid,
+                  email: u.email,
+                  displayName: u.displayName || 'User',
+                  photoURL: u.photoURL,
+                  createdAt: new Date(),
+                  lastLogin: new Date(),
+                  preferences: {
+                    theme: 'light',
+                    notifications: true,
+                  },
+                });
+              });
+
+              // Fetch user profile
+              const docSnap = await getDoc(doc(db, 'users', u.uid));
+              if (docSnap.exists()) {
+                setUserProfile(docSnap.data() as UserProfile);
+              }
+
+              await trackAnalyticsEvent('user_logged_in', { uid: u.uid });
+            } catch (error) {
+              console.error('Error syncing user profile:', error);
+            }
+          } else {
+            setUserProfile(null);
+          }
+
+          setLoading(false);
+        });
+
+        return () => {
+          mounted = false;
+          unsubscribe();
+        };
+      } catch (error) {
+        console.error('Failed to set up auth listener:', error);
+        setInitError(error as Error);
+        setLoading(false);
+      }
+    };
+
+    setupAuth();
   }, []);
 
   const signup = async (email: string, password: string, displayName: string) => {
@@ -160,6 +197,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signup,
       loading,
       updateUserProfile,
+      initError,
     }}>
       {children}
     </AuthContext.Provider>
