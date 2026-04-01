@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { logger } from '../src/services/Logger';
+import { logger } from '../../src/services/Logger';
 import { Colors, getColorScheme } from '@/theme/color';
 import { Spacing, Typography, BorderRadius } from '@/constants/designTokens';
 import { Trash2, Share2, FileText, Download, ChevronLeft } from 'lucide-react-native';
