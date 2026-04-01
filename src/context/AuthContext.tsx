@@ -14,6 +14,7 @@ import {
   getFirebaseDb,
   trackAnalyticsEvent
 } from '../config/firebaseConfig';
+import { logger } from '../services/Logger';
 
 // Initialize Firebase on module load
 let firebaseReady = false;
@@ -21,10 +22,10 @@ let initError: Error | null = null;
 
 initializeFirebase().then(() => {
   firebaseReady = true;
-  console.log('🔥 Firebase is ready');
+  logger.info('🔥 Firebase is ready');
 }).catch((error) => {
   initError = error;
-  console.error('❌ Firebase initialization failed:', error);
+  logger.error('❌ Firebase initialization failed:', error);
 });
 
 const AuthContext = createContext<any>(null);
@@ -80,6 +81,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         const unsubscribe = onAuthStateChanged(auth, async (u) => {
           if (!mounted) return;
+          logger.debug('Auth state changed', { user: u ? { uid: u.uid, email: u.email } : null });
           setUser(u);
 
           if (u) {
@@ -110,10 +112,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               }
 
               await trackAnalyticsEvent('user_logged_in', { uid: u.uid });
+              logger.info('User logged in', { uid: u.uid, email: u.email });
             } catch (error) {
-              console.error('Error syncing user profile:', error);
+              logger.error('Error syncing user profile:', error as Error);
             }
           } else {
+            logger.info('User logged out (auth state null)');
             setUserProfile(null);
           }
 
@@ -137,12 +141,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signup = async (email: string, password: string, displayName: string) => {
     if (!firebaseReady) throw initError || new Error('Firebase not ready');
 
+    logger.info('Signup attempt', { email, displayName });
     const auth = getFirebaseAuth();
     const db = getFirebaseDb();
 
     const userCred = await createUserWithEmailAndPassword(auth, email, password);
     await updateProfile(userCred.user, { displayName });
-    
+
     // Create Firestore document
     await setDoc(doc(db, 'users', userCred.user.uid), {
       uid: userCred.user.uid,
@@ -158,15 +163,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     await trackAnalyticsEvent('sign_up', { email });
+    logger.info('Signup successful', { email, uid: userCred.user.uid });
     return userCred;
   };
 
   const login = async (email: string, pass: string) => {
     if (!firebaseReady) throw initError || new Error('Firebase not ready');
 
+    logger.info('Login attempt', { email });
     const auth = getFirebaseAuth();
     const result = await signInWithEmailAndPassword(auth, email, pass);
     await trackAnalyticsEvent('login', { method: 'email' });
+    logger.info('Login successful', { email, uid: result.user.uid });
     return result;
   };
 
@@ -174,8 +182,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!firebaseReady) throw initError || new Error('Firebase not ready');
 
     const auth = getFirebaseAuth();
+    const currentUser = auth.currentUser;
     await signOut(auth);
     await trackAnalyticsEvent('logout');
+    logger.info('User logged out', { uid: currentUser?.uid });
   };
 
   const updateUserProfile = async (updates: Partial<UserProfile>) => {

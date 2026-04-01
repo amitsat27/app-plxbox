@@ -129,6 +129,7 @@ function MainLayout() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="login" options={{ headerShown: false }} />
+      {__DEV__ && <Stack.Screen name="debug" options={{ headerShown: false }} />}
     </Stack>
   );
 }

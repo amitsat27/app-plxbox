@@ -24,6 +24,7 @@ import { Colors, getColorScheme } from '../theme/color';
 import { Spacing, BorderRadius, Elevation, Typography } from '../constants/designTokens';
 import { Mail, Lock, ArrowRight, Eye, EyeOff, User, Fingerprint, Shield } from 'lucide-react-native';
 import { biometricAuth } from '../src/services/BiometricAuth';
+import { logger } from '../src/services/Logger';
 
 const { width } = Dimensions.get('window');
 
@@ -138,11 +139,13 @@ export default function LoginScreen() {
     }
 
     setIsLoggingIn(true);
+    logger.info('Login form submitted', { email });
 
     try {
       await login(email, password);
       // Success haptic
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      logger.info('Login successful (from UI)');
 
       // Prompt to enable biometric if available and not enrolled
       if (isBiometricAvailable && !isBiometricEnrolled) {
@@ -151,7 +154,7 @@ export default function LoginScreen() {
         }, 1000);
       }
     } catch (error: any) {
-      console.error('Login error:', error);
+      logger.error('Login error from UI:', error as Error, { email });
       setErrors({
         general: error.message || 'Login failed. Please check your credentials.'
       });
@@ -188,9 +191,11 @@ export default function LoginScreen() {
   const handleBiometricLogin = async () => {
     try {
       setIsFaceIDLoading(true);
+      logger.info('Biometric login button pressed');
 
       // If not enrolled, trigger enrollment after email login
       if (!isBiometricEnrolled) {
+        logger.warn('Biometric login attempted but not enrolled');
         Alert.alert(
           'Biometric Not Set Up',
           'Please log in with your email and password first, then enable Biometric Login in the app.',
@@ -204,15 +209,18 @@ export default function LoginScreen() {
       const credentials = await biometricAuth.authenticateAndLogin();
 
       if (credentials) {
+        logger.info('Biometric authentication succeeded, attempting login');
         // Attempt login with stored credentials
         await login(credentials.email, credentials.password);
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        logger.info('Biometric login successful');
       } else {
+        logger.warn('Biometric authentication returned no credentials');
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
         Alert.alert('Failed', 'Biometric authentication failed or credentials not found.');
       }
     } catch (error) {
-      console.error('Biometric login error:', error);
+      logger.error('Biometric login error:', error as Error);
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert('Error', 'Biometric authentication failed. Please try again.');
     } finally {
