@@ -1,37 +1,95 @@
 // 🌐 Root Layout - Expo Router Entry Point
 // Wraps the entire app with providers and handles auth-based routing
 
-import React from 'react';
-import { Stack, useRouter, useSegments } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import { View, StyleSheet, TouchableOpacity, Platform, Alert, Text } from 'react-native';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { PaperProvider, MD3LightTheme } from 'react-native-paper';
-import { AuthProvider, useAuth } from '../src/context/AuthContext';
-import { NotificationProvider } from '../src/context/NotificationContext';
-import { NetworkProvider } from '../src/context/NetworkContext';
-import { OfflineBanner } from '../components/OfflineBanner';
-import ErrorBoundary from '../components/ErrorBoundary';
-import { useEffect, useState } from 'react';
-import { Spacing } from '../constants/designTokens';
-import { Colors } from '../theme/color';
-import * as SplashScreen from 'expo-splash-screen';
-import SplashScreenContent from '../components/ui/SplashScreen';
-import { AlertTriangle } from 'lucide-react-native';
+import { Stack, useRouter, useSegments } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
+import { StatusBar } from "expo-status-bar";
+import { AlertTriangle } from "lucide-react-native";
+import React, { useEffect, useState } from "react";
+import {
+  Alert,
+  Platform,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { MD3LightTheme, PaperProvider } from "react-native-paper";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import ErrorBoundary from "../components/ErrorBoundary";
+import { OfflineBanner } from "../components/OfflineBanner";
+import SplashScreenContent from "../components/ui/SplashScreen";
+import { Spacing } from "../constants/designTokens";
+import { AuthProvider, useAuth } from "../src/context/AuthContext";
+import { NetworkProvider } from "../src/context/NetworkContext";
+import { NotificationProvider } from "../src/context/NotificationContext";
+import { useUIStore } from "../src/stores/uiStore";
+import { Colors } from "../theme/color";
+import { ThemeProvider } from "../theme/themeProvider";
 
-// Theme configuration
-const theme = {
+// 🌌 Cosmic Sunset Theme - Premium 2025 Design
+// Dynamic theme that switches between light/dark with gorgeous gradients
+
+const getPaperTheme = (isDark: boolean) => ({
   ...MD3LightTheme,
+  dark: isDark,
+  roundness: 16,
   colors: {
-    ...MD3LightTheme.colors,
-    primary: '#007AFF',
-    accent: '#FF9500',
-    background: '#F2F2F7',
-    surface: '#FFFFFF',
-    error: '#FF3B30',
-    text: '#1C1C1E',
+    // Primary brand colors
+    primary: Colors.primary,
+    onPrimary: Colors.onPrimary,
+    primaryContainer: Colors.primaryContainer,
+    onPrimaryContainer: Colors.onPrimaryContainer,
+
+    // Secondary
+    secondary: Colors.secondary,
+    onSecondary: Colors.onSecondary,
+    secondaryContainer: Colors.secondaryContainer,
+    onSecondaryContainer: Colors.onSecondaryContainer,
+
+    // Tertiary accent
+    tertiary: Colors.tertiary,
+    onTertiary: Colors.onTertiary,
+    tertiaryContainer: Colors.tertiaryContainer,
+    onTertiaryContainer: Colors.onTertiaryContainer,
+
+    // Surface & background (glass-ready)
+    background: isDark ? Colors.backgroundDark : Colors.backgroundLight,
+    surface: isDark ? Colors.surfaceDark : Colors.surfaceLight,
+    surfaceVariant: isDark ? Colors.surfaceVariant : Colors.surfaceVariantLight,
+    onSurface: isDark ? Colors.onSurfaceDark : Colors.onSurface,
+    onSurfaceVariant: isDark
+      ? Colors.onSurfaceVariantDark
+      : Colors.onSurfaceVariant,
+    surfaceDisabled: "rgba(124, 58, 237, 0.05)",
+    onSurfaceDisabled: Colors.textDisabled,
+
+    // Error
+    error: Colors.error,
+    onError: Colors.onError,
+    errorContainer: Colors.errorContainer,
+    onErrorContainer: Colors.onErrorContainer,
+
+    // Text hierarchy (ensuring high contrast)
+    outline: isDark ? Colors.borderDark : Colors.border,
+    outlineVariant: isDark
+      ? "rgba(167, 139, 250, 0.3)"
+      : "rgba(124, 58, 237, 0.15)",
+
+    // Backdrop for modals
+    backdrop: isDark ? "rgba(10, 10, 20, 0.8)" : "rgba(248, 250, 252, 0.6)",
+
+    // Elevated surfaces (app bars, cards)
+    elevation: {
+      level0: isDark ? Colors.surfaceDark : Colors.surfaceLight,
+      level1: isDark ? "rgba(30, 30, 60, 0.8)" : "rgba(255, 255, 255, 0.8)",
+      level2: isDark ? "rgba(40, 40, 80, 0.85)" : "rgba(255, 255, 255, 0.85)",
+      level3: isDark ? "rgba(50, 50, 100, 0.9)" : "rgba(255, 255, 255, 0.9)",
+      level4: isDark ? "rgba(60, 60, 120, 0.95)" : "rgba(255, 255, 255, 0.95)",
+      level5: isDark ? "rgba(70, 70, 140, 1.0)" : "rgba(255, 255, 255, 1.0)",
+    },
   },
-};
+});
 
 // Main layout with auth-based navigation and splash screen control
 function MainLayout() {
@@ -49,11 +107,11 @@ function MainLayout() {
 
         // Wait for Firebase to be ready (AuthContext handles this)
         // Additional delay for smooth visual effect
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        await new Promise((resolve) => setTimeout(resolve, 1500));
 
         setAppIsReady(true);
       } catch (e) {
-        console.warn('Splash screen preparation error:', e);
+        console.warn("Splash screen preparation error:", e);
         setAppIsReady(true);
       }
     }
@@ -61,23 +119,22 @@ function MainLayout() {
     prepare();
   }, []);
 
-
   // Handle redirection based on auth state
   useEffect(() => {
     if (loading || !appIsReady) return;
 
-    const inAuthGroup = segments[0] === 'login';
+    const inAuthGroup = segments[0] === "login";
 
     if (!user && !inAuthGroup) {
       // Not authenticated and not on login → go to login
       // Use a small delay to ensure router is ready
       setTimeout(() => {
-        router.replace('/login');
+        router.replace("/login");
       }, 100);
     } else if (user && inAuthGroup) {
       // Authenticated but on login → go to home
       setTimeout(() => {
-        router.replace('/');
+        router.replace("/");
       }, 100);
     }
 
@@ -90,25 +147,31 @@ function MainLayout() {
   // Show Firebase initialization error if present (after splash)
   if (initError && !loading && appIsReady) {
     return (
-      <View style={[styles.container, { backgroundColor: Colors.backgroundDark }]}>
+      <View
+        style={[styles.container, { backgroundColor: Colors.backgroundDark }]}
+      >
         <View style={styles.errorContent}>
           <AlertTriangle size={64} color={Colors.error} />
           <Text style={[styles.errorTitle, { color: Colors.textPrimary }]}>
             Initialization Failed
           </Text>
           <Text style={[styles.errorMessage, { color: Colors.textSecondary }]}>
-            {initError.message || 'Failed to initialize Firebase. Please check your configuration and restart the app.'}
+            {initError.message ||
+              "Failed to initialize Firebase. Please check your configuration and restart the app."}
           </Text>
           <TouchableOpacity
             style={[styles.retryButton, { backgroundColor: Colors.primary }]}
             onPress={() => {
               // Reload the app to retry initialization
-              if (Platform.OS === 'web') {
+              if (Platform.OS === "web") {
                 window.location.reload();
               } else {
                 // In native, use expo-updates if available
                 // For now, just show message
-                Alert.alert('Restart Required', 'Please close and reopen the app.');
+                Alert.alert(
+                  "Restart Required",
+                  "Please close and reopen the app.",
+                );
               }
             }}
           >
@@ -129,26 +192,56 @@ function MainLayout() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="login" options={{ headerShown: false }} />
-      {__DEV__ && <Stack.Screen name="debug" options={{ headerShown: false }} />}
+      <Stack.Screen
+        name="settings"
+        options={{
+          headerShown: false,
+          presentation: "card",
+        }}
+      />
+      <Stack.Screen name="bills" options={{ presentation: "card" }} />
+      <Stack.Screen name="category-screen" options={{ presentation: "card" }} />
+      <Stack.Screen name="vehicles" options={{ presentation: "card" }} />
+      <Stack.Screen name="appliances" options={{ presentation: "card" }} />
+      <Stack.Screen name="reports" options={{ presentation: "card" }} />
+      <Stack.Screen name="bill-detail" options={{ presentation: "card" }} />
+      {__DEV__ && (
+        <Stack.Screen name="debug" options={{ headerShown: false }} />
+      )}
     </Stack>
+  );
+}
+
+//Dynamic wrapper that connects theme to UI store
+function ThemedApp({ children }: { children: React.ReactNode }) {
+  const { isDarkMode } = useUIStore();
+  const theme = getPaperTheme(isDarkMode);
+
+  return (
+    <PaperProvider theme={theme}>
+      <StatusBar style={isDarkMode ? "light" : "dark"} />
+      {children}
+    </PaperProvider>
   );
 }
 
 export default function RootLayout() {
   return (
     <ErrorBoundary>
-      <PaperProvider theme={theme}>
-        <SafeAreaProvider>
-          <AuthProvider>
-            <NotificationProvider>
-              <NetworkProvider>
-                <OfflineBanner />
-                <MainLayout />
-              </NetworkProvider>
-            </NotificationProvider>
-          </AuthProvider>
-        </SafeAreaProvider>
-      </PaperProvider>
+      <ThemeProvider>
+        <ThemedApp>
+          <SafeAreaProvider>
+            <AuthProvider>
+              <NotificationProvider>
+                <NetworkProvider>
+                  <OfflineBanner />
+                  <MainLayout />
+                </NetworkProvider>
+              </NotificationProvider>
+            </AuthProvider>
+          </SafeAreaProvider>
+        </ThemedApp>
+      </ThemeProvider>
     </ErrorBoundary>
   );
 }
@@ -156,25 +249,25 @@ export default function RootLayout() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     padding: Spacing.lg,
   },
   errorContent: {
-    alignItems: 'center',
+    alignItems: "center",
     maxWidth: 400,
-    width: '100%',
+    width: "100%",
   },
   errorTitle: {
     fontSize: 24,
-    fontWeight: '700',
-    textAlign: 'center',
+    fontWeight: "700",
+    textAlign: "center",
     marginTop: Spacing.lg,
     marginBottom: Spacing.md,
   },
   errorMessage: {
     fontSize: 16,
-    textAlign: 'center',
+    textAlign: "center",
     lineHeight: 24,
     marginBottom: Spacing.xl,
   },
@@ -183,17 +276,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.xl,
     borderRadius: 12,
     minHeight: 50,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   retryButtonText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 17,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   splashContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
 });

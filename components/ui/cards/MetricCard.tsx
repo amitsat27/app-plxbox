@@ -1,24 +1,45 @@
-import React, { useEffect, useRef } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Platform } from 'react-native';
+// 💎 Premium Metric Card - Cosmic Sunset Edition
+// Features: Glassmorphism, gradient accents, animated icons, punchy colors
+
+import {
+    BorderRadius,
+    Elevation,
+    Spacing,
+    Typography
+} from "@/constants/designTokens";
+import { useUIStore } from "@/src/stores/uiStore";
+import {
+    Colors,
+    getCategoryGlow,
+    getColorScheme
+} from "@/theme/color";
+import { BlurView } from "expo-blur";
+import * as Haptics from "expo-haptics";
+import React, { useEffect } from "react";
+import {
+    Dimensions,
+    Platform,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from "react-native";
 import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  withTiming,
-  withDelay,
-  runOnJS,
-  Easing,
-} from 'react-native-reanimated';
-import { BlurView } from 'expo-blur';
-import * as Haptics from 'expo-haptics';
-import { Colors } from '@/theme/color';
-import { Spacing, BorderRadius, Typography, Elevation } from '@/constants/designTokens';
+    Easing,
+    useAnimatedStyle,
+    useSharedValue,
+    withDelay,
+    withRepeat,
+    withSequence,
+    withSpring,
+    withTiming,
+} from "react-native-reanimated";
 
 interface MetricCardProps {
   title: string;
   value: string | number;
   icon: React.ReactNode;
-  color: string;
+  color: string; // Category color
   backgroundColor?: string;
   subtitle?: string;
   trend?: {
@@ -27,12 +48,18 @@ interface MetricCardProps {
   };
   onPress?: () => void;
   testID?: string;
-  delay?: number; // for staggered entrance
+  delay?: number;
+  category?: string; // For gradient support
 }
 
 /**
- * Premium metric card with iOS 18+ design
- * Features: light blur, animated entrance, haptic feedback, gradient accent
+ * Premium glassmorphic metric card with:
+ * - Heavy blur background with tint
+ * - Gradient border/glow effect
+ * - Animated icon pulse on value change
+ * - Smooth staggered entrance
+ * - High contrast text for readability
+ * - Press feedback with scale + glow
  */
 export const MetricCard: React.FC<MetricCardProps> = ({
   title,
@@ -45,89 +72,170 @@ export const MetricCard: React.FC<MetricCardProps> = ({
   onPress,
   testID,
   delay = 0,
+  category,
 }) => {
-  const scale = useSharedValue(0.9);
+  const scale = useSharedValue(0.8);
   const opacity = useSharedValue(0);
-  const translateY = useSharedValue(20);
+  const translateY = useSharedValue(40);
+  const iconScale = useSharedValue(1);
+  const { isDarkMode } = useUIStore();
+  const scheme = getColorScheme(isDarkMode);
+
+  // Determine glow color based on category or provided color
+  const glowColor = category ? getCategoryGlow(category) : `${color}60`; // 60 hex = 37% opacity
 
   // Entrance animation
   useEffect(() => {
-    opacity.value = withDelay(
-      delay,
-      withTiming(1, {
-        duration: 400,
-        easing: Easing.inOut(Easing.ease),
-      })
-    );
+    opacity.value = withDelay(delay, withTiming(1, { duration: 500 }));
     translateY.value = withDelay(
       delay,
-      withTiming(0, {
-        duration: 500,
-        easing: Easing.inOut(Easing.ease),
-      })
+      withTiming(0, { duration: 550, easing: Easing.out(Easing.cubic) }),
     );
     scale.value = withDelay(
       delay,
-      withSpring(1, {
-        damping: 20,
-        stiffness: 300,
-      })
+      withSpring(1, { damping: 22, stiffness: 320 }),
     );
-  }, []);
+  }, [scale, opacity, translateY, delay]);
+
+  // Pulse animation for icon (gentle float)
+  useEffect(() => {
+    iconScale.value = withRepeat(
+      withSequence(
+        withTiming(1.05, { duration: 2000, easing: Easing.inOut(Easing.ease) }),
+        withTiming(1, { duration: 2000, easing: Easing.inOut(Easing.ease) }),
+      ),
+      -1,
+      true,
+    );
+  }, [iconScale]);
 
   const handlePress = () => {
     if (onPress) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      // Brief scale animation on press
+      scale.value = withSequence(
+        withTiming(0.95, { duration: 100 }),
+        withSpring(1, { damping: 20, stiffness: 400 }),
+      );
       onPress();
     }
   };
 
-  const animatedStyle = useAnimatedStyle(() => ({
+  const animatedCardStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
-    transform: [
-      { translateY: translateY.value },
-      { scale: scale.value },
-    ],
+    transform: [{ translateY: translateY.value }, { scale: scale.value }],
   }));
 
+  const animatedIconStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: iconScale.value }],
+  }));
+
+  // Glow border effect
+  const glowStyle = {
+    borderWidth: 2,
+    borderColor: glowColor,
+    shadowColor: glowColor,
+    shadowOpacity: 0.5,
+    shadowRadius: 15,
+    shadowOffset: { width: 0, height: 0 },
+  };
+
   return (
-    <Animated.View style={[animatedStyle, styles.cardContainer]} testID={testID}>
+    <Animated.View
+      style={[animatedCardStyle, styles.cardContainer]}
+      testID={testID}
+    >
       <TouchableOpacity
-        activeOpacity={0.95}
+        activeOpacity={0.92}
         onPress={handlePress}
         style={styles.touchable}
         accessibilityRole="button"
         accessibilityLabel={`${title}: ${value}`}
         accessibilityHint={subtitle}
       >
-        <BlurView intensity={10} tint="light" style={styles.blurContainer}>
+        {/* Glow background layer */}
+        <View style={[styles.glowBackground, glowStyle]} />
+
+        {/* Glassmorphic card */}
+        <BlurView
+          intensity={isDarkMode ? 35 : 25}
+          tint={isDarkMode ? "dark" : "light"}
+          style={[
+            styles.glassCard,
+            {
+              backgroundColor: isDarkMode
+                ? "rgba(30, 30, 60, 0.6)"
+                : "rgba(255, 255, 255, 0.65)",
+            },
+          ]}
+        >
           <View style={styles.content}>
-            {/* Icon Container */}
-            <View style={[styles.iconContainer, { backgroundColor: `${color}20` }]}>
-              <View style={[styles.iconInner, { backgroundColor: color }]}>
-                {icon}
+            {/* Icon with gradient background */}
+            <Animated.View style={[styles.iconContainer, animatedIconStyle]}>
+              <View
+                style={[styles.iconInner, { backgroundColor: `${color}30` }]}
+              >
+                <View style={[styles.iconGradient, { borderColor: color }]}>
+                  <View>{icon}</View>
+                </View>
               </View>
-            </View>
+            </Animated.View>
 
             {/* Text Content */}
             <View style={styles.textContainer}>
-              <Text style={styles.title}>{title}</Text>
-              <Text style={styles.value}>{value}</Text>
-              {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
+              <Text
+                style={[styles.title, { color: scheme.textSecondary }]}
+                numberOfLines={1}
+              >
+                {title}
+              </Text>
+              <Text
+                style={[
+                  styles.value,
+                  {
+                    color: scheme.textPrimary,
+                    textShadowColor: `${color}40`,
+                  },
+                ]}
+                numberOfLines={1}
+              >
+                {value}
+              </Text>
+              {subtitle && (
+                <Text
+                  style={[styles.subtitle, { color: scheme.textTertiary }]}
+                  numberOfLines={1}
+                >
+                  {subtitle}
+                </Text>
+              )}
             </View>
           </View>
 
-          {/* Gradient Accent Bar */}
-          <View style={[styles.accentBar, { backgroundColor: color }]} />
+          {/* Gradient accent line at bottom */}
+          <View style={[styles.accentLine, { backgroundColor: color }]} />
 
-          {/* Trend Indicator */}
+          {/* Trend Badge */}
           {trend && (
-            <View style={[styles.trendBadge, trend.isPositive ? styles.trendPositive : styles.trendNegative]}>
-              <Text style={[
-                styles.trendText,
-                trend.isPositive ? { color: Colors.success } : { color: Colors.error }
-              ]}>
-                {trend.isPositive ? '↑' : '↓'} {Math.abs(trend.value)}%
+            <View
+              style={[
+                styles.trendBadge,
+                trend.isPositive
+                  ? { backgroundColor: Colors.successContainer }
+                  : { backgroundColor: Colors.errorContainer },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.trendText,
+                  {
+                    color: trend.isPositive
+                      ? Colors.successDark
+                      : Colors.errorDark,
+                  },
+                ]}
+              >
+                {trend.isPositive ? "▲" : "▼"} {Math.abs(trend.value)}%
               </Text>
             </View>
           )}
@@ -137,114 +245,162 @@ export const MetricCard: React.FC<MetricCardProps> = ({
   );
 };
 
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
+
 const styles = StyleSheet.create({
   cardContainer: {
-    width: '47%', // 2-column grid
-    marginBottom: Spacing.md,
-  },
-  touchable: {
-    borderRadius: BorderRadius.card,
-    overflow: 'hidden',
-  },
-  blurContainer: {
-    borderRadius: BorderRadius.card - 1,
-    padding: Spacing.lg,
-    backgroundColor: Colors.surface,
-    minHeight: 140,
+    width: "48%", // Slightly smaller for more breathing room
+    marginBottom: Spacing.lg,
+    // Shadow elevation for the container
     ...Platform.select({
       ios: {
-        shadowColor: Colors.shadow,
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.08,
-        shadowRadius: 12,
+        shadowColor: Colors.shadowViolet,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.3,
+        shadowRadius: 16,
       },
       android: {
-        elevation: Elevation.md.elevation,
+        elevation: Elevation.lg.elevation,
       },
     }),
   },
+  touchable: {
+    borderRadius: BorderRadius.card,
+    overflow: "hidden",
+  },
+  glowBackground: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: BorderRadius.card,
+    opacity: 0.6,
+  },
+  glassCard: {
+    borderRadius: BorderRadius.card,
+    padding: Spacing.lg,
+    minHeight: 150,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(124, 58, 237, 0.1)",
+  },
   content: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    alignItems: "flex-start",
     gap: Spacing.md,
+    paddingBottom: Spacing.sm,
   },
   iconContainer: {
-    width: 52,
-    height: 52,
-    borderRadius: BorderRadius.lg,
-    justifyContent: 'center',
-    alignItems: 'center',
-    // Shadow for icon bg
+    width: 56,
+    height: 56,
+    borderRadius: BorderRadius.xl,
+    justifyContent: "center",
+    alignItems: "center",
+    // Subtle shadow
     ...Platform.select({
       ios: {
-        shadowColor: Colors.shadow,
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 4,
+        shadowColor: "rgba(124, 58, 237, 0.2)",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
+  },
+  iconInner: {
+    width: 44,
+    height: 44,
+    borderRadius: BorderRadius.lg,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  iconGradient: {
+    width: "100%",
+    height: "100%",
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1.5,
+    justifyContent: "center",
+    alignItems: "center",
+    // Gradient border effect via border color + inner fill
+  },
+  textContainer: {
+    flex: 1,
+    justifyContent: "center",
+  },
+  title: {
+    fontSize: Typography.fontSize.sm,
+    fontWeight: "600",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+    marginBottom: Spacing.xs,
+    fontFamily: Platform.select({
+      ios: "System",
+      android: "Roboto",
+    }),
+  },
+  value: {
+    fontSize: Typography.metricValue.fontSize,
+    fontWeight: Typography.metricValue.fontWeight,
+    lineHeight: Typography.metricValue.lineHeight,
+    letterSpacing: Typography.metricValue.letterSpacing,
+    marginBottom: Spacing.xs,
+    // Subtle glow for high contrast
+    textShadowColor: `${Colors.primary}30`,
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 8,
+    fontFamily: Platform.select({
+      ios: "System",
+      android: "Roboto",
+    }),
+  },
+  subtitle: {
+    fontSize: Typography.fontSize.xs,
+    fontWeight: "500",
+    fontFamily: Platform.select({
+      ios: "System",
+      android: "Roboto",
+    }),
+  },
+  accentLine: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 3,
+    borderBottomLeftRadius: BorderRadius.card - 1,
+    borderBottomRightRadius: BorderRadius.card - 1,
+  },
+  trendBadge: {
+    position: "absolute",
+    top: Spacing.sm,
+    right: Spacing.sm,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 3,
+    borderRadius: BorderRadius.full,
+    // Glass effect
+    backgroundColor: "rgba(255, 255, 255, 0.7)",
+    ...Platform.select({
+      ios: {
+        shadowColor: "rgba(0, 0, 0, 0.1)",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.2,
+        shadowRadius: 2,
       },
       android: {
         elevation: 2,
       },
     }),
   },
-  iconInner: {
-    width: 40,
-    height: 40,
-    borderRadius: BorderRadius.md,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  textContainer: {
-    flex: 1,
-  },
-  title: {
-    fontSize: Typography.presets.caption1.fontSize,
-    fontWeight: '600',
-    color: Colors.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    marginBottom: Spacing.xs,
-  },
-  value: {
-    fontSize: Typography.fontSize.xxl,
-    fontWeight: '800',
-    color: Colors.textPrimary,
-    letterSpacing: -0.5,
-    lineHeight: Typography.fontSize.xxl * Typography.lineHeight.tight,
-  },
-  subtitle: {
-    fontSize: Typography.fontSize.sm,
-    color: Colors.textTertiary,
-    marginTop: Spacing.xs,
-    fontWeight: '500',
-  },
-  accentBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 4,
-    borderBottomLeftRadius: BorderRadius.card - 1,
-    borderBottomRightRadius: BorderRadius.card - 1,
-  },
-  trendBadge: {
-    position: 'absolute',
-    top: Spacing.sm,
-    right: Spacing.sm,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 2,
-    borderRadius: BorderRadius.full,
-    backgroundColor: Colors.surfaceVariant,
-  },
-  trendPositive: {
-    backgroundColor: Colors.successContainer,
-  },
-  trendNegative: {
-    backgroundColor: Colors.errorContainer,
-  },
   trendText: {
     fontSize: Typography.presets.caption2.fontSize,
-    fontWeight: '700',
+    fontWeight: "700",
+    fontFamily: Platform.select({
+      ios: "System",
+      android: "Roboto",
+    }),
   },
 });
 

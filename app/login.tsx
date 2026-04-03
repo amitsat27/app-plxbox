@@ -28,12 +28,14 @@ import {
 } from "../constants/designTokens";
 import { useAuth } from "../src/context/AuthContext";
 import { logger } from "../src/services/Logger";
+import { useUIStore } from "../src/stores/uiStore";
 import { Colors, getColorScheme } from "../theme/color";
 
 const { width } = Dimensions.get("window");
 
 export default function LoginScreen() {
   const { login, loginWithPin, loginWithFaceId } = useAuth();
+  const { isDarkMode } = useUIStore();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -56,8 +58,8 @@ export default function LoginScreen() {
   const logoScaleAnim = useRef(new Animated.Value(0.8)).current;
   const formScaleAnim = useRef(new Animated.Value(0.95)).current;
 
-  const theme = getColorScheme(Colors.textPrimary === "#1C1C1E" ? false : true);
-  const isDark = Colors.background === "#000000";
+  const theme = getColorScheme(isDarkMode);
+  const isDark = isDarkMode;
 
   // Entry animations on mount
   useEffect(() => {

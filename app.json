@@ -48,7 +48,15 @@
       ],
       "expo-web-browser",
       "@react-native-community/datetimepicker",
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Pulsebox needs access to your photos to attach bill documents.",
+          "cameraPermission": "Pulsebox needs access to your camera to take photos of bills.",
+          "microphonePermission": false
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
