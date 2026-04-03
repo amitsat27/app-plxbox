@@ -26,15 +26,18 @@ jobs:
         with:
           node-version: 24
 
-      - name: Install Dependencies
-        run: npm install
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.1'
+          bundler-cache: true
 
-      - name: Setup Ruby and Install Modern CocoaPods
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Install CocoaPods
         run: |
-          # Install a modern CocoaPods version compatible with Expo SDK 54
-          sudo gem install cocoapods -v 1.16.2
-          # Install Expo CocoaPods plugin (required for Expo modules)
-          sudo gem install expo-cocoaPods
+          gem install cocoapods -v 1.16.2
           pod --version
           pod repo update
 
@@ -50,7 +53,7 @@ jobs:
           EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID }}
           EXPO_PUBLIC_FIREBASE_GOOGLE_IOS_CLIENT_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_GOOGLE_IOS_CLIENT_ID }}
           EXPO_PUBLIC_APP_PIN: ${{ secrets.EXPO_PUBLIC_APP_PIN }}
-        run: npx expo prebuild --platform ios --clean
+        run: npx expo prebuild --platform ios --clean --no-install
 
       - name: Install Pods
         run: |
