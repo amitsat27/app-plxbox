@@ -33,7 +33,10 @@ jobs:
           bundler-cache: true
 
       - name: Install Dependencies
-        run: npm ci
+        run: |
+          rm -rf ios/Pods ios/Podfile.lock
+          rm -rf node_modules
+          npm ci
 
       - name: Install CocoaPods
         run: |
