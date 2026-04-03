@@ -1,11 +1,10 @@
-import * as FileSystem from 'expo-file-system';
-import { Platform } from 'react-native';
+import * as FileSystem from "expo-file-system/legacy";
 
-const LOG_FILE_NAME = 'pulsebox_logs.txt';
+const LOG_FILE_NAME = "pulsebox_logs.txt";
 const MAX_LOG_SIZE = 1024 * 1024; // 1MB max per log file
 const MAX_LOG_FILES = 3; // Keep up to 3 rotated log files
 
-export type LogLevel = 'DEBUG' | 'INFO' | 'WARN' | 'ERROR';
+export type LogLevel = "DEBUG" | "INFO" | "WARN" | "ERROR";
 
 interface LogEntry {
   timestamp: string;
@@ -21,15 +20,8 @@ class LoggerService {
   private isEnabled: boolean = __DEV__ || true; // Always enabled in standalone for debugging
 
   constructor() {
-    this.logFileUri = this.getLogFilePath();
-  }
-
-  /**
-   * Get the file path for logs in Documents directory
-   */
-  private getLogFilePath(): string {
-    const documentsDir = FileSystem.documentDirectory || '';
-    return `${documentsDir}${LOG_FILE_NAME}`;
+    const documentsDir = FileSystem.documentDirectory || "";
+    this.logFileUri = `${documentsDir}${LOG_FILE_NAME}`;
   }
 
   /**
@@ -37,7 +29,7 @@ class LoggerService {
    */
   private getTimestamp(): string {
     const now = new Date();
-    return now.toISOString().replace('T', ' ').substring(0, 19);
+    return now.toISOString().replace("T", " ").substring(0, 19);
   }
 
   /**
@@ -65,7 +57,7 @@ class LoggerService {
         const entry = this.writeQueue.shift();
         if (!entry) continue;
 
-        const logLine = JSON.stringify(entry) + '\n';
+        const logLine = JSON.stringify(entry) + "\n";
 
         try {
           // Check if file exists and its size
@@ -76,15 +68,21 @@ class LoggerService {
             await this.rotateLogs();
           }
 
-          // Append to file
-          await FileSystem.appendStringToFileAsync(this.logFileUri, logLine, { encoding: FileSystem.Encoding.UTF8 });
-        } catch (error) {
-          // If file doesn't exist yet, create it
-          if (error.code === 'FileNotFound') {
-            await FileSystem.writeAsStringAsync(this.logFileUri, logLine, { encoding: FileSystem.Encoding.UTF8 });
-          } else {
-            console.warn('Failed to write log file:', error);
+          // Append to file - read existing content and append new log
+          try {
+            const existing = await FileSystem.readAsStringAsync(
+              this.logFileUri,
+            );
+            await FileSystem.writeAsStringAsync(
+              this.logFileUri,
+              existing + logLine,
+            );
+          } catch {
+            // File doesn't exist yet, create it
+            await FileSystem.writeAsStringAsync(this.logFileUri, logLine);
           }
+        } catch (error) {
+          console.warn("Failed to write log file:", error);
         }
       }
     } finally {
@@ -96,7 +94,7 @@ class LoggerService {
    * Rotate log files (keep last N logs)
    */
   private async rotateLogs(): Promise<void> {
-    const documentsDir = FileSystem.documentDirectory || '';
+    const documentsDir = FileSystem.documentDirectory || "";
 
     // Shift existing logs: logs_2.txt → logs_3.txt, logs_1.txt → logs_2.txt, etc.
     for (let i = MAX_LOG_FILES - 1; i >= 1; i--) {
@@ -127,7 +125,11 @@ class LoggerService {
   /**
    * Log a message
    */
-  public async log(level: LogLevel, message: string, metadata?: Record<string, any>): Promise<void> {
+  public async log(
+    level: LogLevel,
+    message: string,
+    metadata?: Record<string, any>,
+  ): Promise<void> {
     const entry: LogEntry = {
       timestamp: this.getTimestamp(),
       level,
@@ -138,7 +140,12 @@ class LoggerService {
     // Always log to console in development
     if (__DEV__) {
       const prefix = `[${level}]`;
-      console.log(`%c${prefix}`, `color: ${this.getColorForLevel(level)}`, message, metadata || '');
+      console.log(
+        `%c${prefix}`,
+        `color: ${this.getColorForLevel(level)}`,
+        message,
+        metadata || "",
+      );
     }
 
     // Write to file
@@ -149,29 +156,35 @@ class LoggerService {
    * Log debug message
    */
   public debug(message: string, metadata?: Record<string, any>): void {
-    this.log('DEBUG', message, metadata);
+    this.log("DEBUG", message, metadata);
   }
 
   /**
    * Log info message
    */
   public info(message: string, metadata?: Record<string, any>): void {
-    this.log('INFO', message, metadata);
+    this.log("INFO", message, metadata);
   }
 
   /**
    * Log warning message
    */
   public warn(message: string, metadata?: Record<string, any>): void {
-    this.log('WARN', message, metadata);
+    this.log("WARN", message, metadata);
   }
 
   /**
    * Log error message
    */
-  public error(message: string, error?: Error, metadata?: Record<string, any>): void {
-    const combinedMetadata = error ? { error: error.message, stack: error.stack, ...metadata } : metadata;
-    this.log('ERROR', message, combinedMetadata);
+  public error(
+    message: string,
+    error?: Error,
+    metadata?: Record<string, any>,
+  ): void {
+    const combinedMetadata = error
+      ? { error: error.message, stack: error.stack, ...metadata }
+      : metadata;
+    this.log("ERROR", message, combinedMetadata);
   }
 
   /**
@@ -179,11 +192,16 @@ class LoggerService {
    */
   private getColorForLevel(level: LogLevel): string {
     switch (level) {
-      case 'DEBUG': return '#888888';
-      case 'INFO': return '#007AFF';
-      case 'WARN': return '#FF9500';
-      case 'ERROR': return '#FF3B30';
-      default: return '#000000';
+      case "DEBUG":
+        return "#888888";
+      case "INFO":
+        return "#007AFF";
+      case "WARN":
+        return "#FF9500";
+      case "ERROR":
+        return "#FF3B30";
+      default:
+        return "#000000";
     }
   }
 
@@ -202,7 +220,7 @@ class LoggerService {
     try {
       await FileSystem.deleteAsync(this.logFileUri, { idempotent: true });
     } catch (error) {
-      console.warn('Failed to clear logs:', error);
+      console.warn("Failed to clear logs:", error);
     }
   }
 
@@ -212,11 +230,11 @@ class LoggerService {
   public async getLogs(): Promise<string> {
     try {
       return await FileSystem.readAsStringAsync(this.logFileUri);
-    } catch (error) {
-      if (error.code === 'FileNotFound') {
-        return 'No logs available';
+    } catch (error: any) {
+      if (error?.code === "FileNotFound") {
+        return "No logs available";
       }
-      return `Error reading logs: ${error.message}`;
+      return `Error reading logs: ${error?.message || "Unknown error"}`;
     }
   }
 }
@@ -224,5 +242,6 @@ class LoggerService {
 // Create singleton instance
 export const logger = new LoggerService();
 
-// Export types and functions
-export { LoggerService, LogLevel, LogEntry };
+// Export types and class
+export { LogEntry, LoggerService };
+

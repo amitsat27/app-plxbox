@@ -1,17 +1,17 @@
-import { initializeApp, FirebaseApp } from 'firebase/app';
+import { FirebaseApp, initializeApp } from "firebase/app";
 import {
-  getAuth,
   Auth,
-  setPersistence,
-  browserLocalPersistence,
-  inMemoryPersistence
-} from 'firebase/auth';
-import { getFirestore, Firestore } from 'firebase/firestore';
-import { getStorage, FirebaseStorage } from 'firebase/storage';
+  getAuth,
+  inMemoryPersistence,
+  setPersistence
+} from "firebase/auth";
+import { Firestore, getFirestore } from "firebase/firestore";
+import { FirebaseStorage, getStorage } from "firebase/storage";
+import { Platform } from "react-native";
 
-// Detect environment
-export const isWeb = typeof window !== 'undefined' && typeof document !== 'undefined';
-export const isReactNative = !isWeb && typeof global !== 'undefined';
+// Detect platform
+const isWeb = !Platform.OS || Platform.OS === "web";
+const isReactNative = Platform.OS === "ios" || Platform.OS === "android";
 
 // Firebase configuration
 const firebaseConfig = {
@@ -37,35 +37,37 @@ export const initializeFirebase = async () => {
     // Initialize app
     app = initializeApp(firebaseConfig);
 
-    // Initialize services
+    // Initialize Auth
     auth = getAuth(app);
-    db = getFirestore(app);
-    storage = getStorage(app);
 
-    // Set persistence based on environment
+    // Set persistence based on platform
     if (isWeb) {
-      try {
-        await setPersistence(auth, browserLocalPersistence);
-        console.log('✅ Firestore persistence: localStorage');
-      } catch (error) {
-        console.warn('Failed to set localStorage persistence:', error);
-        await setPersistence(auth, inMemoryPersistence);
-      }
+      // Web uses browser localStorage by default
+      console.log(
+        "✅ Firebase Auth initialized (web - localStorage persistence)",
+      );
     } else {
-      // React Native - use inMemoryPersistence for simplicity
-      // For persistent storage, consider using expo-secure-store with custom persistence
+      // React Native uses in-memory persistence by default
+      // This means auth state will NOT persist across app restarts
+      // For persistence, you'd need to implement a custom persistence layer
       try {
         await setPersistence(auth, inMemoryPersistence);
-        console.log('✅ Firebase Auth persistence: inMemory');
+        console.log(
+          "✅ Firebase Auth initialized (React Native - in-memory persistence)",
+        );
       } catch (error) {
-        console.warn('Failed to set in-memory persistence:', error);
+        console.warn("Failed to set in-memory persistence:", error);
       }
     }
 
-    console.log('✅ Firebase initialized successfully');
+    // Initialize Firestore and Storage
+    db = getFirestore(app);
+    storage = getStorage(app);
+
+    console.log("✅ Firebase initialized successfully");
     return { app, auth, db, storage };
   } catch (error) {
-    console.error('❌ Firebase initialization error:', error);
+    console.error("❌ Firebase initialization error:", error);
     throw error;
   }
 };
@@ -73,28 +75,36 @@ export const initializeFirebase = async () => {
 // Lazy export functions
 export const getFirebaseApp = () => {
   if (!app) {
-    throw new Error('Firebase not initialized. Call initializeFirebase() first.');
+    throw new Error(
+      "Firebase not initialized. Call initializeFirebase() first.",
+    );
   }
   return app;
 };
 
 export const getFirebaseAuth = () => {
   if (!auth) {
-    throw new Error('Firebase Auth not initialized. Call initializeFirebase() first.');
+    throw new Error(
+      "Firebase Auth not initialized. Call initializeFirebase() first.",
+    );
   }
   return auth;
 };
 
 export const getFirebaseDb = () => {
   if (!db) {
-    throw new Error('Firebase Firestore not initialized. Call initializeFirebase() first.');
+    throw new Error(
+      "Firebase Firestore not initialized. Call initializeFirebase() first.",
+    );
   }
   return db;
 };
 
 export const getFirebaseStorage = () => {
   if (!storage) {
-    throw new Error('Firebase Storage not initialized. Call initializeFirebase() first.');
+    throw new Error(
+      "Firebase Storage not initialized. Call initializeFirebase() first.",
+    );
   }
   return storage;
 };
@@ -102,15 +112,21 @@ export const getFirebaseStorage = () => {
 /**
  * Safe analytics tracking - only for web
  */
-export const trackAnalyticsEvent = async (eventName: string, eventParams?: Record<string, any>) => {
+export const trackAnalyticsEvent = async (
+  eventName: string,
+  eventParams?: Record<string, any>,
+) => {
   if (!isWeb) {
-    console.log(`[Analytics] Event (skipped on native): ${eventName}`, eventParams);
+    console.log(
+      `[Analytics] Event (skipped on native): ${eventName}`,
+      eventParams,
+    );
     return;
   }
 
   try {
-    const { logEvent } = await import('firebase/analytics');
-    const { getAnalytics } = await import('firebase/analytics');
+    const { logEvent } = await import("firebase/analytics");
+    const { getAnalytics } = await import("firebase/analytics");
     const firebaseApp = getFirebaseApp();
     const analytics = getAnalytics(firebaseApp);
     logEvent(analytics, eventName, eventParams);

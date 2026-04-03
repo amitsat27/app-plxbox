@@ -4,7 +4,7 @@
 import React from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { View, StyleSheet, TouchableOpacity, Platform, Alert } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Platform, Alert, Text } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { PaperProvider, MD3LightTheme } from 'react-native-paper';
 import { AuthProvider, useAuth } from '../src/context/AuthContext';

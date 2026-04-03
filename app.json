@@ -12,8 +12,6 @@
       "bundleIdentifier": "com.amitzope.pulsebox.dev",
       "supportsTablet": true,
       "infoPlist": {
-        "NSFaceIDUsageDescription": "Allow $(PRODUCT_NAME) to use Face ID for biometric login.",
-        "NSBiometricUsageDescription": "Allow $(PRODUCT_NAME) to use Touch ID / Face ID for biometric login.",
         "ITSAppUsesNonExemptEncryption": false
       },
     "android": {
@@ -50,14 +48,7 @@
       ],
       "expo-web-browser",
       "@react-native-community/datetimepicker",
-      "expo-secure-store",
-      [
-        "expo-local-authentication",
-        {
-          "faceIDPermission": "Allow $(PRODUCT_NAME) to use Face ID for biometric login.",
-          "fallbackLabel": "Use Password"
-        }
-      ]
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true,
