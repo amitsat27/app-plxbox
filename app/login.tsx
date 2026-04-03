@@ -1,17 +1,17 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator,
-  Animated,
-  Dimensions,
-  Easing,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Animated,
+    Dimensions,
+    Easing,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 // LinearGradient temporarily disabled for Expo Go compatibility
@@ -21,10 +21,10 @@ import * as Haptics from "expo-haptics";
 import { ArrowRight, Eye, EyeOff, Lock, Mail } from "lucide-react-native";
 import PinInput from "../components/PinInput";
 import {
-  BorderRadius,
-  Elevation,
-  Spacing,
-  Typography,
+    BorderRadius,
+    Elevation,
+    Spacing,
+    Typography,
 } from "../constants/designTokens";
 import { useAuth } from "../src/context/AuthContext";
 import { logger } from "../src/services/Logger";
@@ -33,14 +33,16 @@ import { Colors, getColorScheme } from "../theme/color";
 const { width } = Dimensions.get("window");
 
 export default function LoginScreen() {
-  const { login, loginWithPin } = useAuth();
+  const { login, loginWithPin, loginWithFaceId } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [pin, setPin] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
-  const [loginMethod, setLoginMethod] = useState<"email" | "pin">("email");
+  const [loginMethod, setLoginMethod] = useState<"email" | "pin" | "face">(
+    "email",
+  );
   const [errors, setErrors] = useState<{
     email?: string;
     password?: string;
@@ -143,12 +145,37 @@ export default function LoginScreen() {
     }
   };
 
+  // Handle Face ID login
+  const handleFaceIdLogin = async () => {
+    setErrors({});
+    setIsLoggingIn(true);
+    logger.info("Face ID login attempt");
+
+    try {
+      await loginWithFaceId();
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      logger.info("Face ID login successful");
+    } catch (error: any) {
+      logger.error("Face ID login error:", error as Error);
+      setErrors({
+        general:
+          error.message || "Face ID authentication failed. Please try again.",
+      });
+      shakeForm();
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
+
   // Handle unified login
   const handleUnifiedLogin = async () => {
     if (loginMethod === "email") {
       await handleLogin();
-    } else {
+    } else if (loginMethod === "pin") {
       await handlePinLogin();
+    } else if (loginMethod === "face") {
+      await handleFaceIdLogin();
     }
   };
 
@@ -572,6 +599,39 @@ export default function LoginScreen() {
                         6-Digit PIN
                       </Text>
                     </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[
+                        styles.tab,
+                        loginMethod === "face" && styles.tabActive,
+                        {
+                          borderBottomColor:
+                            loginMethod === "face"
+                              ? Colors.primary
+                              : isDark
+                                ? Colors.borderDark
+                                : Colors.border,
+                        },
+                      ]}
+                      onPress={() => {
+                        setLoginMethod("face");
+                        setErrors({});
+                      }}
+                    >
+                      <Text
+                        style={[
+                          styles.tabText,
+                          {
+                            color:
+                              loginMethod === "face"
+                                ? Colors.primary
+                                : theme.textSecondary,
+                          },
+                        ]}
+                      >
+                        Face ID
+                      </Text>
+                    </TouchableOpacity>
                   </View>
 
                   {/* PIN Input Section */}
@@ -587,6 +647,20 @@ export default function LoginScreen() {
                       {errors.pin && (
                         <Text style={styles.errorText}>{errors.pin}</Text>
                       )}
+                    </View>
+                  )}
+
+                  {/* Face ID Section */}
+                  {loginMethod === "face" && (
+                    <View style={styles.inputWrapper}>
+                      <Text
+                        style={[
+                          styles.faceIdDescription,
+                          { color: theme.textSecondary },
+                        ]}
+                      >
+                        Press the button below to authenticate with Face ID
+                      </Text>
                     </View>
                   )}
 
@@ -890,5 +964,12 @@ const styles = StyleSheet.create({
   footerText: {
     fontSize: Typography.fontSize.sm,
     textAlign: "center",
+  },
+  faceIdDescription: {
+    fontSize: Typography.fontSize.md,
+    textAlign: "center",
+    marginTop: Spacing.md,
+    marginBottom: Spacing.md,
+    lineHeight: Typography.fontSize.md * 1.5,
   },
 });

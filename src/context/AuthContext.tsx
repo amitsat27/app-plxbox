@@ -1,3 +1,4 @@
+import * as LocalAuthentication from "expo-local-authentication";
 import {
     createUserWithEmailAndPassword,
     onAuthStateChanged,
@@ -275,14 +276,143 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { user: pinUser };
   };
 
+  const loginWithFaceId = async () => {
+    try {
+      logger.info("Face ID login attempt");
+
+      // Check if device has biometric capability
+      const compatible = await LocalAuthentication.hasHardwareAsync();
+      logger.info("Biometric hardware compatible:", { compatible });
+
+      if (!compatible) {
+        throw new Error(
+          "This device does not support Face ID or biometric authentication.",
+        );
+      }
+
+      // Check available authentication types
+      const authTypes =
+        await LocalAuthentication.supportedAuthenticationTypesAsync();
+      logger.info("Supported authentication types:", {
+        authTypes,
+        types: authTypes.map((t) => LocalAuthentication.AuthenticationType[t]),
+      });
+
+      const hasFaceId = authTypes.includes(
+        LocalAuthentication.AuthenticationType.FACIAL_RECOGNITION,
+      );
+      const hasFingerprint = authTypes.includes(
+        LocalAuthentication.AuthenticationType.FINGERPRINT,
+      );
+
+      logger.info("Biometric availability:", { hasFaceId, hasFingerprint });
+
+      if (!hasFaceId && !hasFingerprint) {
+        throw new Error(
+          "No biometric authentication available on this device.",
+        );
+      }
+
+      // Check if biometric is enrolled
+      const enrolled = await LocalAuthentication.isEnrolledAsync();
+      logger.info("Biometric enrolled:", { enrolled });
+
+      if (!enrolled) {
+        throw new Error(
+          "No biometric data enrolled on this device. Please set up Face ID/Fingerprint in device settings.",
+        );
+      }
+
+      // Authenticate with biometric (Face ID on iOS, fingerprint/face on Android)
+      logger.info("Starting biometric authentication");
+      const result = await LocalAuthentication.authenticateAsync({
+        disableDeviceFallback: false, // Allow fallback for better compatibility
+      });
+
+      logger.info("Biometric authentication result:", {
+        success: result.success,
+        error: (result as any).error,
+      });
+
+      if (!result.success) {
+        const error = (result as any).error;
+
+        if (
+          error === "user_cancel" ||
+          error === "system_cancel" ||
+          error === "invalid_context"
+        ) {
+          throw new Error("Face ID authentication was cancelled.");
+        }
+        if (error === "timeout" || error === "unable_to_process") {
+          throw new Error("Authentication timed out. Please try again.");
+        }
+        if (error === "not_enrolled" || error === "passcode_not_set") {
+          throw new Error(
+            "No biometric data enrolled. Please set up Face ID in device settings.",
+          );
+        }
+        if (error === "not_available" || error === "no_space") {
+          throw new Error(
+            "Biometric authentication is not available on this device.",
+          );
+        }
+
+        throw new Error(
+          `Face ID authentication failed. Please try again or use another login method.`,
+        );
+      }
+
+      logger.info("Face ID authentication successful");
+
+      // Create mock authenticated user for Face ID
+      const faceIdUser = {
+        uid: "face-id-user",
+        email: "face-id@access.app",
+        displayName: "Face ID User",
+        metadata: {
+          creationTime: new Date().toISOString(),
+          lastSignInTime: new Date().toISOString(),
+        },
+      };
+
+      // Update user state to mark as authenticated
+      setUser(faceIdUser);
+      setUserProfile({
+        uid: "face-id-user",
+        email: "face-id@access.app",
+        displayName: "Face ID User",
+        createdAt: new Date(),
+        lastLogin: new Date(),
+        preferences: {
+          theme: "light",
+          notifications: true,
+        },
+      });
+
+      await trackAnalyticsEvent("login", { method: "face_id" });
+      setLoading(false);
+
+      return { user: faceIdUser };
+    } catch (error: any) {
+      logger.error("Face ID login error", undefined, {
+        message: error.message,
+        code: error.code,
+      });
+      throw new Error(
+        error.message || "Face ID authentication failed. Please try again.",
+      );
+    }
+  };
+
   const logout = async () => {
-    // Check if it's a PIN user
-    if (user?.uid === "pin-user") {
-      // Clear PIN user state
+    // Check if it's a PIN user or Face ID user
+    if (user?.uid === "pin-user" || user?.uid === "face-id-user") {
+      // Clear user state
       setUser(null);
       setUserProfile(null);
       setLoading(false);
-      logger.info("PIN user logged out");
+      logger.info("Biometric user logged out", { uid: user?.uid });
       return;
     }
 
@@ -312,6 +442,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         userProfile,
         login,
         loginWithPin,
+        loginWithFaceId,
         logout,
         signup,
         loading,
