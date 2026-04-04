@@ -1,238 +1,329 @@
-// 🎨 Pulsebox iOS Design System - Production Ready
-// Follows Apple Human Interface Guidelines with iOS 18+ aesthetics
-// Latest design language with enhanced glassmorphism and vibrant colors
+// 🌌 Cosmic Sunset - Premium 2025 Design System
+// Bold, distinctive color palette for Pulsebox dashboard
+// Avoids generic aesthetics - unique vibrant gradients, glassmorphism-ready
 
 export const Colors = {
   // ============================================
-  // BRAND COLORS (iOS System Colors)
+  // COSMIC GRADIENT BASE (Animated gradients)
   // ============================================
-  primary: '#007AFF',           // iOS System Blue
-  primaryLight: '#5AC8FA',      // iOS System Blue Light
-  primaryDark: '#0056CC',       // iOS System Blue Dark
-  primaryContainer: '#E5F1FF',  // Blue 10%
-  primarySurfaced: '#F2F8FF',   // Blue 5%
-
-  secondary: '#34C759',         // iOS System Green
-  secondaryLight: '#5FF963',
-  secondaryDark: '#28A745',
-  secondaryContainer: '#D9F2DF',
-  secondarySurfaced: '#E8F5E9',
-
-  tertiary: '#FF9500',          // iOS System Orange
-  tertiaryLight: '#FFCC00',
-  tertiaryDark: '#E69500',
-  tertiaryContainer: '#FFF3E0',
-  tertiarySurfaced: '#FFF8E1',
+  cosmicDeep: "#0F0C29", // Deep space purple-black
+  cosmicMid: "#302B63", // Midnight purple
+  cosmicAccent: "#24243E", // Cosmic highlight
+  auroraBlue: "#00D2FF", // Electric cyan-blue
+  auroraPurple: "#928DAB", // Soft purple
+  sunsetPink: "#F72585", // Hot pink
+  sunsetOrange: "#FF6B35", // Vibrant orange
+  sunsetYellow: "#FFC857", // Golden yellow
+  neonCyan: "#00FFFF", // Neon cyan for glows
+  neonMagenta: "#FF00FF", // Neon magenta for accents
 
   // ============================================
-  // SEMANTIC COLORS
+  // PRIMARY BRAND COLORS (Gradient-capable)
   // ============================================
-  success: '#34C759',
-  successLight: '#5FF963',
-  successDark: '#28A745',
-  successContainer: '#D9F2DF',
-  successSurfaced: '#E8F5E9',
+  primary: "#7C3AED", // Violet 600 - Main brand
+  primaryLight: "#A78BFA", // Violet 400 - Light variant
+  primaryDark: "#5B21B6", // Violet 800 - Dark variant
+  primaryContainer: "#1E1B4B", // Very dark violet (20% white)
+  primarySurfaced: "#2D2664", // Dark violet surface (12% white)
 
-  warning: '#FF9500',
-  warningLight: '#FFCC00',
-  warningDark: '#E69500',
-  warningContainer: '#FFF3E0',
-  warningSurfaced: '#FFF8E1',
+  secondary: "#3B82F6", // Blue 600 - Secondary
+  secondaryLight: "#60A5FA", // Blue 400
+  secondaryDark: "#2563EB", // Blue 800
+  secondaryContainer: "#1E3A8A", // Dark blue (20% white)
+  secondarySurfaced: "#1E40AF", // Dark blue surface
 
-  error: '#FF3B30',             // iOS System Red
-  errorLight: '#FF6954',
-  errorDark: '#D70015',
-  errorContainer: '#FFEBE8',
-  errorSurfaced: '#FFF5F2',
-
-  info: '#5AC8FA',              // iOS System Light Blue
-  infoLight: '#7DD8FF',
-  infoDark: '#4FA4DE',
-  infoContainer: '#E5F5FF',
-  infoSurfaced: '#F0F9FF',
+  tertiary: "#EC4899", // Pink 500 - Accent
+  tertiaryLight: "#F472B6", // Pink 400
+  tertiaryDark: "#BE185D", // Pink 800
+  tertiaryContainer: "#4A044E", // Dark pink (20% white)
+  tertiarySurfaced: "#701A75", // Dark pink surface
 
   // ============================================
-  // NEUTRAL / GRAY SCALE (iOS System Colors)
+  // SEMANTIC COLORS (Vivid & Modern)
   // ============================================
-  background: '#F2F2F7',        // iOS System Gray 6 - App background
-  backgroundDark: '#000000',    // iOS Dark Mode Background (true black)
-  backgroundElevated: '#FFFFFF', // Elevated surfaces
-  backgroundSecondary: '#F9F9FA',
-  surface: '#FFFFFF',           // Pure white for cards/sheets
-  surfaceDark: '#1C1C1E',       // Dark mode surface
-  surfaceVariant: '#E2E8F0',
-  surfaceVariantDark: '#3A3A3C',
-  surfaceTinted: '#F9F9FA',
-  surfaceTintedDark: '#2C2C2E',
+  success: "#10B981", // Emerald 500
+  successLight: "#34D399", // Emerald 400
+  successDark: "#059669", // Emerald 700
+  successContainer: "#064E3B", // Dark emerald (20% white)
+  successSurfaced: "#065F46", // Dark emerald surface
 
-  // Card backgrounds (iOS 18 style)
-  cardBackground: '#FFFFFF',
-  cardBackgroundDark: '#1C1C1E',
-  cardBackgroundElevated: '#FFFFFF',
-  cardBackgroundElevatedDark: '#2C2C2E',
-  cardBorder: 'rgba(0, 0, 0, 0.05)',
-  cardBorderDark: 'rgba(255, 255, 255, 0.08)',
+  warning: "#F59E0B", // Amber 500
+  warningLight: "#FBBF24", // Amber 400
+  warningDark: "#D97706", // Amber 600
+  warningContainer: "#78350F", // Dark amber (20% white)
+  warningSurfaced: "#92400E", // Dark amber surface
 
-  // Interactive states
-  interactive: 'rgba(0, 122, 255, 0.08)', // iOS light blue pressed
-  interactiveDark: 'rgba(10, 132, 255, 0.12)',
-  focus: 'rgba(0, 122, 255, 0.2)',
-  focusDark: 'rgba(10, 132, 255, 0.25)',
+  error: "#EF4444", // Red 500
+  errorLight: "#F87171", // Red 400
+  errorDark: "#DC2626", // Red 600
+  errorContainer: "#7F1D1D", // Dark red (20% white)
+  errorSurfaced: "#991B1B", // Dark red surface
 
-  // Text hierarchy - following iOS contrast ratios
-  textPrimary: '#1C1C1E',       // iOS Label - Primary text
-  textPrimaryDark: '#FFFFFF',
-  textSecondary: '#8E8E93',     // iOS Secondary Label
-  textSecondaryDark: '#8E8E93',
-  textTertiary: '#C7C7CC',      // iOS Tertiary Label
-  textTertiaryDark: '#636366',
-  textDisabled: '#E5E5EA',
-  textDisabledDark: '#48484A',
-  textInverse: '#FFFFFF',
-  textInverseDark: '#000000',
-
-  // Borders and separators
-  border: '#E5E5EA',            // iOS Separator
-  borderDark: '#38383A',
-  borderLight: '#F2F2F7',
-  borderStrong: '#C6C6C8',
-  borderStrongDark: '#545456',
+  info: "#06B6D4", // Cyan 500
+  infoLight: "#22D3EE", // Cyan 400
+  infoDark: "#0891B2", // Cyan 700
+  infoContainer: "#155E75", // Dark cyan (20% white)
+  infoSurfaced: "#164E63", // Dark cyan surface
 
   // ============================================
-  // OVERLAY & GLASS (iOS Blur Effects)
+  // NEUTRAL / SURFACE COLORS (Glass-ready)
   // ============================================
-  overlay: 'rgba(0, 0, 0, 0.4)',      // Modal backdrop
-  overlayLight: 'rgba(0, 0, 0, 0.2)', // Action sheets
-  overlayDark: 'rgba(0, 0, 0, 0.6)',
-  glass: 'rgba(255, 255, 255, 0.72)',  // iOS Frosted Glass - Light
-  glassDark: 'rgba(28, 28, 30, 0.80)', // iOS Frosted Glass - Dark
-  glassStrong: 'rgba(255, 255, 255, 0.92)',
-  glassThick: 'rgba(255, 255, 255, 0.85)',
+  background: "#0A0A1A", // Very dark cosmic blue (not pure black)
+  backgroundLight: "#F8FAFC", // Light mode background (off-white)
+  backgroundDark: "#050510", // Even darker for dark mode
+  surface: "rgba(20, 20, 40, 0.70)", // Glass surface dark (with blur)
+  surfaceLight: "rgba(255, 255, 255, 0.75)", // Glass surface light
+  surfaceDark: "rgba(10, 10, 20, 0.80)", // Dark mode glass
+  surfaceVariant: "rgba(30, 30, 60, 0.50)",
+  surfaceVariantLight: "rgba(248, 250, 252, 0.80)",
+
+  // Card backgrounds - glassmorphic
+  cardBackground: "rgba(255, 255, 255, 0.65)",
+  cardBackgroundDark: "rgba(20, 20, 40, 0.75)",
+  cardBackgroundElevated: "rgba(255, 255, 255, 0.85)",
+  cardBackgroundElevatedDark: "rgba(30, 30, 60, 0.90)",
+
+  // Borders - subtle with tint
+  border: "rgba(124, 58, 237, 0.15)", // Purple tint (15%)
+  borderDark: "rgba(167, 139, 250, 0.25)", // Brighter purple in dark
+  borderLight: "rgba(124, 58, 237, 0.08)",
 
   // ============================================
-  // STATE COLORS
+  // TEXT COLORS (High contrast)
   // ============================================
-  selected: '#007AFF20',         // Blue with 12% opacity
-  selectedDark: '#0A84FF30',
-  highlighted: '#E5E5EA',        // Light gray for pressed
-  highlightedDark: '#3A3A3C',
-  disabled: '#F2F2F7',           // Disabled background
-  disabledDark: '#1C1C1E',
+  textPrimary: "#1E293B", // Dark slate (light mode)
+  textPrimaryDark: "#F8FAFC", // Off-white (dark mode)
+  textSecondary: "#475569", // Medium slate
+  textSecondaryDark: "#94A3B8", // Light gray-blue
+  textTertiary: "#94A3B8", // Muted
+  textTertiaryDark: "#64748B", // Dark mode tertiary
+  textDisabled: "#CBD5E1", // Light gray
+  textDisabledDark: "#334155", // Dark gray
+  textInverse: "#FFFFFF",
+  textInverseDark: "#0A0A1A",
+
+  // Glow colors for highlights
+  glowPrimary: "rgba(124, 58, 237, 0.4)", // Violet glow
+  glowSecondary: "rgba(59, 130, 246, 0.4)", // Blue glow
+  glowTertiary: "rgba(236, 72, 153, 0.4)", // Pink glow
 
   // ============================================
-  // CATEGORY COLORS (Bill Types)
+  // CATEGORY COLORS (Gradient pairs)
   // ============================================
-  categoryElectric: '#FF9500',   // Orange
-  categoryWater: '#007AFF',      // Blue
-  categoryGas: '#FF3B30',        // Red
-  categoryWifi: '#34C759',       // Green
-  categoryProperty: '#AF52DE',   // Purple
-  categoryMgl: '#8B5CF6',        // Indigo
+  // Electric: Orange → Yellow gradient
+  categoryElectric: "#FF6B35",
+  categoryElectricGradient: "#FFC857",
+  categoryElectricGlow: "rgba(255, 107, 53, 0.3)",
 
-  // Vehicle types
-  vehicleCar: '#007AFF',
-  vehicleBike: '#34C759',
-  vehicleTruck: '#FF9500',
-  vehicleOther: '#AF52DE',
+  // Water: Blue → Cyan gradient
+  categoryWater: "#3B82F6",
+  categoryWaterGradient: "#06B6D4",
+  categoryWaterGlow: "rgba(59, 130, 246, 0.3)",
 
-  // Appliance categories
-  applianceKitchen: '#FF9500',
-  applianceLiving: '#007AFF',
-  applianceBedroom: '#34C759',
-  applianceBathroom: '#5AC8FA',
-  applianceOther: '#8E8E93',
+  // Gas: Red → Pink gradient
+  categoryGas: "#EF4444",
+  categoryGasGradient: "#EC4899",
+  categoryGasGlow: "rgba(239, 68, 68, 0.3)",
 
-  // ============================================
-  // STATUS COLORS
-  // ============================================
-  statusPaid: '#34C759',
-  statusPaidDark: '#30B658',
-  statusPending: '#FF9500',
-  statusPendingDark: '#F59E0B',
-  statusOverdue: '#FF3B30',
-  statusOverdueDark: '#D70015',
-  statusActive: '#34C759',
-  statusInactive: '#8E8E93',
-  statusDraft: '#5AC8FA',
+  // WiFi: Green → Teal gradient
+  categoryWifi: "#10B981",
+  categoryWifiGradient: "#14B8A6",
+  categoryWifiGlow: "rgba(16, 185, 129, 0.3)",
+
+  // Property: Purple → Violet gradient
+  categoryProperty: "#7C3AED",
+  categoryPropertyGradient: "#A78BFA",
+  categoryPropertyGlow: "rgba(124, 58, 237, 0.3)",
+
+  // MGL: Indigo → Blue gradient
+  categoryMgl: "#6366F1",
+  categoryMglGradient: "#3B82F6",
+  categoryMglGlow: "rgba(99, 102, 241, 0.3)",
 
   // ============================================
-  // CHART COLORS (Data visualization - iOS 18+ palette)
+  // STATUS COLORS (With glow variants)
+  // ============================================
+  statusPaid: "#10B981",
+  statusPaidGlow: "rgba(16, 185, 129, 0.4)",
+  statusPaidDark: "#059669",
+
+  statusPending: "#F59E0B",
+  statusPendingGlow: "rgba(245, 158, 11, 0.4)",
+  statusPendingDark: "#D97706",
+
+  statusOverdue: "#EF4444",
+  statusOverdueGlow: "rgba(239, 68, 68, 0.4)",
+  statusOverdueDark: "#DC2626",
+
+  statusActive: "#3B82F6",
+  statusActiveGlow: "rgba(59, 130, 246, 0.4)",
+  statusActiveDark: "#2563EB",
+
+  statusInactive: "#64748B",
+  statusInactiveGlow: "rgba(100, 116, 139, 0.4)",
+  statusInactiveDark: "#475569",
+
+  statusDraft: "#06B6D4",
+  statusDraftGlow: "rgba(6, 182, 212, 0.4)",
+  statusDraftDark: "#0891B2",
+
+  // ============================================
+  // CHART COLORS (Vibrant data palette)
   // ============================================
   chartColors: [
-    '#007AFF', // System Blue (primary)
-    '#34C759', // System Green (success)
-    '#FF9500', // System Orange (warning)
-    '#FF3B30', // System Red (error)
-    '#AF52DE', // System Purple
-    '#5AC8FA', // System Light Blue (info)
-    '#FFCC00', // System Yellow
-    '#FF6B9D', // System Pink
-    '#30B0C0', // System Teal
-    '#FF6B00', // System Deep Orange
-    '#30B0C7', // Cyan alternative
-    '#C7C7CC', // Gray for neutral data
+    "#7C3AED", // Violet (primary)
+    "#3B82F6", // Blue (secondary)
+    "#EC4899", // Pink (tertiary)
+    "#10B981", // Emerald (success)
+    "#F59E0B", // Amber (warning)
+    "#06B6D4", // Cyan (info)
+    "#EF4444", // Red (error)
+    "#6366F1", // Indigo
+    "#8B5CF6", // Purple
+    "#14B8A6", // Teal
+    "#F97316", // Orange
+    "#A855F7", // Purple light
+  ],
+
+  // Gradient pairs for charts (each color → lighter variant)
+  chartGradients: [
+    { from: "#7C3AED", to: "#A78BFA" },
+    { from: "#3B82F6", to: "#60A5FA" },
+    { from: "#EC4899", to: "#F472B6" },
+    { from: "#10B981", to: "#34D399" },
+    { from: "#F59E0B", to: "#FBBF24" },
+    { from: "#06B6D4", to: "#22D3EE" },
   ],
 
   // ============================================
-  // SHADOW COLORS
+  // VEHICLE / APPLIANCE COLORS
   // ============================================
-  shadow: 'rgba(0, 0, 0, 0.1)',
-  shadowDark: 'rgba(0, 0, 0, 0.4)',
-  shadowMedium: 'rgba(0, 0, 0, 0.15)',
-  shadowStrong: 'rgba(0, 0, 0, 0.25)',
-  shadowStrongDark: 'rgba(0, 0, 0, 0.6)',
+  vehicleCar: "#3B82F6",
+  vehicleCarGlow: "rgba(59, 130, 246, 0.3)",
+  vehicleBike: "#10B981",
+  vehicleBikeGlow: "rgba(16, 185, 129, 0.3)",
+  vehicleTruck: "#F59E0B",
+  vehicleTruckGlow: "rgba(245, 158, 11, 0.3)",
+  vehicleOther: "#7C3AED",
+  vehicleOtherGlow: "rgba(124, 58, 237, 0.3)",
+
+  applianceKitchen: "#FF6B35",
+  applianceKitchenGlow: "rgba(255, 107, 53, 0.3)",
+  applianceLiving: "#3B82F6",
+  applianceLivingGlow: "rgba(59, 130, 246, 0.3)",
+  applianceBedroom: "#10B981",
+  applianceBedroomGlow: "rgba(16, 185, 129, 0.3)",
+  applianceBathroom: "#06B6D4",
+  applianceBathroomGlow: "rgba(6, 182, 212, 0.3)",
+  applianceOther: "#64748B",
+  applianceOtherGlow: "rgba(100, 116, 139, 0.3)",
 
   // ============================================
-  // GRADIENTS (iOS-style)
+  // GLASS & BLUR (Dynamic for dark/light)
   // ============================================
-  gradientPrimary: ['#007AFF', '#5AC8FA'],
-  gradientSuccess: ['#34C759', '#5FF963'],
-  gradientWarning: ['#FF9500', '#FFCC00'],
-  gradientError: ['#FF3B30', '#FF6954'],
-  gradientDark: ['#1C1C1E', '#2C2C2E'],
-  gradientLight: ['#FFFFFF', '#F2F2F7'],
-  gradientMesh: [
-    ['#007AFF', '#5AC8FA', '#34C759'],
-    ['#FF9500', '#FF3B30', '#AF52DE'],
+  glassLight: "rgba(255, 255, 255, 0.65)",
+  glassDark: "rgba(20, 20, 40, 0.75)",
+  glassTintLight: "rgba(124, 58, 237, 0.05)", // Subtle violet tint
+  glassTintDark: "rgba(167, 139, 250, 0.08)", // Brighter violet tint
+
+  // ============================================
+  // ON COLORS (Text/icons on colored surfaces)
+  // ============================================
+  // These ensure perfect contrast (≥ 4.5:1) on their respective backgrounds
+  onPrimary: "#FFFFFF", // White text on violet
+  onPrimaryContainer: "#EDE9FE", // Very light violet on dark violet
+  onSecondary: "#FFFFFF", // White text on blue
+  onSecondaryContainer: "#DBEAFE", // Light blue on dark blue
+  onTertiary: "#FFFFFF", // White text on pink
+  onTertiaryContainer: "#FCE7F3", // Light pink on dark pink
+  onSuccess: "#FFFFFF", // White on emerald
+  onSuccessContainer: "#D1FAE5", // Light emerald on dark
+  onWarning: "#000000", // Black on amber (for contrast)
+  onWarningContainer: "#FFFBEB", // Very light amber
+  onError: "#FFFFFF", // White on red
+  onErrorContainer: "#FEE2E2", // Light red on dark
+  onInfo: "#000000", // Black on cyan (for contrast)
+  onInfoContainer: "#ECFEFF", // Very light cyan
+
+  // Surface colors (text on neutral surfaces)
+  onSurface: "#0F172A", // Very dark slate on light surfaces
+  onSurfaceDark: "#F8FAFC", // Off-white on dark surfaces
+  onSurfaceVariant: "#475569", // Medium slate
+  onSurfaceVariantDark: "#CBD5E1", // Light gray-blue on dark
+  onBackground: "#0F172A", // Dark text on background
+  onBackgroundDark: "#F8FAFC", // Light text on dark background
+  onDisabled: "#94A3B8", // Muted
+  onDisabledDark: "#475569", // Darker muted
+
+  // Inverse (for dark backgrounds with light text)
+  inverseSurface: "#1E293B", // Dark slate
+  inverseOnSurface: "#F8FAFC",
+  inversePrimary: "#A78BFA",
+
+  // ============================================
+  // SHADOW COLORS (Colored shadows)
+  // ============================================
+  shadowViolet: "rgba(124, 58, 237, 0.25)",
+  shadowBlue: "rgba(59, 130, 246, 0.25)",
+  shadowPink: "rgba(236, 72, 153, 0.25)",
+  shadowStrong: "rgba(0, 0, 0, 0.4)",
+
+  // ============================================
+  // GRADIENTS (Ready-to-use arrays)
+  // ============================================
+  gradientCosmic: ["#0F0C29", "#302B63", "#24243E"],
+  gradientSunset: ["#FF6B35", "#F72585", "#B5179E"],
+  gradientAurora: ["#00D2FF", "#3B82F6", "#7C3AED"],
+  gradientNeon: ["#00FFFF", "#FF00FF", "#FFFF00"],
+  gradientPrimary: ["#7C3AED", "#A78BFA"],
+  gradientSuccess: ["#10B981", "#34D399"],
+  gradientWarning: ["#F59E0B", "#FBBF24"],
+  gradientError: ["#EF4444", "#F87171"],
+
+  // Mesh gradient for hero section
+  meshGradientLight: [
+    { color: "#7C3AED", position: { x: 0, y: 0 } },
+    { color: "#3B82F6", position: { x: 100, y: 100 } },
+    { color: "#EC4899", position: { x: 100, y: 0 } },
+  ],
+  meshGradientDark: [
+    { color: "#1E1B4B", position: { x: 0, y: 0 } },
+    { color: "#1E3A8A", position: { x: 100, y: 100 } },
+    { color: "#4A044E", position: { x: 100, y: 0 } },
   ],
 
   // ============================================
-  // DARK MODE SPECIFIC (iOS 13+)
+  // LEGACY COMPATIBILITY (Map old names to new)
   // ============================================
-  dark: {
-    background: '#000000',
-    surface: '#1C1C1E',
-    surfaceElevated: '#2C2C2E',
-    textPrimary: '#FFFFFF',
-    textSecondary: '#ABABAB',
-    textTertiary: '#6D6D70',
-    border: '#38383A',
-    separator: '#000000',
-  },
+  // Keep old references working during migration
+  gray50: "#F8FAFC",
+  gray100: "#F1F5F9",
+  gray200: "#E2E8F0",
+  gray300: "#CBD5E1",
+  gray400: "#94A3B8",
+  gray500: "#64748B",
+  gray600: "#475569",
+  gray700: "#334155",
+  gray800: "#1E293B",
+  gray900: "#0F172A",
 
-  // ============================================
-  // LEGACY COMPATIBILITY (keep for existing code)
-  // ============================================
-  gray50: '#F9FAFB',
-  gray100: '#F3F4F6',
-  gray200: '#E5E7EB',
-  gray300: '#D1D5DB',
-  gray400: '#9CA3AF',
-  gray500: '#6B7280',
-  gray600: '#4B5563',
-  gray700: '#374151',
-  gray800: '#1F2937',
-  gray900: '#111827',
+  danger: "#EF4444",
+  dangerLight: "#F87171",
+  dangerDark: "#DC2626",
+  accent: "#F59E0B",
+  accentLight: "#FBBF24",
+  accentDark: "#D97706",
 
-  danger: '#FF3B30',
-  dangerLight: '#FF6954',
-  dangerDark: '#D70015',
-  accent: '#FF9500',
-  accentLight: '#FFCC00',
-  accentDark: '#E69500',
+  // Glass & Shadow (will be set dynamically in getColorScheme)
+  glass: "rgba(255, 255, 255, 0.75)",
+  shadow: "rgba(124, 58, 237, 0.15)",
 };
 
-// Helper function to get category color
+// ============================================
+// HELPER FUNCTIONS
+// ============================================
+
+/** Get category color (vibrant gradient base) */
 export const getCategoryColor = (category: string): string => {
   const colorMap: Record<string, string> = {
     electric: Colors.categoryElectric,
@@ -245,7 +336,33 @@ export const getCategoryColor = (category: string): string => {
   return colorMap[category] || Colors.primary;
 };
 
-// Helper for status colors
+/** Get category gradient (second color for gradient) */
+export const getCategoryGradient = (category: string): string => {
+  const gradientMap: Record<string, string> = {
+    electric: Colors.categoryElectricGradient,
+    water: Colors.categoryWaterGradient,
+    gas: Colors.categoryGasGradient,
+    wifi: Colors.categoryWifiGradient,
+    property: Colors.categoryPropertyGradient,
+    mgl: Colors.categoryMglGradient,
+  };
+  return gradientMap[category] || Colors.primaryLight;
+};
+
+/** Get category glow color */
+export const getCategoryGlow = (category: string): string => {
+  const glowMap: Record<string, string> = {
+    electric: Colors.categoryElectricGlow,
+    water: Colors.categoryWaterGlow,
+    gas: Colors.categoryGasGlow,
+    wifi: Colors.categoryWifiGlow,
+    property: Colors.categoryPropertyGlow,
+    mgl: Colors.categoryMglGlow,
+  };
+  return glowMap[category] || Colors.glowPrimary;
+};
+
+/** Get status color with glow */
 export const getStatusColor = (status: string): string => {
   const statusMap: Record<string, string> = {
     paid: Colors.statusPaid,
@@ -258,7 +375,20 @@ export const getStatusColor = (status: string): string => {
   return statusMap[status] || Colors.textSecondary;
 };
 
-// Helper for vehicle type colors
+/** Get status glow color */
+export const getStatusGlow = (status: string): string => {
+  const glowMap: Record<string, string> = {
+    paid: Colors.statusPaidGlow,
+    pending: Colors.statusPendingGlow,
+    overdue: Colors.statusOverdueGlow,
+    active: Colors.statusActiveGlow,
+    inactive: Colors.statusInactiveGlow,
+    draft: Colors.statusDraftGlow,
+  };
+  return glowMap[status] || "rgba(100, 116, 139, 0.4)";
+};
+
+/** Get vehicle type color */
 export const getVehicleTypeColor = (type: string): string => {
   const colorMap: Record<string, string> = {
     car: Colors.vehicleCar,
@@ -266,10 +396,10 @@ export const getVehicleTypeColor = (type: string): string => {
     truck: Colors.vehicleTruck,
     other: Colors.vehicleOther,
   };
-  return colorMap[type] || Colors.primary;
+  return colorMap[type] || Colors.secondary;
 };
 
-// Helper for appliance category colors
+/** Get appliance category color */
 export const getApplianceCategoryColor = (category: string): string => {
   const colorMap: Record<string, string> = {
     kitchen: Colors.applianceKitchen,
@@ -281,21 +411,44 @@ export const getApplianceCategoryColor = (category: string): string => {
   return colorMap[category] || Colors.primary;
 };
 
-// Get color for scheme (light/dark)
+/** Get color scheme for current theme */
 export const getColorScheme = (isDark: boolean) => ({
-  background: isDark ? Colors.backgroundDark : Colors.background,
-  surface: isDark ? Colors.surfaceDark : Colors.surface,
+  background: isDark ? Colors.backgroundDark : Colors.backgroundLight,
+  surface: isDark ? Colors.surfaceDark : Colors.surfaceLight,
   textPrimary: isDark ? Colors.textPrimaryDark : Colors.textPrimary,
   textSecondary: isDark ? Colors.textSecondaryDark : Colors.textSecondary,
   textTertiary: isDark ? Colors.textTertiaryDark : Colors.textTertiary,
   border: isDark ? Colors.borderDark : Colors.border,
-  glass: isDark ? Colors.glassDark : Colors.glass,
-  shadow: isDark ? Colors.shadowDark : Colors.shadow,
+  glass: isDark ? Colors.glassDark : Colors.glassLight,
+  cardBackground: isDark ? Colors.cardBackgroundDark : Colors.cardBackground,
+  shadow: isDark ? Colors.shadowStrong : "rgba(124, 58, 237, 0.15)",
 });
+
+/** Get gradient for chart data */
+export const getChartGradient = (
+  index: number,
+): { from: string; to: string } => {
+  const gradients = Colors.chartGradients;
+  return gradients[index % gradients.length];
+};
 
 // Type exports for TypeScript
 export type ColorKey = keyof typeof Colors;
-export type SemanticColor = 'primary' | 'secondary' | 'tertiary' | 'success' | 'warning' | 'error' | 'info';
-export type CategoryColor = keyof typeof Colors.categoryElectric | 'wifi' | 'property' | 'mgl';
+export type SemanticColor =
+  | "primary"
+  | "secondary"
+  | "tertiary"
+  | "success"
+  | "warning"
+  | "error"
+  | "info";
+export type CategoryColor =
+  | keyof typeof Colors.categoryElectric
+  | "wifi"
+  | "property"
+  | "mgl";
 export type VehicleTypeColor = keyof typeof Colors.vehicleCar;
 export type ApplianceCategoryColor = keyof typeof Colors.applianceKitchen;
+
+// Note: For bold animated gradient text, use the gradient arrays directly:
+// <LinearGradient colors={Colors.gradientCosmic}> or Colors.gradientAurora, etc.

@@ -1,6 +1,7 @@
-import { collection, addDoc, query, where, onSnapshot, getDocs, updateDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
-import { getFirebaseDb } from '../config/firebaseConfig';
+import { collection, addDoc, query, where, onSnapshot, getDocs, updateDoc, deleteDoc, doc, serverTimestamp, getDoc, setDoc } from 'firebase/firestore';
+import { getFirebaseDb, getFirebaseStorage } from '../config/firebaseConfig';
 import type { DashboardMetric, Bill, SystemLog, Vehicle, Appliance, ServiceRecord, BillStatus } from '../types';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 
 // Get Firestore instance lazily
 const getDb = () => getFirebaseDb();
@@ -361,7 +362,7 @@ class FirebaseService {
         dateField: 'lastDateToPay'
       },
       {
-        path: ['pulsebox', 'propertybills'],
+        path: ['pulsebox', 'propertytaxbills'],
         category: 'property' as const,
         amountField: 'taxBillAmount',
         statusField: 'payStatus',
@@ -513,6 +514,246 @@ class FirebaseService {
 
     return { bills, vehicles, appliances };
   }
+
+  // ============================================
+  // ELECTRIC BILLS OPERATIONS
+  // ============================================
+
+  /** Get consumer info from pulsebox/ebillinfo/{consumerNumber} */
+  async getConsumerInfo(consumerNumber: string): Promise<{
+    consumerNumber: string;
+    location: string;
+    billingUnitNumber: string;
+    holderName: string;
+    area: string;
+    registeredMobile: string;
+  } | null> {
+    try {
+      const db = getDb();
+      const snap = await getDocs(collection(db, 'pulsebox', 'ebillinfo', consumerNumber));
+      if (!snap.empty) {
+        return snap.docs[0].data() as any;
+      }
+      return null;
+    } catch (err) {
+      console.error('Failed to fetch consumer info:', err);
+      return null;
+    }
+  }
+
+  /** Get consumer numbers mapped to a city from pulsebox/consumernumber */
+  async getConsumersByCity(city: string): Promise<string[]> {
+    try {
+      const db = getDb();
+      const snap = await getDoc(doc(db, 'pulsebox', 'consumernumber'));
+      if (snap.exists()) {
+        const data = snap.data();
+        return Object.entries(data)
+          .filter(([, value]) => value === city)
+          .map(([key]) => key);
+      }
+      return [];
+    } catch (err) {
+      console.error('Failed to fetch consumers by city:', err);
+      return [];
+    }
+  }
+
+  /** Add a new consumer */
+  async addConsumer(data: {
+    consumerNumber: string;
+    location: string;
+    billingUnitNumber: string;
+    holderName: string;
+    area: string;
+    consumerCity: string;
+    registeredMobile: string;
+  }): Promise<void> {
+    try {
+      const db = getDb();
+      // Update consumer mapping
+      await setDoc(doc(db, 'pulsebox', 'consumernumber'), {
+        [data.consumerNumber]: data.consumerCity,
+      }, { merge: true });
+
+      // Add consumer info
+      await addDoc(collection(db, 'pulsebox', 'ebillinfo', data.consumerNumber), {
+        consumerNumber: data.consumerNumber,
+        location: data.location,
+        billingUnitNumber: data.billingUnitNumber,
+        holderName: data.holderName,
+        area: data.area,
+        registeredMobile: data.registeredMobile,
+      });
+    } catch (err) {
+      console.error('Failed to add consumer:', err);
+      throw err;
+    }
+  }
+
+  /** Get all electric bills for a consumer */
+  async getElectricBills(location: string, consumerNumber: string, callback: (bills: ElectricBillEntry[]) => void): Promise<() => void> {
+    try {
+      const db = getDb();
+      const q = query(collection(db, 'pulsebox', 'electricbills', location));
+      return onSnapshot(q, (snapshot) => {
+        const bills: ElectricBillEntry[] = [];
+        snapshot.forEach(docSnap => {
+          const data = docSnap.data();
+          if (data.consumerNumber === consumerNumber) {
+            bills.push({
+              id: docSnap.id,
+              billMonth: data.billMonth || '',
+              lastReading: data.lastReading || 0,
+              currentReading: data.currentReading || 0,
+              totalUnits: data.totalUnits || 0,
+              billAmount: data.billAmount || '0',
+              billDocumentURL: data.billDocumentURL || '',
+              lastDateToPay: data.lastDateToPay?.toDate ? data.lastDateToPay.toDate() : new Date(data.lastDateToPay),
+              payStatus: data.payStatus || 'Pending',
+              paymentMode: data.paymentMode || 'Cash',
+              consumerNumber: data.consumerNumber || '',
+              consumerCity: data.consumerCity || location,
+            });
+          }
+        });
+        bills.sort((a, b) => new Date(b.lastDateToPay).getTime() - new Date(a.lastDateToPay).getTime());
+        callback(bills);
+      });
+    } catch (err) {
+      console.error('Failed to setup electric bills listener:', err);
+      return () => {};
+    }
+  }
+
+  /** Add an electric bill with optional file upload */
+  async addElectricBill(
+    location: string,
+    consumerNumber: string,
+    billData: ElectricBillInput,
+    fileUri?: string,
+    onProgress?: (pct: number) => void,
+  ): Promise<string> {
+    const db = getDb();
+    let billDocURL: string = '';
+
+    if (fileUri) {
+      billDocURL = await this.uploadBillFile(fileUri, billData.billMonth, onProgress);
+    }
+
+    const docData = {
+      billMonth: billData.billMonth,
+      lastReading: billData.lastReading,
+      currentReading: billData.currentReading,
+      totalUnits: billData.totalUnits,
+      billAmount: String(billData.billAmount),
+      lastDateToPay: billData.lastDateToPay,
+      payStatus: billData.payStatus,
+      paymentMode: billData.paymentMode,
+      billDocumentURL: billDocURL,
+      consumerNumber,
+      consumerCity: location,
+    };
+
+    const docRef = await addDoc(collection(db, 'pulsebox', 'electricbills', location), docData);
+    return docRef.id;
+  }
+
+  /** Update an electric bill */
+  async updateElectricBill(
+    location: string,
+    billId: string,
+    billData: ElectricBillInput,
+    fileUri?: string,
+    existingBillDocumentURL?: string,
+    onProgress?: (pct: number) => void,
+  ): Promise<void> {
+    const db = getDb();
+    let billDocURL = existingBillDocumentURL || '';
+
+    if (fileUri) {
+      billDocURL = await this.uploadBillFile(fileUri, billData.billMonth, onProgress);
+    }
+
+    const docData: Record<string, any> = {
+      billMonth: billData.billMonth,
+      lastReading: billData.lastReading,
+      currentReading: billData.currentReading,
+      totalUnits: billData.totalUnits,
+      billAmount: String(billData.billAmount),
+      lastDateToPay: billData.lastDateToPay,
+      payStatus: billData.payStatus,
+      paymentMode: billData.paymentMode,
+      billDocumentURL: billDocURL,
+    };
+
+    await updateDoc(doc(db, 'pulsebox', 'electricbills', location, billId), docData);
+  }
+
+  /** Delete an electric bill and its storage file */
+  async deleteElectricBill(location: string, billId: string): Promise<void> {
+    const db = getDb();
+    const storage = getFirebaseStorage();
+
+    // Try to delete associated file
+    try {
+      const billSnap = await getDoc(doc(db, 'pulsebox', 'electricbills', location, billId));
+      const data = billSnap.data();
+      if (data?.billDocumentURL) {
+        const fileRef = ref(storage, data.billDocumentURL);
+        await deleteObject(fileRef);
+      }
+    } catch (e) {
+      console.log('No storage file to delete or error:', e);
+    }
+
+    await deleteDoc(doc(db, 'pulsebox', 'electricbills', location, billId));
+  }
+
+  /** Upload bill file to Firebase Storage */
+  private async uploadBillFile(fileUri: string, billMonth: string, onProgress?: (pct: number) => void): Promise<string> {
+    const storage = getFirebaseStorage();
+    const fileName = `${billMonth.replace(/\s+/g, '_')}_bill`;
+    const fileRef = ref(storage, `documents/electricBills/${fileName}`);
+
+    // Fetch file from URI and convert to blob
+    const response = await fetch(fileUri);
+    const blob = await response.blob();
+
+    await uploadBytes(fileRef, blob);
+    return await getDownloadURL(fileRef);
+  }
 }
 
 export const firebaseService = new FirebaseService();
+
+// ============================================
+// ELECTRIC BILL TYPES
+// ============================================
+
+export interface ElectricBillEntry {
+  id: string;
+  billMonth: string;
+  lastReading: number;
+  currentReading: number;
+  totalUnits: number;
+  billAmount: string;
+  billDocumentURL: string;
+  lastDateToPay: Date;
+  payStatus: string;
+  paymentMode: string;
+  consumerNumber: string;
+  consumerCity: string;
+}
+
+export interface ElectricBillInput {
+  billMonth: string;
+  lastReading: number;
+  currentReading: number;
+  totalUnits: number;
+  billAmount: number;
+  lastDateToPay: string;
+  payStatus: string;
+  paymentMode: string;
+  billDocumentURL?: string;
+}

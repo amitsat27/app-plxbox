@@ -249,7 +249,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const pinUser = {
       uid: "pin-user",
       email: "pin@access.app",
-      displayName: "PIN User",
+      displayName: "Amit",
       metadata: {
         creationTime: new Date().toISOString(),
         lastSignInTime: new Date().toISOString(),
@@ -261,7 +261,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUserProfile({
       uid: "pin-user",
       email: "pin@access.app",
-      displayName: "PIN User",
+      displayName: "Amit",
       createdAt: new Date(),
       lastLogin: new Date(),
       preferences: {
@@ -369,7 +369,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const faceIdUser = {
         uid: "face-id-user",
         email: "face-id@access.app",
-        displayName: "Face ID User",
+        displayName: "Amit",
         metadata: {
           creationTime: new Date().toISOString(),
           lastSignInTime: new Date().toISOString(),
@@ -381,7 +381,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUserProfile({
         uid: "face-id-user",
         email: "face-id@access.app",
-        displayName: "Face ID User",
+        displayName: "Amit",
         createdAt: new Date(),
         lastLogin: new Date(),
         preferences: {
