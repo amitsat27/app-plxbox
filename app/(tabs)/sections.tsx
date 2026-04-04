@@ -63,7 +63,7 @@ const SECTIONS: SectionItem[] = [
     subtitle: 'Gas bills',
     icon: <Flame size={20} color="#EF4444" />,
     bgTint: { light: 'rgba(239,68,68,0.08)', dark: 'rgba(239,68,68,0.15)' },
-    dest: '/category-screen?cat=gas',
+    dest: '/gas-manager',
   },
   {
     id: 'wifi',
@@ -71,7 +71,7 @@ const SECTIONS: SectionItem[] = [
     subtitle: 'Internet bills',
     icon: <Wifi size={20} color="#8B5CF6" />,
     bgTint: { light: 'rgba(139,92,246,0.08)', dark: 'rgba(139,92,246,0.15)' },
-    dest: '/category-screen?cat=wifi',
+    dest: '/wifibills',
   },
   {
     id: 'property',
@@ -79,7 +79,7 @@ const SECTIONS: SectionItem[] = [
     subtitle: 'Tax bills',
     icon: <Home size={20} color="#10B981" />,
     bgTint: { light: 'rgba(16,185,129,0.08)', dark: 'rgba(16,185,129,0.15)' },
-    dest: '/category-screen?cat=property',
+    dest: '/propertybills',
   },
   {
     id: 'vehicles',
