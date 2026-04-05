@@ -1,11 +1,12 @@
 /**
- * Bill Detail Screen — View electric bill with consumer info, meter data, and actions
+ * Gas Bill Detail Screen — View bill details with edit/delete actions
+ * In-app document viewer: shows images inline, opens PDF/other files in web browser
+ * Download option via expo-sharing for all file types
  */
-
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, Platform, TouchableOpacity,
-  Alert, Share, Image, ActivityIndicator, Dimensions, Animated
+  Alert, Share, Image, ActivityIndicator
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -14,52 +15,56 @@ import * as WebBrowser from 'expo-web-browser';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
 import {
-  ChevronLeft, Zap, CheckCircle, Clock, AlertCircle,
-  CreditCard, MapPin, User, Building2, Phone, Droplets,
-  Edit, Trash2, Share2, Download, Gauge, Calendar, File, ExternalLink
+  ChevronLeft, Flame, CheckCircle, Clock, AlertCircle,
+  CreditCard, Calendar, Edit, Trash2, Share2, Download, Gauge, ExternalLink, File
 } from 'lucide-react-native';
 import { Spacing, Typography, BorderRadius } from '@/constants/designTokens';
 import { Colors, getColorScheme } from '@/theme/color';
 import { useTheme } from '@/theme/themeProvider';
 import { firebaseService } from '@/src/services/FirebaseService';
-import { markBillForEdit } from './electric-bills';
 
-const STATUS_MAP: Record<string, { color: string; bgTint: { light: string; dark: string }; icon: any; text: string }> = {
-  Paid: { color: '#10B981', bgTint: { light: 'rgba(16,185,129,0.12)', dark: 'rgba(16,185,129,0.2)' }, icon: CheckCircle, text: 'Paid' },
-  Pending: { color: '#F59E0B', bgTint: { light: 'rgba(245,158,11,0.12)', dark: 'rgba(245,158,11,0.2)' }, icon: Clock, text: 'Pending' },
-  Overdue: { color: '#EF4444', bgTint: { light: 'rgba(239,68,68,0.12)', dark: 'rgba(239,68,68,0.2)' }, icon: AlertCircle, text: 'Overdue' },
+const STATUS_MAP: Record<string, { color: string; bgTint: string; icon: React.ReactNode }> = {
+  Paid: { color: '#10B981', bgTint: 'rgba(16,185,129,0.12)', icon: <CheckCircle size={14} color="#10B981" /> },
+  Pending: { color: '#F59E0B', bgTint: 'rgba(245,158,11,0.12)', icon: <Clock size={14} color="#F59E0B" /> },
+  Overdue: { color: '#EF4444', bgTint: 'rgba(239,68,68,0.12)', icon: <AlertCircle size={14} color="#EF4444" /> },
 };
 
-// Fix Firebase Storage URL: expo-router decodes %2F to /, re-encode the path after /o/
-const safeFirebaseUrl = (url: string): string => {
-  if (!url) return '';
-  return url.replace(
-    /^([^?]*\/o\/)(.*?)(\?.*)$/,
-    (_, before, path, query) => `${before}${encodeURIComponent(path)}${query}`,
-  );
-};
+export const pendingEdit: { current: string; city: string; bp: string } = { current: '', city: '', bp: '' };
+export function markGasBillForEdit(id: string, city: string, bp: string) {
+  pendingEdit.current = id;
+  pendingEdit.city = city;
+  pendingEdit.bp = bp;
+}
 
-// Document Section — same pattern as gas bill detail
+// File type detection
 const IMAGE_EXTS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'heic', 'heif', 'dng'];
-const getExt = (url: string): string => {
+const getExtension = (fileExtension: string, url: string): string => {
+  if (fileExtension) return fileExtension;
+  if (!url) return '';
   const m = url.match(/\.([a-zA-Z0-9]+)(\?|$)/);
   return m ? m[1].toLowerCase() : '';
 };
 
-function DocumentSection({ url }: { url: string }) {
+// ── Document preview section ──────────────────────────────────────
+function DocumentSection({ url, fileExtension, mimeType }: { url: string; fileExtension: string; mimeType: string }) {
   const { isDark } = useTheme();
   const scheme = getColorScheme(isDark);
   const [imageError, setImageError] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [imageLoading, setImageLoading] = useState(true);
-  const [downloading, setDownloading] = useState(false);
 
-  const ext = getExt(url);
+  const ext = getExtension(fileExtension, url);
   const isImage = !!ext && IMAGE_EXTS.includes(ext);
   const isPdf = ext === 'pdf';
   const noExt = !ext;
-  const safeUrl = safeFirebaseUrl(url);
 
-  const handleView = async () => {
+  // Fix URL: expo-router decodes %2F to /, re-encode the path portion after /o/
+  const safeUrl = url.replace(
+    /^([^?]*\/o\/)(.*?)(\?.*)$/,
+    (_, before, path, query) => `${before}${encodeURIComponent(path)}${query}`,
+  );
+
+  const handleViewDocument = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     await WebBrowser.openBrowserAsync(safeUrl, {
       presentationStyle: Platform.OS === 'ios' ? WebBrowser.WebBrowserPresentationStyle.PAGE_SHEET : WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
@@ -69,33 +74,36 @@ function DocumentSection({ url }: { url: string }) {
   };
 
   const handleDownload = async () => {
-    if (downloading) return;
-    setDownloading(true);
+    if (loading) return;
+    setLoading(true);
     try {
       const fileExt = ext || 'file';
-      const localUri = (FileSystem as any).cacheDirectory + `bill_${Date.now()}.${fileExt}`;
+      // Extract original filename from path (e.g. September_2025_bill_1234567890123.jpeg)
+      const pathMatch = safeUrl.match(/documents\/mnglBills\/([^?]+)/);
+      const baseName = pathMatch ? pathMatch[1] : `gas_bill_${Date.now()}`;
+      const localUri = (FileSystem as any).cacheDirectory + baseName;
       await FileSystem.downloadAsync(safeUrl, localUri);
       const canShare = await Sharing.isAvailableAsync();
       if (canShare) {
-        await Sharing.shareAsync(localUri);
+        await Sharing.shareAsync(localUri, { mimeType: mimeType || (isPdf ? 'application/pdf' : undefined) });
       } else {
-        Alert.alert('Saved', 'File saved to cache');
+        Alert.alert('Saved', `File saved to cache`);
       }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (e: any) {
       Alert.alert('Failed', e.message);
     } finally {
-      setDownloading(false);
+      setLoading(false);
     }
   };
 
-  // Known image extension → show preview; no extension → try image, fall back; PDF → placeholder
   const showImagePreview = isImage && !imageError;
   const tryImageFirst = noExt && !imageError;
 
   return (
     <View style={[styles.card, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}>
       <Text style={[styles.cardTitle, { color: scheme.textPrimary }]}>Bill Document</Text>
+
       {(showImagePreview || tryImageFirst) && (
         <View>
           {imageLoading && <View style={styles.docLoading}><ActivityIndicator size="small" color={Colors.primary} /></View>}
@@ -108,21 +116,34 @@ function DocumentSection({ url }: { url: string }) {
           />
         </View>
       )}
+
       {!showImagePreview && !tryImageFirst && (
         <View style={[styles.docPlaceholder, { backgroundColor: isDark ? 'rgba(44,44,46,0.6)' : '#F9FAFB' }]}>
-          <File size={32} color={isPdf ? '#EF4444' : scheme.textTertiary} />
-          <Text style={[styles.docPlaceholderLabel, { color: scheme.textSecondary }]}>
-            {ext ? ext.toUpperCase() : 'Document'} File
-          </Text>
+          {imageError ? (
+            <>
+              <File size={32} color={scheme.textTertiary} />
+              <Text style={[styles.docPlaceholderLabel, { color: scheme.textSecondary }]}>File</Text>
+              <Text style={{ color: scheme.textTertiary, fontSize: Typography.fontSize.xs }}>Image failed to load, download below</Text>
+            </>
+          ) : (
+            <>
+              <File size={32} color={isPdf ? '#EF4444' : scheme.textTertiary} />
+              <Text style={[styles.docPlaceholderLabel, { color: scheme.textSecondary }]}>
+                {ext ? ext.toUpperCase() : 'Document'} File
+              </Text>
+            </>
+          )}
         </View>
       )}
+
+      {/* Action buttons — always rendered when there's a document */}
       <View style={styles.docActions}>
-        <TouchableOpacity style={[styles.docActionBtn, { backgroundColor: Colors.primary }]} onPress={handleView}>
+        <TouchableOpacity style={[styles.docActionBtn, { backgroundColor: Colors.primary }]} onPress={handleViewDocument}>
           <ExternalLink size={16} color="#FFF" />
           <Text style={[styles.docActionText, { color: '#FFF' }]}>View Full</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.docActionBtn, { backgroundColor: isDark ? '#2C2C2E' : '#F3F4F6' }]} onPress={handleDownload} disabled={downloading}>
-          {downloading ? <ActivityIndicator size="small" color={Colors.primary} /> : (
+        <TouchableOpacity style={[styles.docActionBtn, { backgroundColor: isDark ? '#2C2C2E' : '#F3F4F6' }]} onPress={handleDownload} disabled={loading}>
+          {loading ? <ActivityIndicator size="small" color={Colors.primary} /> : (
             <>
               <Download size={16} color={Colors.primary} />
               <Text style={[styles.docActionText, { color: Colors.primary }]}>Download</Text>
@@ -134,7 +155,7 @@ function DocumentSection({ url }: { url: string }) {
   );
 }
 
-export default function BillDetailScreen() {
+export default function GasBillDetailScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const insets = useSafeAreaInsets();
@@ -143,52 +164,50 @@ export default function BillDetailScreen() {
 
   const billId = params.billId as string;
   const city = params.city as string;
+  const bpNumber = params.bpNumber as string;
   const billMonth = params.billMonth as string;
-  const lastReading = parseFloat(String(params.lastReading || '0'));
-  const currentReading = parseFloat(String(params.currentReading || '0'));
-  const totalUnits = parseFloat(String(params.totalUnits || '0'));
-  const billAmountRaw = String(params.billAmount || '0');
-  const billAmount = parseFloat(billAmountRaw.replace(/,/g, '')) || 0;
+  const billNumber = params.billNumber as string;
+  const prevReading = parseFloat(String(params.prevReading || '0'));
+  const currReading = parseFloat(String(params.currReading || '0'));
+  const unitPrice = parseFloat(String(params.unitPrice || '0'));
+  const billAmount = parseFloat(String(params.billAmount || '0'));
   const payStatus = params.payStatus as string;
   const paymentMode = params.paymentMode as string;
-  const billDocumentURL = params.billDocumentURL as string;
-  const dueDateStr = params.lastDateToPay as string;
+  const billDocumentURL = (params.billDocumentURL as string) || '';
+  const billFileExtension = (params.billFileExtension as string) || '';
+  const billMimeType = (params.billMimeType as string) || '';
+  const dueDateStr = params.dueDate as string;
   const dueDate = dueDateStr ? new Date(dueDateStr) : null;
 
   const [loading, setLoading] = useState(false);
-  const [consumerInfo, setConsumerInfo] = useState<any>(null);
-  const [fetchedConsumer, setFetchedConsumer] = useState(false);
+  const [gasInfo, setGasInfo] = useState<any>(null);
+  const [fetchedInfo, setFetchedInfo] = useState(false);
 
-  // Fetch consumer info
   React.useEffect(() => {
-    if (fetchedConsumer) return;
-    setFetchedConsumer(true);
-    // If params include consumer number, fetch info
-    const consumerNum = params.consumerNumber as string;
-    if (consumerNum && consumerNum !== 'undefined') {
-      firebaseService.getConsumerInfo(consumerNum).then(setConsumerInfo);
+    if (fetchedInfo) return;
+    setFetchedInfo(true);
+    if (bpNumber && bpNumber !== 'undefined') {
+      firebaseService.getGasConsumerInfo(bpNumber).then(setGasInfo);
     }
-  }, [params.consumerNumber, fetchedConsumer]);
+  }, [bpNumber, fetchedInfo]);
 
-  const statusCfg = STATUS_MAP[payStatus] || STATUS_MAP.Pending;
-  const StatusIcon = statusCfg.icon;
+  const status = STATUS_MAP[payStatus] || STATUS_MAP.Pending;
 
   const handleEdit = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    console.log('[edit] handleEdit called, billId:', billId);
-    markBillForEdit(billId);
+    markGasBillForEdit(billId, city, bpNumber);
     router.back();
   };
 
   const handleDelete = () => {
-    Alert.alert('Delete Bill', `Are you sure you want to delete this bill?`, [
+    Alert.alert('Delete Bill', 'Are you sure you want to delete this bill?', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Delete', style: 'destructive', onPress: async () => {
         setLoading(true);
         try {
-          await firebaseService.deleteElectricBill(city, billId);
+          await firebaseService.deleteGasBill(city, billId);
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          router.replace('/electric-bills' as any);
+          router.replace('/gas-manager' as any);
         } catch (e: any) {
           Alert.alert('Error', e.message);
           setLoading(false);
@@ -198,17 +217,17 @@ export default function BillDetailScreen() {
   };
 
   const handleShare = async () => {
-    if (billDocumentURL) {
-      await Share.share({ message: `Electric Bill: ${billMonth}\nAmount: ₹${billAmount.toLocaleString('en-IN')}\nStatus: ${payStatus}\nDocument: ${billDocumentURL}` });
-    } else {
-      await Share.share({ message: `Electric Bill: ${billMonth}\nAmount: ₹${billAmount.toLocaleString('en-IN')}\nStatus: ${payStatus}` });
-    }
+    const msg = `Gas Bill: ${billMonth}\nBill No: ${billNumber}\nAmount: ₹${billAmount.toLocaleString('en-IN')}\nStatus: ${payStatus}${billDocumentURL ? '\nDocument: ' + billDocumentURL : ''}`;
+    await Share.share({ message: msg });
   };
 
   return (
     <SafeAreaView style={[styles.screen, { backgroundColor: isDark ? '#000000' : '#F2F2F7' }]}>
-      {/* Loading overlay */}
-      {loading && <View style={[styles.loadingOverlay, { backgroundColor: isDark ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.7)' }]}><ActivityIndicator size="large" color={Colors.primary} /></View>}
+      {loading && (
+        <View style={[styles.loadingOverlay, { backgroundColor: isDark ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.7)' }]}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+        </View>
+      )}
 
       {/* Header */}
       <View style={[styles.header, { paddingTop: Math.max(insets.top, 4) }]}>
@@ -219,16 +238,16 @@ export default function BillDetailScreen() {
           <Edit size={18} color={Colors.primary} />
         </TouchableOpacity>
         <TouchableOpacity style={styles.headerAction} onPress={handleDelete}>
-          <Trash2 size={18} color={Colors.error} />
+          <Trash2 size={18} color="#EF4444" />
         </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 40 }]} showsVerticalScrollIndicator={false}>
         {/* Amount Header */}
-        <View style={styles.amountCard}>
-          <View style={[styles.statusPill, { backgroundColor: statusCfg.bgTint[isDark ? 'dark' : 'light'] }]}>
-            <StatusIcon size={14} color={statusCfg.color} />
-            <Text style={[styles.statusPillText, { color: statusCfg.color }]}>{statusCfg.text}</Text>
+        <View style={[styles.amountCard, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}>
+          <View style={[styles.statusBadge, { backgroundColor: (status as any).bgTint }]}>
+            {status.icon}
+            <Text style={[styles.statusText, { color: (status as any).color }]}>{payStatus}</Text>
           </View>
           <Text style={[styles.amountText, { color: scheme.textPrimary }]}>₹{billAmount.toLocaleString('en-IN')}</Text>
           <Text style={[styles.monthText, { color: scheme.textSecondary }]}>{billMonth}</Text>
@@ -237,37 +256,37 @@ export default function BillDetailScreen() {
         {/* Meter Details */}
         <View style={[styles.card, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}>
           <Text style={[styles.cardTitle, { color: scheme.textPrimary }]}>Meter Details</Text>
-          <DetailRow icon={<Gauge size={16} color="#A78BFA" />} label="Last Reading" value={String(lastReading)} scheme={scheme} isDark={isDark} />
-          <DetailRow icon={<Gauge size={16} color="#F59E0B" />} label="Current Reading" value={String(currentReading)} scheme={scheme} isDark={isDark} />
-          <DetailRow icon={<Zap size={16} color="#FF6B35" />} label="Total Units" value={String(totalUnits)} scheme={scheme} isDark={isDark} />
+          <DetailRow icon={<Gauge size={16} color="#EF4444" />} label="Previous Reading" value={String(prevReading)} scheme={scheme} />
+          <DetailRow icon={<Gauge size={16} color="#F59E0B" />} label="Current Reading" value={String(currReading)} scheme={scheme} />
+          <DetailRow icon={<Gauge size={16} color="#A78BFA" />} label="Unit Price" value={`₹${unitPrice}`} scheme={scheme} />
+          {billNumber && <DetailRow icon={<Flame size={16} color="#06B6D4" />} label="Bill Number" value={billNumber} scheme={scheme} />}
         </View>
 
         {/* Payment Details */}
         <View style={[styles.card, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}>
           <Text style={[styles.cardTitle, { color: scheme.textPrimary }]}>Payment</Text>
-          <DetailRow icon={<CreditCard size={16} color="#10B981" />} label="Status" value={payStatus} scheme={scheme} isDark={isDark} accent={statusCfg.color} />
-          <DetailRow icon={<CheckCircle size={16} color="#3B82F6" />} label="Payment Mode" value={paymentMode || '—'} scheme={scheme} isDark={isDark} />
+          <DetailRow icon={<CreditCard size={16} color="#10B981" />} label="Status" value={payStatus} scheme={scheme} accent={(status as any).color} />
+          <DetailRow icon={<CheckCircle size={16} color="#3B82F6" />} label="Payment Mode" value={paymentMode || '—'} scheme={scheme} />
           {dueDate && (
-            <DetailRow icon={<Calendar size={16} color="#F59E0B" />} label="Due Date" value={dueDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })} scheme={scheme} isDark={isDark} />
+            <DetailRow icon={<Calendar size={16} color="#F59E0B" />} label="Due Date" value={dueDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })} scheme={scheme} />
           )}
         </View>
 
         {/* Consumer Info */}
-        {consumerInfo && (
+        {gasInfo && (
           <View style={[styles.card, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}>
-            <Text style={[styles.cardTitle, { color: scheme.textPrimary }]}>Consumer</Text>
-            <DetailRow icon={<User size={16} color="#10B981" />} label="Holder" value={consumerInfo.holderName} scheme={scheme} isDark={isDark} />
-            <DetailRow icon={<CreditCard size={16} color="#A78BFA" />} label="Consumer No." value={consumerInfo.consumerNumber} scheme={scheme} isDark={isDark} />
-            <DetailRow icon={<MapPin size={16} color="#F59E0B" />} label="Location" value={consumerInfo.location} scheme={scheme} isDark={isDark} />
-            <DetailRow icon={<Building2 size={16} color="#06B6D4" />} label="Billing Unit" value={consumerInfo.billingUnitNumber} scheme={scheme} isDark={isDark} />
-            <DetailRow icon={<Phone size={16} color="#EC4899" />} label="Mobile" value={consumerInfo.registeredMobile} scheme={scheme} isDark={isDark} />
-            <DetailRow icon={<Droplets size={16} color="#7C3AED" />} label="Area" value={consumerInfo.area} scheme={scheme} isDark={isDark} />
+            <Text style={[styles.cardTitle, { color: scheme.textPrimary }]}>BP Details</Text>
+            <DetailRow icon={<Flame size={16} color="#EF4444" />} label="BP Number" value={gasInfo.BPNumber} scheme={scheme} />
+            <DetailRow icon={<CreditCard size={16} color="#A78BFA" />} label="BP Name" value={gasInfo.BPName} scheme={scheme} />
+            <DetailRow icon={<Gauge size={16} color="#06B6D4" />} label="Meter Number" value={gasInfo.MeterNumber} scheme={scheme} />
+            <DetailRow icon={<CreditCard size={16} color="#10B981" />} label="Mobile" value={gasInfo.registeredMobile} scheme={scheme} />
+            <DetailRow icon={<CreditCard size={16} color="#F59E0B" />} label="Location" value={gasInfo.city} scheme={scheme} />
           </View>
         )}
 
         {/* Document */}
         {billDocumentURL ? (
-          <DocumentSection url={billDocumentURL} />
+          <DocumentSection url={billDocumentURL} fileExtension={billFileExtension} mimeType={billMimeType} />
         ) : (
           <View style={[styles.card, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}>
             <View style={styles.downloadLink}>
@@ -287,15 +306,14 @@ export default function BillDetailScreen() {
   );
 }
 
-function DetailRow({ icon, label, value, scheme, isDark, accent }: {
-  icon: React.ReactNode; label: string; value: string; scheme: any; isDark: boolean; accent?: string;
-}) {
+function DetailRow({ icon, label, value, scheme, accent }: { icon: React.ReactNode; label: string; value: string; scheme: any; accent?: string }) {
+  const { isDark } = useTheme();
   return (
     <View style={styles.detailRow}>
       <View style={[styles.detailIcon, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)' }]}>{icon}</View>
       <View style={styles.detailInfo}>
         <Text style={[styles.detailLabel, { color: scheme.textTertiary }]}>{label}</Text>
-        <Text style={[styles.detailValue, { color: scheme.textPrimary }]}>{value}</Text>
+        <Text style={[styles.detailValue, { color: accent || scheme.textPrimary }]}>{value}</Text>
       </View>
     </View>
   );
@@ -307,19 +325,16 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.lg, paddingBottom: Spacing.md, justifyContent: 'space-between' },
   backBtn: { padding: 4 },
   headerAction: { padding: 8 },
-
   content: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.sm },
-
   amountCard: {
     alignItems: 'center', paddingVertical: Spacing.xxxl, marginBottom: Spacing.md,
     borderRadius: BorderRadius.card,
     ...Platform.select({ ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8 }, android: { elevation: 2 } }),
   },
-  statusPill: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: Spacing.md, paddingVertical: Spacing.xs, borderRadius: BorderRadius.pill, marginBottom: Spacing.md },
-  statusPillText: { fontSize: Typography.fontSize.sm, fontWeight: '600' },
-  amountText: { fontSize: Typography.fontSize.xxxl * 1.5, fontWeight: '800', letterSpacing: -1 },
+  statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: Spacing.md, paddingVertical: Spacing.xs, borderRadius: 16, marginBottom: Spacing.md },
+  statusText: { fontSize: Typography.fontSize.sm, fontWeight: '600' },
+  amountText: { fontSize: 48, fontWeight: '800', letterSpacing: -1 },
   monthText: { fontSize: Typography.fontSize.xl, marginTop: Spacing.xs },
-
   card: {
     borderRadius: BorderRadius.card, padding: Spacing.md, marginBottom: Spacing.md,
     ...Platform.select({ ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 4 }, android: { elevation: 1 } }),
@@ -330,7 +345,6 @@ const styles = StyleSheet.create({
   detailInfo: { flex: 1 },
   detailLabel: { fontSize: Typography.fontSize.xs },
   detailValue: { fontSize: Typography.fontSize.sm, fontWeight: '600' },
-
   documentImage: { width: '100%', height: 300, borderRadius: BorderRadius.md },
   docPlaceholder: { alignItems: 'center', paddingVertical: Spacing.xl, borderRadius: BorderRadius.md, marginBottom: Spacing.sm },
   docPlaceholderLabel: { fontSize: Typography.fontSize.md, fontWeight: '600', marginTop: Spacing.xs },
@@ -340,7 +354,6 @@ const styles = StyleSheet.create({
   docActionText: { fontSize: Typography.fontSize.sm, fontWeight: '600' },
   downloadLink: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, paddingVertical: Spacing.md, justifyContent: 'center' },
   downloadText: { fontSize: Typography.fontSize.sm, fontWeight: '600' },
-
   shareBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm,
     borderRadius: BorderRadius.card, paddingVertical: Spacing.md,

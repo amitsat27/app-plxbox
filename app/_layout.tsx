@@ -203,6 +203,9 @@ function MainLayout() {
       <Stack.Screen name="category-screen" options={{ presentation: "card" }} />
       <Stack.Screen name="vehicles" options={{ presentation: "card" }} />
       <Stack.Screen name="appliances" options={{ presentation: "card" }} />
+      <Stack.Screen name="appliance-detail" options={{ presentation: "card" }} />
+      <Stack.Screen name="add-appliance" options={{ presentation: "modal", headerShown: false }} />
+      <Stack.Screen name="add-service-record" options={{ presentation: "card" }} />
       <Stack.Screen name="reports" options={{ presentation: "card" }} />
       <Stack.Screen name="bill-detail" options={{ presentation: "card" }} />
       {__DEV__ && (

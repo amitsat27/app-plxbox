@@ -17,7 +17,7 @@ import * as ImagePicker from 'expo-image-picker';
 import {
   ChevronLeft, Zap, Plus, Filter, MapPin, User,
   CreditCard, Droplets, Building2, Phone, Calendar,
-  CheckCircle, Clock, AlertCircle,
+  CheckCircle, Clock, AlertCircle, Eye,
   ChevronDown, X, Upload, Camera
 } from 'lucide-react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -148,81 +148,91 @@ function StatCard({ label, value, sub, color }: { label: string; value: string; 
 
 // ── Bill Card ────────────────────────────────────────────────────────────
 
-function BillCard({ bill, onPress }: { bill: ElectricBillEntry; onPress: () => void }) {
+interface BillCardProps {
+  bill: ElectricBillEntry;
+  onViewBill: () => void;
+}
+
+function BillCard({ bill, onViewBill }: BillCardProps) {
   const { isDark } = useTheme();
   const scheme = getColorScheme(isDark);
-  const scale = useRef(new Animated.Value(1)).current;
   const StatusIcon = STATUS_CONFIG[bill.payStatus]?.icon || Clock;
   const statusCfg = STATUS_CONFIG[bill.payStatus] || STATUS_CONFIG.Pending;
   const amt = typeof bill.billAmount === 'string' ? parseFloat(bill.billAmount.replace(/,/g, '')) || 0 : bill.billAmount;
   const dueDate = bill.lastDateToPay ? new Date(bill.lastDateToPay) : null;
   const isExpired = dueDate && dueDate < new Date() && bill.payStatus !== 'Paid';
 
-  const onPressIn = () => Animated.spring(scale, { toValue: 0.97, useNativeDriver: true, damping: 25, stiffness: 300 }).start();
-  const onPressOut = () => { Animated.spring(scale, { toValue: 1, useNativeDriver: true, damping: 25, stiffness: 300 }).start(); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onPress(); };
-
   return (
-    <Animated.View style={{ transform: [{ scale }] }}>
-      <TouchableOpacity onPressIn={onPressIn} onPressOut={onPressOut} activeOpacity={1}>
-        <View style={[styles.billCard, {
-          backgroundColor: isDark ? 'rgba(44,44,46,0.7)' : '#FFFFFF',
-          borderLeftWidth: 3,
-          borderLeftColor: statusCfg.color,
-        }]}>
-          {/* Top row: status + month + amount */}
-          <View style={styles.billCardTop}>
-            <View style={styles.billCardLeft}>
-              <View style={[styles.statusBadge, { backgroundColor: statusCfg.bgTint[isDark ? 'dark' : 'light'] }]}>
-                <StatusIcon size={12} color={statusCfg.color} />
-                <Text style={[styles.statusText, { color: statusCfg.color }]}>{bill.payStatus}</Text>
-              </View>
-              <Text style={[styles.billMonth, { color: scheme.textPrimary }]} numberOfLines={1}>{bill.billMonth}</Text>
+    <View>
+      <View style={[styles.billCard, {
+        backgroundColor: isDark ? 'rgba(44,44,46,0.7)' : '#FFFFFF',
+        borderLeftWidth: 3,
+        borderLeftColor: statusCfg.color,
+      }]}>
+        {/* Top row: status + month + amount */}
+        <View style={styles.billCardTop}>
+          <View style={styles.billCardLeft}>
+            <View style={[styles.statusBadge, { backgroundColor: statusCfg.bgTint[isDark ? 'dark' : 'light'] }]}>
+              <StatusIcon size={12} color={statusCfg.color} />
+              <Text style={[styles.statusText, { color: statusCfg.color }]}>{bill.payStatus}</Text>
             </View>
-            <Text style={[styles.billAmount, { color: scheme.textPrimary }]}>₹{amt.toLocaleString('en-IN')}</Text>
+            <Text style={[styles.billMonth, { color: scheme.textPrimary }]} numberOfLines={1}>{bill.billMonth}</Text>
           </View>
+          <Text style={[styles.billAmount, { color: scheme.textPrimary }]}>₹{amt.toLocaleString('en-IN')}</Text>
+        </View>
 
-          {/* Row separator */}
-          <View style={[styles.billDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }]} />
+        {/* Row separator */}
+        <View style={[styles.billDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }]} />
 
-          {/* Middle row: readings + consumption */}
-          <View style={styles.billCardMiddle}>
-            <View style={styles.readingBlock}>
-              <Text style={[styles.readingLabel, { color: scheme.textTertiary }]}>Consumption</Text>
-              <Text style={[styles.readingValue, { color: scheme.textPrimary }]}>{bill.totalUnits} <Text style={styles.readingUnit}>units</Text></Text>
-            </View>
-            <View style={styles.readingDividerV} />
-            <View style={styles.readingBlock}>
-              <Text style={[styles.readingLabel, { color: scheme.textTertiary }]}>Readings</Text>
-              <Text style={[styles.readingValue, { color: scheme.textSecondary }]}>{bill.lastReading} → {bill.currentReading}</Text>
-            </View>
-            <View style={styles.readingDividerV} />
-            <View style={styles.readingBlock}>
-              <Text style={[styles.readingLabel, { color: scheme.textTertiary }]}>Consumer</Text>
-              <Text style={[styles.readingValue, { color: scheme.textPrimary }]} numberOfLines={1}>{bill.consumerNumber || '—'}</Text>
-            </View>
+        {/* Middle row: readings + consumption */}
+        <View style={styles.billCardMiddle}>
+          <View style={styles.readingBlock}>
+            <Text style={[styles.readingLabel, { color: scheme.textTertiary }]}>Consumption</Text>
+            <Text style={[styles.readingValue, { color: scheme.textPrimary }]}>{bill.totalUnits} <Text style={styles.readingUnit}>units</Text></Text>
           </View>
-
-          {/* Bottom row: due date + payment mode */}
-          <View style={styles.billCardFooter}>
-            <View style={styles.footerItem}>
-              <Calendar size={12} color={scheme.textTertiary} />
-              <Text style={[styles.footerText, { color: isExpired ? '#EF4444' : scheme.textTertiary }]}>
-                {dueDate ? dueDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A'}
-              </Text>
-            </View>
-            {bill.paymentMode && (
-              <>
-                <View style={[styles.footerDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }]} />
-                <View style={styles.footerItem}>
-                  <CreditCard size={12} color={scheme.textTertiary} />
-                  <Text style={[styles.footerText, { color: scheme.textTertiary }]}>{bill.paymentMode}</Text>
-                </View>
-              </>
-            )}
+          <View style={styles.readingDividerV} />
+          <View style={styles.readingBlock}>
+            <Text style={[styles.readingLabel, { color: scheme.textTertiary }]}>Readings</Text>
+            <Text style={[styles.readingValue, { color: scheme.textSecondary }]}>{bill.lastReading} → {bill.currentReading}</Text>
+          </View>
+          <View style={styles.readingDividerV} />
+          <View style={styles.readingBlock}>
+            <Text style={[styles.readingLabel, { color: scheme.textTertiary }]}>Consumer</Text>
+            <Text style={[styles.readingValue, { color: scheme.textPrimary }]} numberOfLines={1}>{bill.consumerNumber || '—'}</Text>
           </View>
         </View>
-      </TouchableOpacity>
-    </Animated.View>
+
+        <View style={[styles.billDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }]} />
+
+        {/* Bottom row: due date + payment mode + View Bill */}
+        <View style={styles.billCardFooter}>
+          <View style={styles.footerItem}>
+            <Calendar size={12} color={scheme.textTertiary} />
+            <Text style={[styles.footerText, { color: isExpired ? '#EF4444' : scheme.textTertiary }]}>
+              {dueDate ? dueDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A'}
+            </Text>
+          </View>
+          {bill.paymentMode && (
+            <>
+              <View style={[styles.footerDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }]} />
+              <View style={styles.footerItem}>
+                <CreditCard size={12} color={scheme.textTertiary} />
+                <Text style={[styles.footerText, { color: scheme.textTertiary }]}>{bill.paymentMode}</Text>
+              </View>
+            </>
+          )}
+          <View style={{ flex: 1 }} />
+          <TouchableOpacity
+            style={styles.viewBtn}
+            onPress={onViewBill}
+            activeOpacity={0.6}
+          >
+            <Eye size={12} color={Colors.primary} />
+            <Text style={styles.viewBtnText}>View</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
   );
 }
 
@@ -494,7 +504,7 @@ export default function ElectricBillsScreen() {
         ) : (
           <Animated.View style={{ opacity: fadeAnim, paddingHorizontal: Spacing.lg }}>
             {filteredBills.map((bill) => (
-              <BillCard key={bill.id} bill={bill} onPress={() => handleViewBill(bill)} />
+              <BillCard key={bill.id} bill={bill} onViewBill={() => handleViewBill(bill)} />
             ))}
           </Animated.View>
         )}
@@ -844,6 +854,8 @@ const styles = StyleSheet.create({
   footerItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   footerText: { fontSize: Typography.fontSize.xs },
   footerDivider: { width: 1, height: 14, marginHorizontal: Spacing.sm },
+  viewBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, backgroundColor: 'rgba(124,58,237,0.1)' },
+  viewBtnText: { fontSize: Typography.fontSize.xs, fontWeight: '600', color: '#7C3AED' },
 
   loadingContainer: { paddingVertical: Spacing.xxxl, alignItems: 'center' },
   empty: { paddingVertical: Spacing.xxxl, alignItems: 'center' },
