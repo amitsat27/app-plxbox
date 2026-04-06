@@ -1,4 +1,4 @@
-import * as FileSystem from "expo-file-system/legacy";
+import { File, Paths } from "expo-file-system/next";
 
 const LOG_FILE_NAME = "pulsebox_logs.txt";
 const MAX_LOG_SIZE = 1024 * 1024; // 1MB max per log file
@@ -14,14 +14,13 @@ interface LogEntry {
 }
 
 class LoggerService {
-  private logFileUri: string;
+  private logFile: File;
   private isWriting: boolean = false;
   private writeQueue: LogEntry[] = [];
   private isEnabled: boolean = __DEV__ || true; // Always enabled in standalone for debugging
 
   constructor() {
-    const documentsDir = FileSystem.documentDirectory || "";
-    this.logFileUri = `${documentsDir}${LOG_FILE_NAME}`;
+    this.logFile = new File(Paths.document, LOG_FILE_NAME);
   }
 
   /**
@@ -61,8 +60,7 @@ class LoggerService {
 
         try {
           // Check if file exists and its size
-          const fileInfo = await FileSystem.getInfoAsync(this.logFileUri);
-          const needsRotation = fileInfo.exists && fileInfo.size > MAX_LOG_SIZE;
+          const needsRotation = this.logFile.exists && this.logFile.size > MAX_LOG_SIZE;
 
           if (needsRotation) {
             await this.rotateLogs();
@@ -70,16 +68,12 @@ class LoggerService {
 
           // Append to file - read existing content and append new log
           try {
-            const existing = await FileSystem.readAsStringAsync(
-              this.logFileUri,
-            );
-            await FileSystem.writeAsStringAsync(
-              this.logFileUri,
-              existing + logLine,
-            );
+            const existing = this.logFile.textSync();
+            this.logFile.write(existing + logLine);
           } catch {
             // File doesn't exist yet, create it
-            await FileSystem.writeAsStringAsync(this.logFileUri, logLine);
+            this.logFile.create();
+            this.logFile.write(logLine);
           }
         } catch (error) {
           console.warn("Failed to write log file:", error);
@@ -94,18 +88,14 @@ class LoggerService {
    * Rotate log files (keep last N logs)
    */
   private async rotateLogs(): Promise<void> {
-    const documentsDir = FileSystem.documentDirectory || "";
-
     // Shift existing logs: logs_2.txt → logs_3.txt, logs_1.txt → logs_2.txt, etc.
     for (let i = MAX_LOG_FILES - 1; i >= 1; i--) {
       const oldName = i === 1 ? LOG_FILE_NAME : `pulsebox_logs_${i}.txt`;
       const newName = `pulsebox_logs_${i + 1}.txt`;
 
+      const oldFile = new File(Paths.document, oldName);
       try {
-        await FileSystem.moveAsync({
-          from: `${documentsDir}${oldName}`,
-          to: `${documentsDir}${newName}`,
-        });
+        oldFile.move(new File(Paths.document, newName));
       } catch {
         // Ignore errors - file may not exist
       }
@@ -113,13 +103,13 @@ class LoggerService {
 
     // Rename current log to logs_1.txt and start fresh
     try {
-      await FileSystem.moveAsync({
-        from: this.logFileUri,
-        to: `${documentsDir}pulsebox_logs_1.txt`,
-      });
+      this.logFile.move(new File(Paths.document, "pulsebox_logs_1.txt"));
     } catch {
       // Ignore if current log doesn't exist
     }
+
+    // Reset logFile reference to point to the new main log
+    this.logFile = new File(Paths.document, LOG_FILE_NAME);
   }
 
   /**
@@ -209,7 +199,7 @@ class LoggerService {
    * Get log file URI (for sharing/access)
    */
   public getLogFilePath(): string {
-    return this.logFileUri;
+    return this.logFile.uri;
   }
 
   /**
@@ -218,7 +208,7 @@ class LoggerService {
   public async clearLogs(): Promise<void> {
     this.writeQueue = [];
     try {
-      await FileSystem.deleteAsync(this.logFileUri, { idempotent: true });
+      this.logFile.delete();
     } catch (error) {
       console.warn("Failed to clear logs:", error);
     }
@@ -229,11 +219,8 @@ class LoggerService {
    */
   public async getLogs(): Promise<string> {
     try {
-      return await FileSystem.readAsStringAsync(this.logFileUri);
+      return this.logFile.textSync();
     } catch (error: any) {
-      if (error?.code === "FileNotFound") {
-        return "No logs available";
-      }
       return `Error reading logs: ${error?.message || "Unknown error"}`;
     }
   }
@@ -244,4 +231,3 @@ export const logger = new LoggerService();
 
 // Export types and class
 export { LogEntry, LoggerService };
-

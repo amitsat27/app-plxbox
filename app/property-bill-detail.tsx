@@ -11,14 +11,19 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as Haptics from 'expo-haptics';
+import * as WebBrowser from 'expo-web-browser';
+import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system/legacy';
 import {
   ChevronLeft, CheckCircle, Clock, AlertCircle,
   CreditCard, MapPin, User, Phone,
-  Edit, Trash2, Share2, Download, Calendar, FileText, Home, X, Camera, Upload
+  Edit, Trash2, Share2, Download, Calendar, FileText, Home, X, Camera, Upload, ExternalLink, File
 } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Spacing, Typography, BorderRadius } from '@/constants/designTokens';
+import { doc, getDoc } from 'firebase/firestore';
+import { getFirebaseDb } from '@/src/config/firebaseConfig';
 import { Colors, getColorScheme } from '@/theme/color';
 import { useTheme } from '@/theme/themeProvider';
 import { firebaseService } from '@/src/services/FirebaseService';
@@ -28,6 +33,92 @@ const STATUS_MAP: Record<string, { color: string; bgTint: { light: string; dark:
   Pending: { color: '#F59E0B', bgTint: { light: 'rgba(245,158,11,0.12)', dark: 'rgba(245,158,11,0.2)' }, icon: Clock, text: 'Pending' },
   Overdue: { color: '#EF4444', bgTint: { light: 'rgba(239,68,68,0.12)', dark: 'rgba(239,68,68,0.2)' }, icon: AlertCircle, text: 'Overdue' },
 };
+
+// File type detection
+const IMAGE_EXTS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'heic', 'heif', 'dng'];
+const getExt = (url: string): string => url.match(/\.([a-zA-Z0-9]+)(\?|$)/)?.[1].toLowerCase() ?? '';
+
+// ── Document Section ─────────────────────────────────────────────────────
+// Note: URL comes directly from Firestore (already encoded), no re-encoding needed
+function DocumentSection({ url }: { url: string }) {
+  const { isDark } = useTheme();
+  const scheme = getColorScheme(isDark);
+  const [imageError, setImageError] = useState(false);
+  const [imageLoading, setImageLoading] = useState(true);
+  const [downloading, setDownloading] = useState(false);
+
+  const ext = getExt(url);
+  const isImage = !!ext && IMAGE_EXTS.includes(ext);
+  const isPdf = ext === 'pdf';
+
+  const handleView = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    await WebBrowser.openBrowserAsync(url, {
+      presentationStyle: Platform.OS === 'ios' ? WebBrowser.WebBrowserPresentationStyle.PAGE_SHEET : WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
+      toolbarColor: isDark ? '#1C1C1E' : '#FFFFFF',
+      controlsColor: '#7C3AED',
+    });
+  };
+
+  const handleDownload = async () => {
+    if (downloading) return;
+    setDownloading(true);
+    try {
+      const baseName = url.match(/documents\/propertyTaxBills\/([^?]+)/)?.[1] || `property_tax_bill_${Date.now()}`;
+      const localUri = (FileSystem as any).cacheDirectory + baseName;
+      await FileSystem.downloadAsync(url, localUri);
+      const canShare = await Sharing.isAvailableAsync();
+      if (canShare) {
+        await Sharing.shareAsync(localUri);
+      } else {
+        Alert.alert('Saved', 'File saved to cache');
+      }
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (e: any) {
+      Alert.alert('Failed', e.message);
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const showImagePreview = isImage && !imageError;
+  const tryImageFirst = !ext && !imageError;
+
+  return (
+    <View style={[styles.card, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}>
+      <Text style={[styles.cardTitle, { color: scheme.textPrimary }]}>Bill Document</Text>
+      {(showImagePreview || tryImageFirst) && (
+        <View>
+          {imageLoading && <View style={styles.docLoading}><ActivityIndicator size="small" color={Colors.primary} /></View>}
+          <Image source={{ uri: url }} style={styles.documentImage} resizeMode="contain"
+            onLoadEnd={() => setImageLoading(false)} onError={() => { setImageLoading(false); setImageError(true); }} />
+        </View>
+      )}
+      {!showImagePreview && !tryImageFirst && (
+        <View style={[styles.docPlaceholder, { backgroundColor: isDark ? 'rgba(44,44,46,0.6)' : '#F9FAFB' }]}>
+          <File size={32} color={isPdf ? '#EF4444' : scheme.textTertiary} />
+          <Text style={[styles.docPlaceholderLabel, { color: scheme.textSecondary }]}>
+            {ext ? ext.toUpperCase() : 'Document'} File
+          </Text>
+        </View>
+      )}
+      <View style={styles.docActions}>
+        <TouchableOpacity style={[styles.docActionBtn, { backgroundColor: Colors.primary }]} onPress={handleView}>
+          <ExternalLink size={16} color="#FFF" />
+          <Text style={[styles.docActionText, { color: '#FFF' }]}>View Full</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.docActionBtn, { backgroundColor: isDark ? '#2C2C2E' : '#F3F4F6' }]} onPress={handleDownload} disabled={downloading}>
+          {downloading ? <ActivityIndicator size="small" color={Colors.primary} /> : (
+            <>
+              <Download size={16} color={Colors.primary} />
+              <Text style={[styles.docActionText, { color: Colors.primary }]}>Download</Text>
+            </>
+          )}
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
 
 function DetailRow({ icon, label, value, scheme, isDark, accent }: {
   icon: React.ReactNode; label: string; value: string; scheme: any; isDark: boolean; accent?: string;
@@ -256,8 +347,6 @@ function PropertyBillDetailScreen() {
   const fetchBill = React.useCallback(async () => {
     setBillLoading(true);
     try {
-      const { getDoc, doc } = await import('firebase/firestore');
-      const { getFirebaseDb } = await import('@/src/config/firebaseConfig');
       const db = getFirebaseDb();
       const snap = await getDoc(doc(db, 'pulsebox', 'propertytaxbills', city, billId));
       if (snap.exists()) {
@@ -395,17 +484,7 @@ function PropertyBillDetailScreen() {
 
         {/* Document */}
         {bill.billDocumentURL ? (
-          <View style={[styles.card, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}>
-            <Text style={[styles.cardTitle, { color: scheme.textPrimary }]}>Bill Document</Text>
-            {bill.billDocumentURL.match(/\.(jpg|jpeg|png|gif|webp)/i) ? (
-              <Image source={{ uri: bill.billDocumentURL }} style={styles.documentImage} resizeMode="contain" />
-            ) : (
-              <TouchableOpacity style={styles.downloadLink} onPress={handleShare}>
-                <Download size={18} color={Colors.primary} />
-                <Text style={[styles.downloadText, { color: Colors.primary }]}>View / Download Bill</Text>
-              </TouchableOpacity>
-            )}
-          </View>
+          <DocumentSection url={bill.billDocumentURL} />
         ) : (
           <View style={[styles.card, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}>
             <View style={styles.downloadLink}>
@@ -461,6 +540,12 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: Typography.fontSize.sm, fontWeight: '600', marginBottom: Spacing.sm },
 
   documentImage: { width: '100%', height: 300, borderRadius: BorderRadius.md },
+  docLoading: { paddingVertical: Spacing.xl, alignItems: 'center' },
+  docPlaceholder: { alignItems: 'center', paddingVertical: Spacing.xl, borderRadius: BorderRadius.md, marginBottom: Spacing.sm },
+  docPlaceholderLabel: { fontSize: Typography.fontSize.md, fontWeight: '600', marginTop: Spacing.xs },
+  docActions: { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.sm, marginBottom: Spacing.xs },
+  docActionBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.xs, borderRadius: BorderRadius.md, paddingVertical: Spacing.md, minHeight: 44 },
+  docActionText: { fontSize: Typography.fontSize.sm, fontWeight: '600' },
   downloadLink: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, paddingVertical: Spacing.md, justifyContent: 'center' },
   downloadText: { fontSize: Typography.fontSize.sm, fontWeight: '600' },
 

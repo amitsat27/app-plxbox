@@ -30,6 +30,7 @@ export interface WifiBillEntry {
   lastDateToPay: string;   // YYYY-MM-DD
   lastPaidBillMonth: string; // "June 2023"
   originalCity: string; // For edit operations
+  billDocumentURL?: string; // Bill document from Firebase Storage
 }
 
 export interface WifiBillStats {
@@ -91,6 +92,7 @@ function mapDoc(id: string, data: any): WifiBillEntry {
     lastDateToPay: data.lastDateToPay || '',
     lastPaidBillMonth: data.lastPaidBillMonth || '',
     originalCity: data.city || 'pune',
+    billDocumentURL: data.billDocumentURL || '',
   };
 }
 

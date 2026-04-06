@@ -91,6 +91,37 @@ const getPaperTheme = (isDark: boolean) => ({
   },
 });
 
+// Track whether we successfully prevented the native splash
+// In dev builds without native splash config, preventAutoHideAsync throws
+let splashPrevented = false;
+
+async function tryPreventSplashHide() {
+  if (splashPrevented) return;
+  try {
+    await SplashScreen.preventAutoHideAsync();
+    splashPrevented = true;
+  } catch (err: any) {
+    // In dev builds on iOS without expo-splash-screen native module registered,
+    // this throws "No native splash screen registered". Safe to ignore.
+    if (!err.message?.includes('No native splash screen registered')) {
+      console.warn('Splash screen error:', err.message);
+    }
+  }
+}
+
+async function tryHideSplash() {
+  if (!splashPrevented) return;
+  try {
+    await SplashScreen.hideAsync();
+    splashPrevented = false;
+  } catch (err: any) {
+    // Silently suppress if native splash was never registered
+    if (!err.message?.includes('No native splash screen registered')) {
+      console.warn('Hide splash error:', err.message);
+    }
+  }
+}
+
 // Main layout with auth-based navigation and splash screen control
 function MainLayout() {
   const { user, loading, login, initError } = useAuth();
@@ -102,16 +133,14 @@ function MainLayout() {
   useEffect(() => {
     async function prepare() {
       try {
-        // Keep the native splash screen visible while we prepare
-        await SplashScreen.preventAutoHideAsync();
+        await tryPreventSplashHide();
 
         // Wait for Firebase to be ready (AuthContext handles this)
         // Additional delay for smooth visual effect
         await new Promise((resolve) => setTimeout(resolve, 1500));
 
         setAppIsReady(true);
-      } catch (e) {
-        console.warn("Splash screen preparation error:", e);
+      } catch {
         setAppIsReady(true);
       }
     }
@@ -140,7 +169,7 @@ function MainLayout() {
 
     // Hide splash screen with fade animation when everything is ready
     if (appIsReady && !loading) {
-      SplashScreen.hideAsync();
+      tryHideSplash();
     }
   }, [user, loading, segments, router, appIsReady]);
 
@@ -206,8 +235,10 @@ function MainLayout() {
       <Stack.Screen name="appliance-detail" options={{ presentation: "card" }} />
       <Stack.Screen name="add-appliance" options={{ presentation: "modal", headerShown: false }} />
       <Stack.Screen name="add-service-record" options={{ presentation: "card" }} />
+      <Stack.Screen name="service-record-detail" options={{ presentation: "card", headerShown: false }} />
       <Stack.Screen name="reports" options={{ presentation: "card" }} />
       <Stack.Screen name="bill-detail" options={{ presentation: "card" }} />
+      <Stack.Screen name="wifibills/WifiBillDetailScreen" options={{ presentation: "card", headerShown: false }} />
       {__DEV__ && (
         <Stack.Screen name="debug" options={{ headerShown: false }} />
       )}

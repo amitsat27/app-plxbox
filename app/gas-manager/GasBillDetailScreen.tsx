@@ -77,10 +77,11 @@ function DocumentSection({ url, fileExtension, mimeType }: { url: string; fileEx
     if (loading) return;
     setLoading(true);
     try {
-      const fileExt = ext || 'file';
       // Extract original filename from path (e.g. September_2025_bill_1234567890123.jpeg)
       const pathMatch = safeUrl.match(/documents\/mnglBills\/([^?]+)/);
-      const baseName = pathMatch ? pathMatch[1] : `gas_bill_${Date.now()}`;
+      let baseName = pathMatch ? pathMatch[1] : `gas_bill_${Date.now()}`;
+      // If no extension, add .jpeg
+      if (!/\.\w+$/.test(baseName)) baseName += '.jpeg';
       const localUri = (FileSystem as any).cacheDirectory + baseName;
       await FileSystem.downloadAsync(safeUrl, localUri);
       const canShare = await Sharing.isAvailableAsync();

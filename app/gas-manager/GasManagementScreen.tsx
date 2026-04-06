@@ -18,7 +18,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import {
   ChevronLeft, Flame, Plus, MapPin, User,
   Calendar, CheckCircle, Clock, AlertCircle,
-  X, Upload, Camera, IdCard, Phone
+  X, Upload, Camera, IdCard, Phone, Search,
 } from 'lucide-react-native';
 import { Spacing, Typography, BorderRadius } from '@/constants/designTokens';
 import { Colors, getColorScheme } from '@/theme/color';
@@ -54,7 +54,10 @@ export default function GasManagementScreen() {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState('All');
-  const [sort, setSort] = useState('newest');
+  const [sortField, setSortField] = useState<'date' | 'amount'>('date');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showSearch, setShowSearch] = useState(false);
   const [consumerInfo, setConsumerInfo] = useState<any>(null);
   const [focusTick, setFocusTick] = useState(0);
   useFocusEffect(useCallback(() => {
@@ -135,26 +138,30 @@ export default function GasManagementScreen() {
 
   const displayBills = useMemo(() => {
     let result = filter === 'All' ? bills : bills.filter(b => b.payStatus === filter);
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(b =>
+        b.billGenerationMonth.toLowerCase().includes(q) ||
+        b.payStatus.toLowerCase().includes(q) ||
+        (b.paymentMode && b.paymentMode.toLowerCase().includes(q)) ||
+        String(b.billNumber).includes(q)
+      );
+    }
     const getAmount = (b: GasBillEntry) => {
       const a = typeof b.amountToBePaid === 'string' ? parseFloat(b.amountToBePaid.replace(/,/g, '')) : b.amountToBePaid;
       return isFinite(a) ? a : 0;
     };
-    switch (sort) {
-      case 'oldest':
-        result = [...result].sort((a, b) => new Date(a.lastDateToPay).getTime() - new Date(b.lastDateToPay).getTime());
-        break;
-      case 'highest':
-        result = [...result].sort((a, b) => getAmount(b) - getAmount(a));
-        break;
-      case 'lowest':
-        result = [...result].sort((a, b) => getAmount(a) - getAmount(b));
-        break;
-      case 'newest':
-      default:
-        result = [...result].sort((a, b) => new Date(b.lastDateToPay).getTime() - new Date(a.lastDateToPay).getTime());
-    }
+    const getOrder = (field: 'date' | 'amount') =>
+      sortDir === 'asc' ? 1 : -1;
+    result = [...result].sort((a, b) => {
+      if (sortField === 'date') {
+        return getOrder('date') * (new Date(b.lastDateToPay).getTime() - new Date(a.lastDateToPay).getTime());
+      } else {
+        return getOrder('amount') * (getAmount(b) - getAmount(a));
+      }
+    });
     return result;
-  }, [bills, filter, sort]);
+  }, [bills, filter, searchQuery, sortField, sortDir]);
 
   const handleViewBill = (bill: GasBillEntry) => {
     const amt = typeof bill.amountToBePaid === 'string' ? parseFloat(bill.amountToBePaid.replace(/,/g, '')) || 0 : bill.amountToBePaid;
@@ -249,10 +256,22 @@ export default function GasManagementScreen() {
           </View>
         )}
 
-        {/* Filter Chips + Sort Row */}
+        {/* Filter Chips */}
         {bills.length > 0 && (
           <>
             <View style={styles.filterRow}>
+              <TouchableOpacity
+                style={[styles.filterSearchBtn, {
+                  backgroundColor: showSearch ? Colors.primary : (isDark ? 'rgba(44,44,46,0.5)' : 'rgba(243,243,245,0.6)'),
+                }]}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setShowSearch(s => !s);
+                  if (showSearch) setSearchQuery('');
+                }}
+              >
+                <Search size={12} color={showSearch ? '#FFF' : scheme.textSecondary} />
+              </TouchableOpacity>
               {['All', 'Paid', 'Pending'].map(f => (
                 <TouchableOpacity
                   key={f}
@@ -265,24 +284,62 @@ export default function GasManagementScreen() {
                 </TouchableOpacity>
               ))}
             </View>
+
+            {/* Search bar */}
+            {showSearch && (
+              <View style={{ paddingHorizontal: Spacing.lg, marginBottom: Spacing.xs }}>
+                <View style={[styles.searchBar, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF', borderColor: scheme.border }]}>
+                  <Search size={14} color={scheme.textTertiary} />
+                  <TextInput
+                    style={[styles.searchInput, { color: scheme.textPrimary }]}
+                    placeholder="Search bills..."
+                    placeholderTextColor={scheme.textTertiary}
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                    autoCapitalize="none"
+                  />
+                  {searchQuery.length > 0 && (
+                    <TouchableOpacity onPress={() => setSearchQuery('')} style={{ padding: 4 }}>
+                      <X size={14} color={scheme.textTertiary} />
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
+            )}
+
+            {/* Sort Controls with ASC/DESC toggle */}
             <View style={styles.sortRow}>
-              <Text style={[styles.sortLabel, { color: scheme.textTertiary }]}>Sort:</Text>
-              {([
-                { key: 'newest', label: 'Newest' },
-                { key: 'oldest', label: 'Oldest' },
-                { key: 'highest', label: 'Highest ₹' },
-                { key: 'lowest', label: 'Lowest ₹' },
-              ] as const).map(s => (
-                <TouchableOpacity
-                  key={s.key}
-                  style={[styles.sortChip, {
-                    backgroundColor: sort === s.key ? (isDark ? '#2C2C2E' : '#F0EBFF') : 'transparent',
-                  }]}
-                  onPress={() => { setSort(s.key); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); }}
-                >
-                  <Text style={[styles.sortText, { color: sort === s.key ? Colors.primary : scheme.textTertiary }]}>{s.label}</Text>
-                </TouchableOpacity>
-              ))}
+              <TouchableOpacity
+                style={[styles.sortDirBtn, {
+                  backgroundColor: isDark ? 'rgba(44,44,46,0.6)' : 'rgba(243,243,245,0.6)',
+                }]}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+                }}
+              >
+                {sortDir === 'asc' ? (
+                  <ArrowUpNarrowWide size={14} color={Colors.primary} />
+                ) : (
+                  <ArrowDownWideNarrow size={14} color={Colors.primary} />
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.sortChip2, {
+                  backgroundColor: sortField === 'date' ? Colors.primary : 'transparent',
+                }]}
+                onPress={() => setSortField('date')}
+              >
+                <Text style={[styles.sortText, { color: sortField === 'date' ? '#FFF' : scheme.textTertiary }]}>Date</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.sortChip2, {
+                  backgroundColor: sortField === 'amount' ? Colors.primary : 'transparent',
+                }]}
+                onPress={() => setSortField('amount')}
+              >
+                <Text style={[styles.sortText, { color: sortField === 'amount' ? '#FFF' : scheme.textTertiary }]}>Amount</Text>
+              </TouchableOpacity>
             </View>
           </>
         )}
@@ -595,9 +652,14 @@ const styles = StyleSheet.create({
   statsRow: { flexDirection: 'row', paddingHorizontal: Spacing.lg, gap: Spacing.sm, marginBottom: Spacing.md },
   filterRow: { flexDirection: 'row', paddingHorizontal: Spacing.lg, gap: Spacing.xs, marginBottom: Spacing.xs },
   filterChip: { paddingHorizontal: Spacing.md, paddingVertical: Spacing.xs, borderRadius: BorderRadius.pill, minHeight: 32, justifyContent: 'center', alignItems: 'center' },
+  filterSearchBtn: { width: 32, height: 32, borderRadius: BorderRadius.md, justifyContent: 'center', alignItems: 'center' },
+  searchBar: { flexDirection: 'row', alignItems: 'center', borderRadius: BorderRadius.md, borderWidth: 1, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm },
+  searchInput: { flex: 1, fontSize: Typography.fontSize.sm, paddingHorizontal: Spacing.sm },
   sortRow: { flexDirection: 'row', paddingHorizontal: Spacing.lg, gap: Spacing.xs, marginBottom: Spacing.md, alignItems: 'center' },
   sortLabel: { fontSize: Typography.fontSize.xs, fontWeight: '600', marginRight: Spacing.xs },
   sortChip: { paddingHorizontal: Spacing.sm, paddingVertical: Spacing.xs, borderRadius: BorderRadius.pill, minHeight: 28, justifyContent: 'center', alignItems: 'center' },
+  sortChip2: { paddingHorizontal: Spacing.sm, paddingVertical: Spacing.xs, borderRadius: BorderRadius.pill, minHeight: 28, justifyContent: 'center', alignItems: 'center' },
+  sortDirBtn: { width: 32, height: 32, borderRadius: BorderRadius.md, justifyContent: 'center', alignItems: 'center' },
   sortText: { fontSize: Typography.fontSize.xs, fontWeight: '600' },
   filterText: { fontSize: Typography.fontSize.xs, fontWeight: '600' },
 

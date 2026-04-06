@@ -1,35 +1,71 @@
 /**
- * Summary Stat Card for the Vehicles dashboard
+ * Summary Stat Card for the Vehicles dashboard — reanimated version with icons
  */
 
-import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, Platform } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, Text, StyleSheet, Platform, TouchableOpacity } from 'react-native';
+import Animated, { useSharedValue, useAnimatedStyle, withDelay, withSpring, withTiming } from 'react-native-reanimated';
+import * as Haptics from 'expo-haptics';
+import { Car, CheckCircle, AlertTriangle, CalendarDays, type LucideIcon } from 'lucide-react-native';
 import { useTheme } from '@/theme/themeProvider';
 
-const ICONS: Record<string, string> = { garage: '🚗', check: '✅', alert: '⚠️', calendar: '📅' };
+const ICON_MAP: Record<string, LucideIcon> = {
+  garage: Car,
+  check: CheckCircle,
+  alert: AlertTriangle,
+  calendar: CalendarDays,
+};
 
-export default function SummaryCard({ label, value, icon, color, index = 0 }: { label: string; value: string; icon: string; color: string; index?: number }) {
+export default function SummaryCard({ label, value, icon, color, index = 0 }: {
+  label: string; value: string; icon: string; color: string; index?: number;
+}) {
   const { isDark } = useTheme();
-  const slideY = useRef(new Animated.Value(16)).current;
-  const opacity = useRef(new Animated.Value(0)).current;
+  const translateY = useSharedValue(16);
+  const opacity = useSharedValue(0);
+  const scale = useSharedValue(1);
 
   useEffect(() => {
-    Animated.parallel([
-      Animated.spring(slideY, { toValue: 0, damping: 18, stiffness: 160, useNativeDriver: true }),
-      Animated.timing(opacity, { toValue: 1, duration: 300, delay: index * 70, useNativeDriver: true }),
-    ]).start();
+    translateY.value = withDelay(index * 70, withSpring(0, { damping: 22, stiffness: 180 }));
+    opacity.value = withDelay(index * 70, withTiming(1, { duration: 300 }));
   }, []);
 
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }],
+    opacity: opacity.value,
+  }));
+
+  const handlePressIn = () => {
+    Haptics.selectionAsync();
+    scale.value = withSpring(0.95, { damping: 18 });
+  };
+
+  const handlePressOut = () => {
+    scale.value = withSpring(1, { damping: 18 });
+  };
+
+  const scaleStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  const IconComponent = ICON_MAP[icon] || CalendarDays;
+
   return (
-    <Animated.View style={{ flex: 1, transform: [{ translateY: slideY }], opacity }}>
-      <View style={[styles.card, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}>
+    <TouchableOpacity
+      activeOpacity={1}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      style={{ flex: 1 }}
+    >
+      <Animated.View style={[styles.card, {
+        backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF',
+      }, animatedStyle, scaleStyle]}>
         <View style={[styles.iconWrap, { backgroundColor: `${color}15` }]}>
-          <Text style={{ fontSize: 18 }}>{ICONS[icon] || '📋'}</Text>
+          <IconComponent size={16} color={color} />
         </View>
         <Text style={[styles.value, { color }]} numberOfLines={1}>{value}</Text>
         <Text style={styles.label} numberOfLines={1}>{label}</Text>
-      </View>
-    </Animated.View>
+      </Animated.View>
+    </TouchableOpacity>
   );
 }
 

@@ -193,7 +193,7 @@ export interface Vehicle {
   notes?: string;
   isActive: boolean;
   images: string[]; // URLs to stored images
-  location: 'pune' | 'nashik' | 'other';
+  location: 'pune' | 'nashik' | 'jalgaon' | 'other';
   // Service tracking
   lastServiceDate?: Date;
   nextServiceDue?: Date;
@@ -201,21 +201,35 @@ export interface Vehicle {
   updatedAt: Date;
 }
 
+export interface ServiceReceipt {
+  id: string;
+  url: string;
+  type: 'image' | 'pdf';
+  uploadedAt: Date;
+  name?: string;
+}
+
 export interface ServiceRecord {
   id: string;
-  vehicleId?: string; // Optional if for vehicle
-  applianceId?: string; // Optional if for appliance
+  vehicleId?: string;
+  applianceId?: string;
+  userId: string;
   serviceDate: Date;
-  serviceType: string; // 'regular', 'repair', 'annual', 'emergency'
+  serviceType: 'repair' | 'maintenance' | 'warranty' | 'inspection' | 'other' | 'regular' | 'annual' | 'emergency';
+  cost: number;
+  provider: string;
+  description?: string;
+  notes?: string;
+  receipts: ServiceReceipt[];
+  // Vehicle-specific fields
   serviceCenter?: string;
   mechanic?: string;
-  cost: number;
-  description?: string;
   partsReplaced?: string[];
   mileageAtService?: number;
   nextServiceDue?: Date;
   invoiceUrl?: string;
   createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface VehicleServiceHistory extends ServiceRecord {
@@ -265,7 +279,7 @@ export interface Appliance {
   currentValue?: number;
   warrantyExpiry?: Date;
   amcExpiry?: Date;
-  location: 'pune' | 'nashik' | 'other';
+  location: 'pune' | 'nashik' | 'jalgaon' | 'other';
   images: string[];
   notes?: string;
   isActive: boolean;
@@ -461,7 +475,7 @@ export interface VehicleFormValues {
   currentValue?: number;
   notes?: string;
   images?: any[];
-  location: 'pune' | 'nashik' | 'other';
+  location: 'pune' | 'nashik' | 'jalgaon' | 'other';
 }
 
 export interface ApplianceFormValues {
@@ -478,20 +492,17 @@ export interface ApplianceFormValues {
   amcExpiry?: Date;
   notes?: string;
   images?: any[];
-  location: 'pune' | 'nashik' | 'other';
+  location: 'pune' | 'nashik' | 'jalgaon' | 'other';
 }
 
 export interface ServiceRecordFormValues {
   serviceDate: Date;
-  serviceType: string;
-  serviceCenter?: string;
-  mechanic?: string;
+  serviceType: 'repair' | 'maintenance' | 'warranty' | 'inspection' | 'other';
+  provider: string;
   cost: number;
   description?: string;
-  partsReplaced?: string[];
-  mileageAtService?: number;
-  nextServiceDue?: Date;
-  invoice?: any; // File
+  notes?: string;
+  receipts?: any[];
 }
 
 // ============================================

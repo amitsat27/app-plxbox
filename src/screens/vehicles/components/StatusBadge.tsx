@@ -4,15 +4,17 @@
 
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { getDaysUntilExpiry, formatExpiryDate } from '../utils/compliance';
 
 interface Props {
   type: 'insurance' | 'puc' | 'registration';
   date: Date;
   compact?: boolean;
+  showDot?: boolean;
 }
 
-export default function StatusBadge({ type, date, compact }: Props) {
-  const daysLeft = Math.ceil((date.getTime() - new Date().getTime()) / 86400000);
+export default function StatusBadge({ type, date, compact, showDot }: Props) {
+  const daysLeft = getDaysUntilExpiry(date);
   const expired = daysLeft < 0;
   const urgent = !expired && daysLeft < 30;
 
@@ -24,6 +26,7 @@ export default function StatusBadge({ type, date, compact }: Props) {
     if (compact) {
       return (
         <View style={[styles.compact, { backgroundColor: bg }]}>
+          {showDot && <View style={[styles.dot, { backgroundColor: '#EF4444' }]} />}
           <Text style={[styles.compactText, { color }]}>{label}</Text>
           <Text style={[styles.compactDays, { color }]}>{Math.abs(daysLeft)}d</Text>
         </View>
@@ -31,6 +34,7 @@ export default function StatusBadge({ type, date, compact }: Props) {
     }
     return (
       <View style={[styles.badge, { backgroundColor: bg }]}>
+        {showDot && <View style={[styles.dot, { backgroundColor: '#EF4444' }]} />}
         <Text style={[styles.badgeLabel, { color }]}>{label}</Text>
         <Text style={[styles.badgeDays, { color }]}>{Math.abs(daysLeft)}d ago</Text>
       </View>
@@ -43,6 +47,7 @@ export default function StatusBadge({ type, date, compact }: Props) {
     if (compact) {
       return (
         <View style={[styles.compact, { backgroundColor: bg }]}>
+          {showDot && <View style={[styles.dot, { backgroundColor: '#F59E0B' }]} />}
           <Text style={[styles.compactText, { color }]}>{label}</Text>
           <Text style={[styles.compactDays, { color }]}>{daysLeft}d</Text>
         </View>
@@ -50,6 +55,7 @@ export default function StatusBadge({ type, date, compact }: Props) {
     }
     return (
       <View style={[styles.badge, { backgroundColor: bg }]}>
+        {showDot && <View style={[styles.dot, { backgroundColor: '#F59E0B' }]} />}
         <Text style={[styles.badgeLabel, { color }]}>{label}</Text>
         <Text style={[styles.badgeDays, { color }]}>{daysLeft} days</Text>
       </View>
@@ -61,6 +67,7 @@ export default function StatusBadge({ type, date, compact }: Props) {
   if (compact) {
     return (
       <View style={[styles.compact, { backgroundColor: bg }]}>
+        {showDot && <View style={[styles.dot, { backgroundColor: '#10B981' }]} />}
         <Text style={[styles.compactText, { color }]}>{label}</Text>
         <Text style={[styles.compactDays, { color }]}>{daysLeft}d</Text>
       </View>
@@ -68,6 +75,7 @@ export default function StatusBadge({ type, date, compact }: Props) {
   }
   return (
     <View style={[styles.badge, { backgroundColor: bg }]}>
+      {showDot && <View style={[styles.dot, { backgroundColor: '#10B981' }]} />}
       <Text style={[styles.badgeLabel, { color }]}>{label}</Text>
       <Text style={[styles.badgeDays, { color }]}>{daysLeft} days</Text>
     </View>
@@ -81,4 +89,5 @@ const styles = StyleSheet.create({
   compact: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 6, paddingVertical: 3, borderRadius: 8, gap: 4 },
   compactText: { fontSize: 9, fontWeight: '800', letterSpacing: 0.5 },
   compactDays: { fontSize: 9, fontWeight: '600' },
+  dot: { width: 6, height: 6, borderRadius: 3 },
 });
