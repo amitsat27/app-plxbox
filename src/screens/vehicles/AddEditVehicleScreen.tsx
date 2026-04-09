@@ -118,7 +118,7 @@ export default function AddEditVehicleScreen() {
       quality: 0.8,
       aspect: [16, 9],
     });
-    if (!result.canceled) {
+    if (!result.canceled && !!result.assets) {
       setSelectedImages((prev) => [...prev, result.assets[0].uri]);
     }
   };
@@ -133,7 +133,7 @@ export default function AddEditVehicleScreen() {
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       quality: 0.8,
     });
-    if (!result.canceled) {
+    if (!result.canceled && !!result.assets) {
       setSelectedImages((prev) => [...prev, result.assets[0].uri]);
     }
   };

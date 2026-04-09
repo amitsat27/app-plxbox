@@ -1,8 +1,8 @@
 /**
- * Empty State Illustrated — premium illustrated empty state with floating animation
+ * Empty State Illustrated — refreshed with cleaner typography and spacing
  */
 
-import React, { useCallback, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, withDelay } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
@@ -24,7 +24,7 @@ export default function EmptyStateIllustrated({ type, onAddVehicle, onClearFilte
   const floatOpacity = useSharedValue(0);
 
   useEffect(() => {
-    floatY.value = withRepeat(withTiming(-8, { duration: 2000 }), -1, true);
+    floatY.value = withRepeat(withTiming(-6, { duration: 2200 }), -1, true);
     floatOpacity.value = withDelay(300, withTiming(1, { duration: 500 }));
   }, []);
 
@@ -94,15 +94,15 @@ function FeatureItem({ emoji, text, isDark }: { emoji: string; text: string; isD
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
-    paddingTop: 40,
-    paddingHorizontal: 16,
+    paddingTop: 32,
+    paddingHorizontal: 20,
     width: '100%',
   },
   title: {
-    fontSize: 24,
-    fontWeight: '900',
-    marginTop: 24,
-    letterSpacing: -0.5,
+    fontSize: 22,
+    fontWeight: '800',
+    marginTop: 20,
+    letterSpacing: -0.3,
     textAlign: 'center',
   },
   desc: {
@@ -116,18 +116,34 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.warning,
-    paddingHorizontal: 28,
-    paddingVertical: 14,
-    borderRadius: 18,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 14,
     gap: 8,
-    marginTop: 20,
+    marginTop: 18,
     ...Platform.select({
-      ios: { shadowColor: '#F59E0B', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.4, shadowRadius: 16 },
-      android: { elevation: 6 },
+      ios: { shadowColor: '#F59E0B', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 12 },
+      android: { elevation: 5 },
     }),
   },
-  ctaText: { fontSize: 16, fontWeight: '800', color: '#000' },
-  featuresList: { marginTop: 28, width: '100%' },
-  featureRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 0.5, gap: 10 },
-  featureText: { fontSize: 13, flex: 1 },
+  ctaText: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#000',
+  },
+  featuresList: {
+    marginTop: 24,
+    width: '100%',
+  },
+  featureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 0.5,
+    gap: 10,
+  },
+  featureText: {
+    fontSize: 13,
+    flex: 1,
+  },
 });

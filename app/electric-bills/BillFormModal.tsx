@@ -74,7 +74,7 @@ export function BillFormModal({ bill, city, consumerNumber, onClose, onSave }: {
       allowsEditing: false,
       quality: 0.8,
     });
-    if (!res.canceled && res.assets[0]?.uri) {
+    if (!res.canceled && res.assets?.[0]?.uri) {
       setFileUri(res.assets[0].uri);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
@@ -87,7 +87,7 @@ export function BillFormModal({ bill, city, consumerNumber, onClose, onSave }: {
       allowsEditing: false,
       quality: 0.8,
     });
-    if (!res.canceled && res.assets[0]?.uri) {
+    if (!res.canceled && res.assets?.[0]?.uri) {
       setFileUri(res.assets[0].uri);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }

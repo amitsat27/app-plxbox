@@ -46,7 +46,7 @@ export default function ComplianceEditModal({
         mediaTypes: ImagePicker.MediaTypeOptions.All,
         quality: 0.5,
       });
-      if (!result.canceled && result.assets.length > 0) {
+      if (!result.canceled && result.assets?.length) {
         const uri = result.assets[0].uri;
         try {
           await onDocumentUpload(uri);
@@ -85,6 +85,13 @@ export default function ComplianceEditModal({
             <TouchableOpacity onPress={onClose} hitSlop={10}>
               <X size={18} color={isDark ? '#A1A1AA' : '#9CA3AF'} />
             </TouchableOpacity>
+          </View>
+          {/* Current expiry date */}
+          <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 4, alignItems: 'center' }}>
+            <Text style={{ fontSize: 12, color: isDark ? '#94A3B8' : '#6B7280' }}>Current expiry date</Text>
+            <Text style={{ fontSize: 18, fontWeight: '800', color: isDark ? '#F8FAFC' : '#1E293B' }}>
+              {safeDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+            </Text>
           </View>
           {/* Date Picker — wrapped with themed background */}
           <View style={[styles.pickerWrapper, { backgroundColor: isDark ? '#27272A' : '#F5F5F5', borderRadius: 12, overflow: 'hidden' }]}>

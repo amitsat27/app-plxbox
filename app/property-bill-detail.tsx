@@ -13,7 +13,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import * as WebBrowser from 'expo-web-browser';
 import * as Sharing from 'expo-sharing';
-import * as FileSystem from 'expo-file-system/legacy';
+import * as FileSystem from 'expo-file-system';
 import {
   ChevronLeft, CheckCircle, Clock, AlertCircle,
   CreditCard, MapPin, User, Phone,
@@ -201,14 +201,14 @@ function EditBillModal({ visible, onClose, onSave, bill, city }: {
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: false, quality: 0.8,
     });
-    if (!res.canceled && res.assets[0]?.uri) setFileUri(res.assets[0].uri);
+    if (!res.canceled && res.assets?.[0]?.uri) setFileUri(res.assets[0].uri);
   };
 
   const takePhoto = async () => {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (perm.status !== 'granted') return;
     const res = await ImagePicker.launchCameraAsync({ allowsEditing: false, quality: 0.8 });
-    if (!res.canceled && res.assets[0]?.uri) setFileUri(res.assets[0].uri);
+    if (!res.canceled && res.assets?.[0]?.uri) setFileUri(res.assets[0].uri);
   };
 
   return (

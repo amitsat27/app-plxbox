@@ -1,13 +1,13 @@
 /**
- * Summary Stat Card for the Vehicles dashboard — reanimated version with icons
+ * Summary Stat Card — refreshed with cleaner layout, subtle background tint
  */
 
 import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, Platform, TouchableOpacity } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withDelay, withSpring, withTiming } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
-import { Car, CheckCircle, AlertTriangle, CalendarDays, type LucideIcon } from 'lucide-react-native';
 import { useTheme } from '@/theme/themeProvider';
+import { Car, CheckCircle, AlertTriangle, CalendarDays, type LucideIcon } from 'lucide-react-native';
 
 const ICON_MAP: Record<string, LucideIcon> = {
   garage: Car,
@@ -58,8 +58,12 @@ export default function SummaryCard({ label, value, icon, color, index = 0 }: {
     >
       <Animated.View style={[styles.card, {
         backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF',
+        ...Platform.select({
+          ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: isDark ? 0.3 : 0.04, shadowRadius: 6 },
+          android: { elevation: 2 },
+        }),
       }, animatedStyle, scaleStyle]}>
-        <View style={[styles.iconWrap, { backgroundColor: `${color}15` }]}>
+        <View style={[styles.iconWrap, { backgroundColor: `${color}${isDark ? '20' : '12' }` }]}>
           <IconComponent size={16} color={color} />
         </View>
         <Text style={[styles.value, { color }]} numberOfLines={1}>{value}</Text>
@@ -71,11 +75,30 @@ export default function SummaryCard({ label, value, icon, color, index = 0 }: {
 
 const styles = StyleSheet.create({
   card: {
-    alignItems: 'center', paddingVertical: 16, paddingHorizontal: 10,
-    borderRadius: 20, gap: 6,
-    ...Platform.select({ ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.3, shadowRadius: 6 }, android: { elevation: 2 } }),
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+    borderRadius: 16,
+    gap: 6,
   },
-  iconWrap: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
-  value: { fontSize: 24, fontWeight: '900', letterSpacing: -1 },
-  label: { fontSize: 10, color: '#8E8E93', fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.8 },
+  iconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  value: {
+    fontSize: 22,
+    fontWeight: '900',
+    letterSpacing: -0.5,
+    lineHeight: 26,
+  },
+  label: {
+    fontSize: 10,
+    color: '#8B8B93',
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+  },
 });

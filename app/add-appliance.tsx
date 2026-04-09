@@ -131,7 +131,7 @@ export default function AddApplianceScreen() {
       aspect: [4, 3],
     });
 
-    if (!result.canceled) {
+    if (!result.canceled && !!result.assets) {
       setImages((prev) => [...prev, result.assets[0].uri]);
     }
   };

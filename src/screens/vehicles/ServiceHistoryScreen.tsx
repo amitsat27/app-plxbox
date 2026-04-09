@@ -129,7 +129,7 @@ export default function ServiceHistoryScreen() {
       quality: 0.8,
     });
 
-    if (!result.canceled && result.assets.length > 0) {
+    if (!result.canceled && result.assets?.length) {
       setDocumentUri(result.assets[0].uri);
       setDocumentName(result.assets[0].uri.split('/').pop() || 'Document');
     }
@@ -142,7 +142,7 @@ export default function ServiceHistoryScreen() {
       quality: 0.8,
     });
 
-    if (!result.canceled && result.assets.length > 0) {
+    if (!result.canceled && result.assets?.length) {
       setDocumentUri(result.assets[0].uri);
       setDocumentName(result.assets[0].uri.split('/').pop() || 'Photo');
     }
@@ -295,6 +295,10 @@ export default function ServiceHistoryScreen() {
               record={item}
               onEdit={() => openEditModal(item)}
               onDelete={() => handleDelete(item)}
+              onView={() => router.push({
+                pathname: '/service-detail',
+                params: { vehicleId: vehicle.id, userId: user?.uid, recordData: encodeURIComponent(JSON.stringify(item)) },
+              } as any)}
               isDark={isDark}
               cardBg={cardBg}
               fieldBg={fieldBg}
@@ -525,9 +529,9 @@ function FormField({ label, placeholder, value, bg, border, textPrimary, textTer
 }
 
 function ServiceRecordCard({
-  record, onEdit, onDelete, isDark, cardBg, fieldBg, textPrimary, textSecondary, textTertiary,
+  record, onEdit, onDelete, onView, isDark, cardBg, fieldBg, textPrimary, textSecondary, textTertiary,
 }: {
-  record: ServiceRecord; onEdit: () => void; onDelete: () => void;
+  record: ServiceRecord; onEdit: () => void; onDelete: () => void; onView?: () => void;
   isDark: boolean; cardBg: string; fieldBg: string; textPrimary: string;
   textSecondary: string; textTertiary: string;
 }) {
@@ -543,14 +547,18 @@ function ServiceRecordCard({
   const config = typeConfig[record.serviceType] || typeConfig.regular;
 
   return (
-    <View style={[styles.recordCard, { backgroundColor: cardBg }]}>
+    <TouchableOpacity
+      style={[styles.recordCard, { backgroundColor: cardBg }]}
+      onPress={onView}
+      activeOpacity={onView ? 0.7 : 1}
+    >
       <View style={styles.recordHeader}>
         <View style={[styles.recordTypeBadge, { backgroundColor: `${config.color}15` }]}>
           <Text style={[styles.recordTypeText, { color: config.color }]}>{config.label}</Text>
         </View>
         <View style={{ flexDirection: 'row', gap: 8 }}>
-          <TouchableOpacity onPress={onEdit}><Wrench size={16} color="#F59E0B" /></TouchableOpacity>
-          <TouchableOpacity onPress={onDelete}><Trash2 size={16} color="#EF4444" /></TouchableOpacity>
+          <TouchableOpacity onPress={(e) => { e.stopPropagation(); onEdit(); }}><Wrench size={16} color="#F59E0B" /></TouchableOpacity>
+          <TouchableOpacity onPress={(e) => { e.stopPropagation(); onDelete(); }}><Trash2 size={16} color="#EF4444" /></TouchableOpacity>
         </View>
       </View>
 
@@ -581,7 +589,7 @@ function ServiceRecordCard({
       </View>
 
       {record.description && (
-        <Text style={[styles.recordDesc, { color: textSecondary }]}>{record.description}</Text>
+        <Text style={[styles.recordDesc, { color: textSecondary }]} numberOfLines={2}>{record.description}</Text>
       )}
 
       {record.invoiceUrl && (
@@ -590,7 +598,7 @@ function ServiceRecordCard({
           <Text style={[styles.docLinkText, { color: '#3B82F6' }]}>View Document</Text>
         </View>
       )}
-    </View>
+    </TouchableOpacity>
   );
 }
 

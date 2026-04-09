@@ -1,9 +1,9 @@
 /**
- * Smart Insight Card — premium metric card for horizontal scroll row
+ * Smart Insight Card — refreshed with rounded corners and cleaner spacing
  */
 
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Platform } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withDelay, withSpring, withTiming } from 'react-native-reanimated';
 import { useTheme } from '@/theme/themeProvider';
 
@@ -13,11 +13,10 @@ interface Props {
   subtitle?: string;
   icon: React.ReactNode;
   color: string;
-  trend?: 'up' | 'down' | 'neutral';
   index: number;
 }
 
-export default function SmartInsightCard({ title, value, subtitle, icon, color, trend, index }: Props) {
+export default function SmartInsightCard({ title, value, subtitle, icon, color, index }: Props) {
   const { isDark } = useTheme();
   const translateY = useSharedValue(30);
   const opacity = useSharedValue(0);
@@ -36,26 +35,25 @@ export default function SmartInsightCard({ title, value, subtitle, icon, color, 
     <Animated.View style={[styles.container, animatedStyle]}>
       <View style={[styles.card, {
         backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF',
-        borderColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)',
+        ...Platform.select({
+          ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: isDark ? 0.3 : 0.04, shadowRadius: 4 },
+          android: { elevation: 1 },
+        }),
       }]}>
         {/* Left accent strip */}
         <View style={[styles.accentStrip, { backgroundColor: color }]} />
 
         <View style={styles.content}>
-          {/* Icon row */}
           <View style={styles.iconRow}>
             <View style={[styles.iconBox, { backgroundColor: `${color}15` }]}>
               {icon}
             </View>
           </View>
 
-          {/* Value */}
           <Text style={[styles.value, { color }]} numberOfLines={1}>{value}</Text>
 
-          {/* Title */}
           <Text style={[styles.title, { color: isDark ? '#A1A1AA' : '#6B7280' }]} numberOfLines={1}>{title}</Text>
 
-          {/* Subtitle */}
           {subtitle && (
             <Text style={[styles.subtitle, { color: isDark ? '#71717A' : '#9CA3AF' }]} numberOfLines={1}>{subtitle}</Text>
           )}
@@ -66,18 +64,37 @@ export default function SmartInsightCard({ title, value, subtitle, icon, color, 
 }
 
 const styles = StyleSheet.create({
-  container: { minWidth: 170, marginRight: 12 },
+  container: {
+    minWidth: 160,
+    marginRight: 10,
+  },
   card: {
-    padding: 14, borderRadius: 20, minHeight: 110,
-    position: 'relative', overflow: 'hidden',
+    padding: 12,
+    borderRadius: 16,
+    minHeight: 100,
+    position: 'relative',
+    overflow: 'hidden',
   },
   accentStrip: {
-    position: 'absolute', left: 0, top: 0, bottom: 0, width: 4,
+    position: 'absolute', left: 0, top: 0, bottom: 0, width: 3.5,
   },
-  content: { flex: 1, justifyContent: 'space-between' },
+  content: { flex: 1, justifyContent: 'space-between', gap: 4 },
   iconRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  iconBox: { width: 32, height: 32, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
-  value: { fontSize: 22, fontWeight: '900', letterSpacing: -0.5, marginTop: 8 },
-  title: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 2 },
-  subtitle: { fontSize: 10, fontWeight: '500', marginTop: 2 },
+  iconBox: {
+    width: 28, height: 28, borderRadius: 8,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  value: {
+    fontSize: 20,
+    fontWeight: '900',
+    letterSpacing: -0.5,
+    lineHeight: 24,
+  },
+  title: {
+    fontSize: 10,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  subtitle: { fontSize: 10, fontWeight: '500', marginTop: 1 },
 });

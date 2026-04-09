@@ -197,6 +197,11 @@ export interface Vehicle {
   // Service tracking
   lastServiceDate?: Date;
   nextServiceDue?: Date;
+  // Compliance document URLs
+  insuranceDocumentUrl?: string;
+  pucDocumentUrl?: string;
+  registrationDocumentUrl?: string;
+  serviceDocumentUrl?: string;
   createdAt: Date;
   updatedAt: Date;
 }

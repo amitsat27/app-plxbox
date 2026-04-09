@@ -1,4 +1,5 @@
-import * as FileSystem from 'expo-file-system/legacy';
+import * as FileSystem from 'expo-file-system';
+import { cacheDirectory, documentDirectory, EncodingType } from 'expo-file-system';
 import { collection, addDoc, query, where, onSnapshot, getDocs, updateDoc, deleteDoc, doc, serverTimestamp, getDoc, setDoc, collectionGroup } from 'firebase/firestore';
 import { getFirebaseDb, getFirebaseStorage } from '../config/firebaseConfig';
 import type { DashboardMetric, Bill, SystemLog, Vehicle, Appliance, ServiceRecord, BillStatus, ApplianceCategory } from '../types';
@@ -425,10 +426,10 @@ class FirebaseService {
       const [, base64Data] = fileUri.split(',');
       const mimeType = fileUri.match(/data:(.*?);base64/)?.[1] || 'image/jpeg';
       const ext = mimeType.split('/')[1]?.split(';')[0] || 'jpg';
-      const dir = FileSystem.cacheDirectory || FileSystem.documentDirectory;
+      const dir = cacheDirectory || documentDirectory;
       const localUri = `${dir}temp_appliance_${Date.now()}.${ext}`;
       await FileSystem.writeAsStringAsync(localUri, base64Data, {
-        encoding: FileSystem.EncodingType.Base64,
+        encoding: EncodingType.Base64,
       });
       fileUri = localUri;
     }

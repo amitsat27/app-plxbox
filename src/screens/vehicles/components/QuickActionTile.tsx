@@ -51,10 +51,10 @@ export default function QuickActionTile({ icon, label, color, onPress }: Props) 
 }
 
 const styles = StyleSheet.create({
-  container: { alignItems: 'center', gap: 6 },
+  container: { alignItems: 'center', gap: 5 },
   iconBox: {
-    width: 52, height: 52, borderRadius: 16,
+    width: 48, height: 48, borderRadius: 14,
     justifyContent: 'center', alignItems: 'center',
   },
-  label: { fontSize: 11, fontWeight: '700', letterSpacing: 0.2 },
+  label: { fontSize: 10, fontWeight: '700', letterSpacing: 0.15 },
 });

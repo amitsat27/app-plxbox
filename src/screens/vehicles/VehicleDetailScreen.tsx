@@ -60,6 +60,15 @@ import { FUEL_EMOJI_MAP } from "./utils/vehicleImages";
 
 type ComplianceEditTarget = "insurance" | "puc" | "registration" | "service";
 
+const safeToIso = (dateValue: Date | string | undefined): string => {
+  if (!dateValue) return '';
+  if (dateValue instanceof Date) {
+    return isNaN(dateValue.getTime()) ? '' : dateValue.toISOString();
+  }
+  const d = new Date(dateValue);
+  return isNaN(d.getTime()) ? '' : d.toISOString();
+};
+
 const COMPLIANCE_FIELD_MAP: Record<ComplianceEditTarget, keyof Vehicle> = {
   insurance: "insuranceExpiry",
   puc: "pucExpiry",
@@ -485,7 +494,10 @@ export default function VehicleDetailScreen() {
               }
               label="Insurance"
               date={formatExpiryDate(vehicle.insuranceExpiry)}
-              onPress={() => handleComplianceEdit("insurance")}
+              onPress={() => router.push({
+                pathname: '/compliance-detail',
+                params: { type: 'insurance', label: 'Insurance', date: safeToIso(vehicle.insuranceExpiry), docUrl: `${(vehicle as any)?.insuranceDocumentUrl || ''}`, vehicleId: vehicle.id, userId: vehicle.userId },
+              } as any)}
               isDark={isDark}
               hasDocument={!!(vehicle as any)?.insuranceDocumentUrl}
               onDocumentPress={() => {
@@ -498,7 +510,10 @@ export default function VehicleDetailScreen() {
               }
               label="PUC"
               date={formatExpiryDate(vehicle.pucExpiry)}
-              onPress={() => handleComplianceEdit("puc")}
+              onPress={() => router.push({
+                pathname: '/compliance-detail',
+                params: { type: 'puc', label: 'PUC', date: safeToIso(vehicle.pucExpiry), docUrl: `${(vehicle as any)?.pucDocumentUrl || ''}`, vehicleId: vehicle.id, userId: vehicle.userId },
+              } as any)}
               isDark={isDark}
               hasDocument={!!(vehicle as any)?.pucDocumentUrl}
               onDocumentPress={() => {
@@ -514,7 +529,10 @@ export default function VehicleDetailScreen() {
               }
               label="Registration"
               date={formatExpiryDate(vehicle.registrationExpiry)}
-              onPress={() => handleComplianceEdit("registration")}
+              onPress={() => router.push({
+                pathname: '/compliance-detail',
+                params: { type: 'registration', label: 'Registration', date: safeToIso(vehicle.registrationExpiry), docUrl: `${(vehicle as any)?.registrationDocumentUrl || ''}`, vehicleId: vehicle.id, userId: vehicle.userId },
+              } as any)}
               isDark={isDark}
               hasDocument={!!(vehicle as any)?.registrationDocumentUrl}
               onDocumentPress={() => {
@@ -573,6 +591,10 @@ export default function VehicleDetailScreen() {
               loading={loadingRecords}
               onEdit={setEditingServiceRecord}
               onDelete={handleDeleteServiceRecord}
+              onView={(rec) => router.push({
+                pathname: '/service-detail',
+                params: { vehicleId: vehicle.id, userId: vehicle.userId, recordData: encodeURIComponent(JSON.stringify(rec)) },
+              } as any)}
             />
           </View>
 
@@ -604,6 +626,7 @@ export default function VehicleDetailScreen() {
               <ComplianceTab
                 vehicle={vehicle}
                 rowBorder={rowBorder}
+                router={router}
                 onEdit={handleComplianceEdit}
               />
             )}
@@ -657,7 +680,6 @@ export default function VehicleDetailScreen() {
         onDocumentUpload={async (uri) => {
           if (editTarget) {
             await handleComplianceDocumentUpload(editTarget, uri);
-            setEditTarget(null);
           }
         }}
       />
@@ -757,10 +779,12 @@ function OverviewTab({
 function ComplianceTab({
   vehicle,
   rowBorder,
+  router,
   onEdit,
 }: {
   vehicle: Vehicle;
   rowBorder: string;
+  router: ReturnType<typeof useRouter>;
   onEdit: (t: ComplianceEditTarget) => void;
 }) {
   const { isDark } = useTheme();
@@ -780,19 +804,58 @@ function ComplianceTab({
         label="Insurance"
         date={vehicle.insuranceExpiry}
         border={rowBorder}
-        onPress={() => onEdit("insurance")}
+        onPress={() => {
+          const url = `${vehicle.insuranceDocumentUrl || ''}`;
+          router.push({
+            pathname: '/compliance-detail',
+            params: {
+              type: 'insurance',
+              label: 'Insurance',
+              date: safeToIso(vehicle.insuranceExpiry),
+              docUrl: url,
+              vehicleId: vehicle.id,
+              userId: vehicle.userId,
+            },
+          } as any);
+        }}
       />
       <ComplianceItem
         label="PUC Certificate"
         date={vehicle.pucExpiry}
         border={rowBorder}
-        onPress={() => onEdit("puc")}
+        onPress={() => {
+          const url = `${vehicle.pucDocumentUrl || ''}`;
+          router.push({
+            pathname: '/compliance-detail',
+            params: {
+              type: 'puc',
+              label: 'PUC Certificate',
+              date: safeToIso(vehicle.pucExpiry),
+              docUrl: url,
+              vehicleId: vehicle.id,
+              userId: vehicle.userId,
+            },
+          } as any);
+        }}
       />
       <ComplianceItem
         label="Registration"
         date={vehicle.registrationExpiry}
         border={rowBorder}
-        onPress={() => onEdit("registration")}
+        onPress={() => {
+          const url = `${vehicle.registrationDocumentUrl || ''}`;
+          router.push({
+            pathname: '/compliance-detail',
+            params: {
+              type: 'registration',
+              label: 'Registration',
+              date: safeToIso(vehicle.registrationExpiry),
+              docUrl: url,
+              vehicleId: vehicle.id,
+              userId: vehicle.userId,
+            },
+          } as any);
+        }}
       />
       <View style={[styles.cardDivider, { backgroundColor: rowBorder }]} />
       {vehicle.vin && (

@@ -38,7 +38,8 @@ export default function VehiclesScreen() {
   const { isDark } = useTheme();
   const scheme = getColorScheme(isDark);
   const { user } = useAuth();
-  const { vehicles, loading } = useDashboardData(user?.uid);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const { vehicles, loading } = useDashboardData(user?.uid, refreshKey);
   const vehicleStats = useVehicles(vehicles);
 
   const [refreshing, setRefreshing] = useState(false);
@@ -87,7 +88,9 @@ export default function VehiclesScreen() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await new Promise((r) => setTimeout(r, 800));
+    setRefreshKey((k) => k + 1);
+    // Allow a beat for the hook to start refetching
+    await new Promise((r) => setTimeout(r, 600));
     setRefreshing(false);
   }, []);
 
@@ -202,10 +205,7 @@ export default function VehiclesScreen() {
 
       {/* ── Quick Actions ── */}
       <View style={[styles.quickBar, { borderTopColor: isDark ? '#2C2C2E' : '#E5E5EA', backgroundColor: scheme.background, paddingBottom: insets.bottom + 8 }]}>
-        <QuickActionTile icon={<Wrench size={16} color={Colors.warning} />} label="Service" color={Colors.warning} />
-        <QuickActionTile icon={<Shield size={16} color="#3B82F6" />} label="Insurance" color="#3B82F6" />
-        <QuickActionTile icon={<FileText size={16} color="#10B981" />} label="PUC" color="#10B981" />
-        <QuickActionTile icon={<Eye size={16} color="#8B5CF6" />} label="History" color="#8B5CF6" />
+        <QuickActionTile icon={<Plus size={16} color="#10B981" />} label="Add Vehicle" color="#10B981" onPress={() => router.push({ pathname: '/vehicle-add' } as any)} />
       </View>
 
       {/* ── FAB ── */}
@@ -405,66 +405,66 @@ function navigateToDetail(router: ReturnType<typeof useRouter>, vehicle: Vehicle
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { paddingHorizontal: 16, paddingBottom: 8 },
+  header: { paddingHorizontal: 16, paddingBottom: 6 },
   headerTop: { flexDirection: 'row', alignItems: 'center' },
   headerCenter: { flex: 1, alignItems: 'center' },
-  count: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1.5 },
-  title: { fontSize: 32, fontWeight: '900', letterSpacing: -1 },
-  iconBtn: { padding: 10, borderRadius: 14 },
-  searchToggle: { padding: 10, borderRadius: 14 },
+  count: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1.2 },
+  title: { fontSize: 28, fontWeight: '900', letterSpacing: -0.8 },
+  iconBtn: { padding: 10, borderRadius: 12 },
+  searchToggle: { padding: 10, borderRadius: 12 },
   searchBar: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
-    borderRadius: 16, paddingHorizontal: 16, paddingVertical: 12, marginTop: 10,
+    borderRadius: 14, paddingHorizontal: 14, paddingVertical: 10, marginTop: 8,
     borderWidth: 1,
   },
   searchInput: { flex: 1, fontSize: 14 },
 
-  summaryWrap: { marginBottom: 4 },
-  summaryHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 14, borderRadius: 16 },
-  summaryTitle: { fontSize: 16, fontWeight: '800' },
-  summaryGrid: { flexDirection: 'row', gap: 10 },
-  insightRow: { flexDirection: 'row', gap: 10, marginTop: 14 },
-  insightBubble: { flex: 1, alignItems: 'center', borderRadius: 18, paddingVertical: 12, paddingHorizontal: 6, gap: 2 },
-  insightLabel: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.8 },
-  insightValue: { fontSize: 14, fontWeight: '800' },
+  summaryWrap: { marginBottom: 6 },
+  summaryHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, borderRadius: 14 },
+  summaryTitle: { fontSize: 15, fontWeight: '800' },
+  summaryGrid: { flexDirection: 'row', gap: 8 },
+  insightRow: { flexDirection: 'row', gap: 8, marginTop: 12 },
+  insightBubble: { flex: 1, alignItems: 'center', borderRadius: 16, paddingVertical: 10, paddingHorizontal: 4, gap: 2 },
+  insightLabel: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6 },
+  insightValue: { fontSize: 13, fontWeight: '800' },
 
-  insightsSection: { marginTop: 8 },
-  sectionTitle: { fontSize: 17, fontWeight: '800', marginBottom: 12 },
-  insightsScroll: { marginHorizontal: -16, paddingHorizontal: 16, flexDirection: 'row', gap: 12 },
+  insightsSection: { marginTop: 6 },
+  sectionTitle: { fontSize: 16, fontWeight: '800', marginBottom: 10 },
+  insightsScroll: { marginHorizontal: -16, paddingHorizontal: 16, flexDirection: 'row', gap: 10 },
 
-  alertCard: { padding: 16, borderRadius: 24, borderWidth: 1 },
+  alertCard: { padding: 14, borderRadius: 18, borderWidth: 1 },
   alertHeader: { flexDirection: 'row', alignItems: 'center' },
-  alertIconWrap: { width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
-  alertTitle: { fontSize: 16, fontWeight: '800' },
+  alertIconWrap: { width: 30, height: 30, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
+  alertTitle: { fontSize: 15, fontWeight: '800' },
   alertSubtitle: { fontSize: 11, marginTop: 2 },
-  alertBadge: { backgroundColor: '#EF4444', borderRadius: 12, minWidth: 24, height: 24, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 6 },
+  alertBadge: { backgroundColor: '#EF4444', borderRadius: 10, minWidth: 22, height: 22, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 5 },
   alertBadgeText: { fontSize: 10, color: '#fff', fontWeight: '800' },
-  alertItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 0.5, marginTop: 4 },
-  alertDot: { width: 8, height: 8, borderRadius: 4, marginRight: 12 },
-  alertVehicleName: { fontSize: 14, fontWeight: '700' },
-  alertMsg: { fontSize: 12, marginTop: 2 },
-  alertDaysTag: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
-  alertDaysText: { fontSize: 12, fontWeight: '800' },
+  alertItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 0.5, marginTop: 4 },
+  alertDot: { width: 7, height: 7, borderRadius: 3, marginRight: 10 },
+  alertVehicleName: { fontSize: 13, fontWeight: '700' },
+  alertMsg: { fontSize: 11, marginTop: 2 },
+  alertDaysTag: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
+  alertDaysText: { fontSize: 11, fontWeight: '800' },
 
   filterChip: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 14,
-    borderWidth: 1.5, marginRight: 6,
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12,
+    borderWidth: 0.75, marginRight: 5,
   },
-  filterLabel: { fontSize: 13, fontWeight: '700' },
-  filterBadge: { borderRadius: 6, paddingHorizontal: 5, height: 16, justifyContent: 'center' },
-  filterBadgeText: { fontSize: 9, color: '#fff', fontWeight: '800' },
+  filterLabel: { fontSize: 12, fontWeight: '700' },
+  filterBadge: { borderRadius: 5, paddingHorizontal: 4, height: 14, justifyContent: 'center' },
+  filterBadgeText: { fontSize: 8, color: '#fff', fontWeight: '800' },
 
   fab: {
-    position: 'absolute', right: 20, width: 56, height: 56, borderRadius: 28,
+    position: 'absolute', right: 18, width: 52, height: 52, borderRadius: 26,
     backgroundColor: Colors.warning, justifyContent: 'center', alignItems: 'center',
     ...Platform.select({
-      ios: { shadowColor: Colors.warning, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.4, shadowRadius: 16 },
-      android: { elevation: 8 },
+      ios: { shadowColor: Colors.warning, shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.35, shadowRadius: 14 },
+      android: { elevation: 6 },
     }),
   },
   quickBar: {
     flexDirection: 'row', justifyContent: 'space-around',
-    borderTopWidth: 0.5, paddingTop: 12,
+    borderTopWidth: 0.5, paddingTop: 10, gap: 4,
   },
 });

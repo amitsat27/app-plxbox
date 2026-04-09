@@ -13,7 +13,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import * as WebBrowser from 'expo-web-browser';
 import * as Sharing from 'expo-sharing';
-import * as FileSystem from 'expo-file-system/legacy';
+import * as FileSystem from 'expo-file-system';
 import {
   ChevronLeft, Flame, CheckCircle, Clock, AlertCircle,
   CreditCard, Calendar, Edit, Trash2, Share2, Download, Gauge, ExternalLink, File

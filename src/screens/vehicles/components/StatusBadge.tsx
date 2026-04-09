@@ -83,11 +83,11 @@ export default function StatusBadge({ type, date, compact, showDot }: Props) {
 }
 
 const styles = StyleSheet.create({
-  badge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, gap: 6 },
-  badgeLabel: { fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
-  badgeDays: { fontSize: 10, fontWeight: '600' },
-  compact: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 6, paddingVertical: 3, borderRadius: 8, gap: 4 },
-  compactText: { fontSize: 9, fontWeight: '800', letterSpacing: 0.5 },
-  compactDays: { fontSize: 9, fontWeight: '600' },
+  badge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, gap: 4 },
+  badgeLabel: { fontSize: 12, fontWeight: '800', letterSpacing: 0.5 },
+  badgeDays: { fontSize: 12, fontWeight: '600' },
   dot: { width: 6, height: 6, borderRadius: 3 },
+  compact: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 7, paddingVertical: 3, borderRadius: 7, gap: 3 },
+  compactText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
+  compactDays: { fontSize: 10, fontWeight: '600' },
 });

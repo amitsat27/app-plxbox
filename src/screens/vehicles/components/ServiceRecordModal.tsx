@@ -82,7 +82,7 @@ export default function ServiceRecordModal({ visible, isEdit, record, isDark, on
         return;
       }
       const result = await ImagePicker.launchCameraAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7 });
-      if (!result.canceled && result.assets.length > 0) {
+      if (!result.canceled && result.assets?.length) {
         setReceiptUri(result.assets[0].uri);
       }
     } catch (e: any) {
@@ -95,14 +95,14 @@ export default function ServiceRecordModal({ visible, isEdit, record, isDark, on
   const pickReceiptFromLibrary = async () => {
     try {
       setUploadingReceipt(true);
-      const perm = await ImagePicker.requestCameraPermissionsAsync();
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!perm.granted) {
-        Alert.alert('Permission denied', 'Camera permission is required');
+        Alert.alert('Permission denied', 'Photo library access is required');
         setUploadingReceipt(false);
         return;
       }
       const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7 });
-      if (!result.canceled && result.assets.length > 0) {
+      if (!result.canceled && result.assets?.length) {
         setReceiptUri(result.assets[0].uri);
       }
     } catch (e: any) {
@@ -316,37 +316,31 @@ export default function ServiceRecordModal({ visible, isEdit, record, isDark, on
 const styles = StyleSheet.create({
   overlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1000, justifyContent: 'flex-end' },
   container: {
-    borderRadius: 24, overflow: 'hidden', maxHeight: '85%', marginHorizontal: 12,
+    borderRadius: 20, overflow: 'hidden', maxHeight: '85%', marginHorizontal: 12,
     ...Platform.select({
-      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 12 },
-      android: { elevation: 8 },
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 12 },
+      android: { elevation: 6 },
     }),
   },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 16, paddingBottom: 12, borderBottomWidth: 0.5 },
+  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingTop: 18, paddingBottom: 14, borderBottomWidth: 0.5 },
   headerTitle: { fontSize: 17, fontWeight: '800', flex: 1 },
-  content: { paddingHorizontal: 16, paddingTop: 12 },
-  label: { fontSize: 13, fontWeight: '600', marginBottom: 6 },
+  content: { paddingHorizontal: 18, paddingTop: 14 },
+  label: { fontSize: 12, fontWeight: '600', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.3 },
   typeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  typeChip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 14, borderWidth: 1.5 },
-  inputRow: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 16, paddingHorizontal: 14, gap: 8 },
+  typeChip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, borderWidth: 1.5 },
+  inputRow: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 14, paddingHorizontal: 14, gap: 8 },
   input: { flex: 1, paddingVertical: 14, fontSize: 15 },
-  inputFull: { borderWidth: 1, borderRadius: 16, padding: 14, fontSize: 15 },
-  textArea: { borderWidth: 1, borderRadius: 16, padding: 14, fontSize: 15, minHeight: 80 },
+  inputFull: { borderWidth: 1, borderRadius: 14, padding: 14, fontSize: 15 },
+  textArea: { borderWidth: 1, borderRadius: 14, padding: 14, fontSize: 15, minHeight: 75 },
   pickerWrapper: { overflow: 'hidden' },
   picker: { marginTop: 4 },
   receiptBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-    flex: 1,
-    justifyContent: 'center',
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingVertical: 10, paddingHorizontal: 12, borderRadius: 12, borderWidth: 1,
+    flex: 1, justifyContent: 'center',
   },
-  receiptImage: { width: '100%', height: 120, borderRadius: 12 },
-  footer: { paddingHorizontal: 16, paddingVertical: 14, borderTopWidth: 0.5 },
-  saveBtn: { paddingVertical: 16, borderRadius: 16, alignItems: 'center' },
-  saveText: { fontSize: 16, fontWeight: '800', color: '#000' },
+  receiptImage: { width: '100%', height: 110, borderRadius: 10 },
+  footer: { paddingHorizontal: 18, paddingVertical: 14, borderTopWidth: 0.5 },
+  saveBtn: { paddingVertical: 14, borderRadius: 14, alignItems: 'center' },
+  saveText: { fontSize: 15, fontWeight: '800', color: '#000' },
 });

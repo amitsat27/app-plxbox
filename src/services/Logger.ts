@@ -1,4 +1,4 @@
-import { File, Paths } from "expo-file-system/next";
+import { File, Paths } from "expo-file-system/next"; // @ts-ignore
 
 const LOG_FILE_NAME = "pulsebox_logs.txt";
 const MAX_LOG_SIZE = 1024 * 1024; // 1MB max per log file

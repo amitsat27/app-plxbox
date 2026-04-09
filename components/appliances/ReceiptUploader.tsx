@@ -149,7 +149,8 @@ export default function ReceiptUploader({ applianceId, initialReceipts, onReceip
     await new Promise((r) => setTimeout(r, 200));
 
     if (mode === 'camera') {
-      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      const perm = await ImagePicker.requestCameraPermissionsAsync();
+      const status = (perm as any).status;
       if (!status || status !== 'granted') {
         setGlobalError('Camera permission denied. Enable it in Settings.');
         return;
@@ -164,7 +165,7 @@ export default function ReceiptUploader({ applianceId, initialReceipts, onReceip
             quality: 0.85,
             allowsMultipleSelection: true,
           });
-    if (!result.canceled && result.assets.length > 0) {
+    if (!result.canceled && result.assets?.length) {
       for (const asset of result.assets) {
         await enqueueUpload(asset.uri, asset.fileName ?? undefined, 'image');
       }
@@ -181,7 +182,7 @@ export default function ReceiptUploader({ applianceId, initialReceipts, onReceip
       copyToCacheDirectory: true,
     });
 
-    if (result.canceled || result.assets.length === 0) return;
+    if (result.canceled || !result.assets?.length) return;
     const asset = result.assets[0];
     await enqueueUpload(asset.uri, asset.name, 'pdf');
   };

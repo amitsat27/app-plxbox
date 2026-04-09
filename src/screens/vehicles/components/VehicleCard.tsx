@@ -1,21 +1,21 @@
 /**
- * Vehicle Card — premium card with vehicle image, compliance badges, press animation
+ * Vehicle Card — redesigned with cleaner layout
  */
 
 import React, { useCallback, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
-import Animated, { useSharedValue, useAnimatedStyle, withDelay, withSpring, withTiming } from 'react-native-reanimated';
+import { View, Text, StyleSheet, Platform, TouchableOpacity } from 'react-native';
+import { Image } from 'expo-image';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, withDelay, withSpring } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { getVehicleTypeColor } from '@/theme/color';
 import { useTheme } from '@/theme/themeProvider';
-import { getDaysUntilExpiry } from '../utils/compliance';
 import { getVehicleImageUrl } from '../utils/vehicleImages';
-import { formatOdometer, formatMileage } from '../utils/formatNumbers';
+import { formatOdometer } from '../utils/formatNumbers';
 import { FUEL_EMOJI_MAP } from '../utils/vehicleImages';
 import type { Vehicle } from '@/src/types';
 import StatusBadge from './StatusBadge';
-import VehicleImageHeader from './VehicleImageHeader';
-import VehicleTypeIcon from './VehicleTypeIcon';
+
+const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
 
 interface Props {
   vehicle: Vehicle;
@@ -23,11 +23,9 @@ interface Props {
   index?: number;
 }
 
-const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
-
 export default function VehicleCard({ vehicle, onPress, index = 0 }: Props) {
   const { isDark } = useTheme();
-  const scale = useSharedValue(0.96);
+  const scale = useSharedValue(0.97);
   const opacity = useSharedValue(0);
 
   useEffect(() => {
@@ -41,82 +39,82 @@ export default function VehicleCard({ vehicle, onPress, index = 0 }: Props) {
 
   const handlePressIn = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    scale.value = withSpring(0.97, { damping: 14 });
+    scale.value = withSpring(0.98, { damping: 15 });
   }, []);
 
   const handlePressOut = useCallback(() => {
-    scale.value = withSpring(1, { damping: 14 });
+    scale.value = withSpring(1, { damping: 15 });
   }, []);
 
   const accentColor = getVehicleTypeColor(vehicle.type);
-  const dividerColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)';
+  const rowBorder = isDark ? '#1E1E20' : '#E8E8ED';
   const fuelEmoji = FUEL_EMOJI_MAP[vehicle.fuelType] || '⛽';
 
   return (
-    <AnimatedTouchableOpacity activeOpacity={1} onPress={onPress} onPressIn={handlePressIn} onPressOut={handlePressOut}>
+    <AnimatedTouchableOpacity activeOpacity={0.88} onPress={onPress} onPressIn={handlePressIn} onPressOut={handlePressOut}>
       <Animated.View style={[styles.card, {
         backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF',
+        ...Platform.select({
+          ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: isDark ? 0.3 : 0.06, shadowRadius: 8 },
+          android: { elevation: 2 },
+        }),
       }, cardAnimatedStyle]}>
-        {/* ── Accent border ── */}
+        {/* Accent border strip */}
         <View style={[styles.accentBorder, { backgroundColor: accentColor }]} />
 
-        {/* ── Image Header ── */}
-        <VehicleImageHeader vehicle={vehicle} size="card" imageIndex={index} />
+        {/* Image area */}
+        <View style={[styles.imageWrap, { backgroundColor: `${accentColor}10` }]}>
+          <Image
+            source={{ uri: getVehicleImageUrl(vehicle.type, index) }}
+            style={styles.cardImage}
+            contentFit="cover"
+            cachePolicy="memory-disk"
+            transition={300}
+          />
+          <View style={[styles.statusPill, { backgroundColor: isDark ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.85)' }]}>
+            <View style={[styles.statusDot, { backgroundColor: vehicle.isActive ? '#10B981' : '#94A3B8' }]} />
+            <Text style={[styles.statusText, { color: vehicle.isActive ? '#10B981' : '#94A3B8' }]}>
+              {vehicle.isActive ? 'Active' : 'Inactive'}
+            </Text>
+          </View>
+        </View>
 
-        {/* ── Content ── */}
+        {/* Content */}
         <View style={styles.content}>
-          <View style={styles.header}>
-            <VehicleTypeIcon type={vehicle.type} size={40} />
-            <View style={styles.info}>
+          <View style={styles.headerRow}>
+            <View style={{ flex: 1, gap: 2 }}>
               <Text style={[styles.name, { color: isDark ? '#F8FAFC' : '#1E293B' }]} numberOfLines={1}>{vehicle.name}</Text>
-              <Text style={[styles.type, { color: isDark ? '#94A3B8' : '#6B7280' }]} numberOfLines={1}>{vehicle.make} {vehicle.model} · {vehicle.year}</Text>
-              {vehicle.registrationNumber && (
-                <Text style={[styles.reg, { color: isDark ? '#71717A' : '#9CA3AF' }]} numberOfLines={1}>{vehicle.registrationNumber}</Text>
-              )}
-            </View>
-            <View style={[
-              styles.statusPill,
-              { backgroundColor: vehicle.isActive ? 'rgba(16,185,129,0.1)' : 'rgba(148,163,184,0.08)' }
-            ]}>
-              <View style={[styles.statusDot, { backgroundColor: vehicle.isActive ? '#10B981' : '#94A3B8' }]} />
-              <Text style={[
-                styles.statusText,
-                { color: vehicle.isActive ? '#10B981' : '#94A3B8' }
-              ]} numberOfLines={1}>{vehicle.isActive ? 'Active' : 'Inactive'}</Text>
+              <Text style={[styles.subtitle, { color: isDark ? '#A1A1AA' : '#64748B' }]} numberOfLines={1}>
+                {vehicle.make} {vehicle.model} {String(vehicle.year)}{vehicle.registrationNumber ? `  ${vehicle.registrationNumber}` : ''}
+              </Text>
             </View>
           </View>
 
-          {/* ── Divider ── */}
-          <View style={[styles.divider, { backgroundColor: dividerColor }]} />
+          <View style={[styles.divider, { backgroundColor: rowBorder }]} />
 
-          {/* ── Footer Stats ── */}
           <View style={styles.footer}>
-            <View style={[styles.fuelBadge, { backgroundColor: isDark ? '#27272A' : '#F5F5F5' }]}>
-              <Text style={{ fontSize: 12 }}>{fuelEmoji}</Text>
-              <Text style={[styles.fuelText, { color: isDark ? '#A1A1AA' : '#6B7280', textTransform: 'capitalize' }]}>{vehicle.fuelType}</Text>
+            <View style={[styles.fuelBadge, { backgroundColor: `${accentColor}10` }]}>
+              <Text style={{ fontSize: 11 }}>{fuelEmoji}</Text>
+              <Text style={[styles.fuelText, { color: accentColor, textTransform: 'capitalize' }]}>{vehicle.fuelType}</Text>
             </View>
 
-            {vehicle.mileage && (
-              <View style={styles.statItem}>
-                <Text style={[styles.statValue, { color: isDark ? '#F8FAFC' : '#1E293B' }]}>{vehicle.mileage}</Text>
-                <Text style={[styles.statLabel, { color: isDark ? '#94A3B8' : '#6B7280' }]}>km/l</Text>
-              </View>
-            )}
-
             {vehicle.odometerReading && (
-              <View style={styles.statItem}>
+              <View style={styles.stat}>
                 <Text style={[styles.statValue, { color: isDark ? '#F8FAFC' : '#1E293B' }]}>{formatOdometer(vehicle.odometerReading)}</Text>
+                <Text style={styles.statLabel}>km</Text>
               </View>
             )}
 
-            {/* Compliance badges */}
-            <View style={styles.badges}>
-              {vehicle.insuranceExpiry && (
-                <StatusBadge type="insurance" date={vehicle.insuranceExpiry} compact showDot />
-              )}
-              {vehicle.pucExpiry && (
-                <StatusBadge type="puc" date={vehicle.pucExpiry} compact showDot />
-              )}
+            {vehicle.mileage && (
+              <View style={styles.stat}>
+                <Text style={[styles.statValue, { color: isDark ? '#F8FAFC' : '#1E293B' }]}>{vehicle.mileage}</Text>
+                <Text style={styles.statLabel}>km/l</Text>
+              </View>
+            )}
+
+            <View style={styles.compliance}>
+              {vehicle.insuranceExpiry && <StatusBadge type="insurance" date={vehicle.insuranceExpiry} compact showDot />}
+              {vehicle.pucExpiry && <StatusBadge type="puc" date={vehicle.pucExpiry} compact showDot />}
             </View>
           </View>
         </View>
@@ -127,32 +125,30 @@ export default function VehicleCard({ vehicle, onPress, index = 0 }: Props) {
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 24, overflow: 'hidden', marginBottom: 12,
-    position: 'relative',
-    ...Platform.select({
-      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 12 },
-      android: { elevation: 4 },
-    }),
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginBottom: 10,
   },
-  accentBorder: { position: 'absolute', top: 0, left: 0, right: 0, height: 3, zIndex: 10 },
-  content: { padding: 14, paddingTop: 16 },
-  header: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  info: { flex: 1, minWidth: 0 },
-  name: { fontSize: 15, fontWeight: '700' },
-  type: { fontSize: 12, marginTop: 2 },
-  reg: { fontSize: 11, marginTop: 1, fontFamily: Platform.OS === 'ios' ? 'SF Mono' : 'monospace' },
-  statusPill: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10, gap: 4 },
-  statusDot: { width: 6, height: 6, borderRadius: 3 },
-  statusText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
-  divider: { height: 0.5, marginVertical: 10 },
-  footer: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'nowrap' },
-  fuelBadge: {
+  accentBorder: { position: 'absolute', top: 0, left: 0, right: 0, height: 2, zIndex: 10 },
+  imageWrap: { height: 110, overflow: 'hidden' },
+  cardImage: { width: '100%', height: '100%' },
+  statusPill: {
+    position: 'absolute', top: 8, right: 8,
     flexDirection: 'row', alignItems: 'center', gap: 4,
-    paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12,
+    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12,
   },
-  fuelText: { fontSize: 11, fontWeight: '700' },
-  statItem: { alignItems: 'center', paddingHorizontal: 4 },
-  statValue: { fontSize: 13, fontWeight: '800' },
-  statLabel: { fontSize: 9, fontWeight: '600' },
-  badges: { flexDirection: 'row', gap: 6, marginLeft: 'auto' },
+  statusDot: { width: 5, height: 5, borderRadius: 3 },
+  statusText: { fontSize: 9, fontWeight: '700', letterSpacing: 0.3 },
+  content: { padding: 12, gap: 0 },
+  headerRow: { marginBottom: 4 },
+  name: { fontSize: 15, fontWeight: '700', letterSpacing: -0.2 },
+  subtitle: { fontSize: 12, lineHeight: 16 },
+  divider: { height: 0.5, marginVertical: 10 },
+  footer: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  fuelBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+  fuelText: { fontSize: 10, fontWeight: '700' },
+  stat: { alignItems: 'center', paddingHorizontal: 4 },
+  statValue: { fontSize: 12, fontWeight: '800', lineHeight: 16 },
+  statLabel: { fontSize: 8, color: '#8B8B93', fontWeight: '600' },
+  compliance: { flexDirection: 'row', gap: 5, marginLeft: 'auto' },
 });
