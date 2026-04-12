@@ -7,7 +7,7 @@
     "icon": "./assets/images/icon.png",
     "scheme": "pulsebox",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "ios": {
       "bundleIdentifier": "com.amitzope.pulsebox.dev",
       "supportsTablet": true,
