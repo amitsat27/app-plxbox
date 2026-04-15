@@ -9,7 +9,7 @@ import { Colors, getColorScheme } from '@/theme/color';
 import { useTheme } from '@/theme/themeProvider';
 import { firebaseService } from '@/src/services/FirebaseService';
 import DropdownPicker from './DropdownPicker';
-import { CITIES } from './constants';
+import { CITIES } from '@/src/constants/electric-bills/constants';
 
 export function ConsumerFormModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
   const { isDark } = useTheme();
@@ -86,6 +86,9 @@ export function ConsumerFormModal({ onClose, onCreated }: { onClose: () => void;
     </SafeAreaView>
   );
 }
+
+const ConsumerFormModalExport = ConsumerFormModal;
+export default ConsumerFormModalExport;
 
 const styles = StyleSheet.create({
   screen: { flex: 1, justifyContent: 'flex-end', alignItems: 'center' },

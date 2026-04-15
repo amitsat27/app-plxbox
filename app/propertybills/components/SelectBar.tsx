@@ -48,6 +48,9 @@ export function SelectBar({
   );
 }
 
+const SelectBarExport = SelectBar;
+export default SelectBarExport;
+
 const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',

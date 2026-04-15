@@ -39,6 +39,9 @@ export function NotifBell({ count, onPress }: { count: number; onPress: () => vo
   );
 }
 
+const NotifBellExport = NotifBell;
+export default NotifBellExport;
+
 const styles = StyleSheet.create({
   bell: { padding: 6 },
   badge: {

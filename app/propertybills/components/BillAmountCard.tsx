@@ -49,6 +49,9 @@ export function BillAmountCard({ amount, billYear, payStatus }: {
   );
 }
 
+const BillAmountCardExport = BillAmountCard;
+export default BillAmountCardExport;
+
 const styles = StyleSheet.create({
   card: {
     alignItems: 'center',

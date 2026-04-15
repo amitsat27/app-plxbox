@@ -1,4 +1,3 @@
-/** Shared constants for electric bills */
 import React from 'react';
 import { CheckCircle, Clock, AlertCircle } from 'lucide-react-native';
 

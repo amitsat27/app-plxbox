@@ -22,7 +22,7 @@ import { Spacing, Typography, BorderRadius } from '@/constants/designTokens';
 import { Colors, getColorScheme } from '@/theme/color';
 import { useTheme } from '@/theme/themeProvider';
 import { firebaseService } from '@/src/services/FirebaseService';
-import { markBillForEdit } from './electric-bills/index';
+import { markBillForEdit } from './electric-bills/BillFormModal';
 
 const STATUS_MAP: Record<string, { color: string; bgTint: { light: string; dark: string }; icon: any; text: string }> = {
   Paid: { color: '#10B981', bgTint: { light: 'rgba(16,185,129,0.12)', dark: 'rgba(16,185,129,0.2)' }, icon: CheckCircle, text: 'Paid' },

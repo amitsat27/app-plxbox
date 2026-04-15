@@ -132,6 +132,9 @@ export function PropertyTaxSkeleton({ count = 3 }: { count?: number }) {
   );
 }
 
+const PropertyTaxSkeletonExport = PropertyTaxSkeleton;
+export default PropertyTaxSkeletonExport;
+
 const styles = StyleSheet.create({
   container: {
     paddingHorizontal: Spacing.lg,

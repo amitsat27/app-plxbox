@@ -52,6 +52,9 @@ function TipCard({ tip, isDark, scheme }: { tip: Tip; isDark: boolean; scheme: R
   );
 }
 
+const TipsRowExport = TipsRow;
+export default TipsRowExport;
+
 const styles = StyleSheet.create({
   section: { marginTop: Spacing.sm },
   sectionTitle: {

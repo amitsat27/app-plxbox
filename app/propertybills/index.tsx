@@ -32,7 +32,7 @@ import { EmptyState } from './components/EmptyState';
 import HeroBanner from './components/HeroBanner';
 import AddConsumerModal from './components/AddConsumerModal';
 import AddBillModal from './components/AddBillModal';
-import { buildNotifs, calculateStats, TaxNotif } from './utils/taxUtils';
+import { buildNotifs, calculateStats, TaxNotif } from '@/src/utils/property-tax/taxUtils';
 import { pendingPropertyTaxBillIdRef } from '../property-bill-detail';
 
 export default function PropertyTaxScreen() {

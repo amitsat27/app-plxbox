@@ -1,7 +1,3 @@
-/**
- * Property Tax — utils
- * Shared utilities for the property tax module
- */
 import { PropertyTaxBillEntry } from '@/src/services/FirebaseService';
 
 export interface TaxNotif {

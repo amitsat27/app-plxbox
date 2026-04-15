@@ -35,6 +35,9 @@ export function EmptyState({ icon, title, subtitle, iconColor }: {
   );
 }
 
+const EmptyStateExport = EmptyState;
+export default EmptyStateExport;
+
 const styles = StyleSheet.create({
   title: {
     fontSize: Typography.fontSize.lg,
