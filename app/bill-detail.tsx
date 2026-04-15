@@ -11,13 +11,13 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import * as WebBrowser from 'expo-web-browser';
-import * as Sharing from 'expo-sharing';
-import * as FileSystem from 'expo-file-system';
+import { downloadAsync, cacheDirectory } from 'expo-file-system/legacy';
 import {
   ChevronLeft, Zap, CheckCircle, Clock, AlertCircle,
   CreditCard, MapPin, User, Building2, Phone, Droplets,
-  Edit, Trash2, Share2, Download, Gauge, Calendar, File, ExternalLink
+  Edit, Trash2, Share2, Download, Gauge, Calendar, File as FileIcon, ExternalLink
 } from 'lucide-react-native';
+import * as Sharing from 'expo-sharing';
 import { Spacing, Typography, BorderRadius } from '@/constants/designTokens';
 import { Colors, getColorScheme } from '@/theme/color';
 import { useTheme } from '@/theme/themeProvider';
@@ -53,6 +53,7 @@ function DocumentSection({ url }: { url: string }) {
   const [imageLoading, setImageLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
 
+  const billDocumentURL = url;
   const ext = getExt(url);
   const isImage = !!ext && IMAGE_EXTS.includes(ext);
   const isPdf = ext === 'pdf';
@@ -69,26 +70,31 @@ function DocumentSection({ url }: { url: string }) {
   };
 
   const handleDownload = async () => {
-    if (downloading) return;
+    if (downloading || !billDocumentURL) return;
     setDownloading(true);
     try {
-      // Extract original filename from Firebase Storage path
       const fileExt = getExt(safeUrl) || ext || 'jpeg';
       const pathMatch = safeUrl.match(/documents\/electricBills\/([^?]+)/);
       let baseName = pathMatch ? pathMatch[1] : `bill_${Date.now()}`;
-      // If no extension, add .jpeg
       if (!/\.\w+$/.test(baseName)) baseName += '.jpeg';
-      const localUri = (FileSystem as any).cacheDirectory + baseName;
-      await FileSystem.downloadAsync(safeUrl, localUri);
-      const canShare = await Sharing.isAvailableAsync();
-      if (canShare) {
-        await Sharing.shareAsync(localUri);
+      
+      const localUri = cacheDirectory + baseName;
+      
+      const downloadResult = await downloadAsync(safeUrl, localUri);
+      
+      if (downloadResult.status === 200) {
+        const canShare = await Sharing.isAvailableAsync();
+        if (canShare) {
+          await Sharing.shareAsync(downloadResult.uri, { mimeType: fileExt === 'pdf' ? 'application/pdf' : 'image/jpeg' });
+        } else {
+          Alert.alert('Saved', `File saved to ${downloadResult.uri}`);
+        }
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } else {
-        Alert.alert('Saved', 'File saved to cache');
+        Alert.alert('Failed', 'Could not download file');
       }
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (e: any) {
-      Alert.alert('Failed', e.message);
+      Alert.alert('Download Failed', e.message || 'Unknown error');
     } finally {
       setDownloading(false);
     }
@@ -115,7 +121,7 @@ function DocumentSection({ url }: { url: string }) {
       )}
       {!showImagePreview && !tryImageFirst && (
         <View style={[styles.docPlaceholder, { backgroundColor: isDark ? 'rgba(44,44,46,0.6)' : '#F9FAFB' }]}>
-          <File size={32} color={isPdf ? '#EF4444' : scheme.textTertiary} />
+          <FileIcon size={32} color={isPdf ? '#EF4444' : scheme.textTertiary} />
           <Text style={[styles.docPlaceholderLabel, { color: scheme.textSecondary }]}>
             {ext ? ext.toUpperCase() : 'Document'} File
           </Text>
@@ -211,12 +217,12 @@ export default function BillDetailScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.screen, { backgroundColor: isDark ? '#000000' : '#F2F2F7' }]}>
+    <View style={[styles.screen, { backgroundColor: isDark ? '#000000' : '#F2F2F7' }]}>
       {/* Loading overlay */}
       {loading && <View style={[styles.loadingOverlay, { backgroundColor: isDark ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.7)' }]}><ActivityIndicator size="large" color={Colors.primary} /></View>}
 
       {/* Header */}
-      <View style={[styles.header, { paddingTop: Math.max(insets.top, 4) }]}>
+      <View style={[styles.header, { paddingTop: insets.top }]}>
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
           <ChevronLeft size={24} color={scheme.textPrimary} />
         </TouchableOpacity>
@@ -288,7 +294,7 @@ export default function BillDetailScreen() {
           <Text style={[styles.shareText, { color: Colors.primary }]}>Share Bill Details</Text>
         </TouchableOpacity>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -307,7 +313,7 @@ function DetailRow({ icon, label, value, scheme, isDark, accent }: {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1 },
+  screen: { flex: 1, paddingBottom: 34 },
   loadingOverlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', zIndex: 100 },
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.lg, paddingBottom: Spacing.md, justifyContent: 'space-between' },
   backBtn: { padding: 4 },

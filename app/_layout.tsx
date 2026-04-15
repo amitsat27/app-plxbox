@@ -1,85 +1,56 @@
-// 🌐 Root Layout - Expo Router Entry Point
+// Root Layout - Expo Router Entry Point
 // Wraps the entire app with providers and handles auth-based routing
 
 import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
-import { AlertTriangle } from "lucide-react-native";
+import { AlertTriangle, RefreshCw } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
-import {
-  Alert,
-  Platform,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Alert, Animated, Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { MD3LightTheme, PaperProvider } from "react-native-paper";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import ErrorBoundary from "../components/ErrorBoundary";
 import { OfflineBanner } from "../components/OfflineBanner";
 import SplashScreenContent from "../components/ui/SplashScreen";
-import { Spacing } from "../constants/designTokens";
+import { Spacing, Typography, BorderRadius } from "../constants/designTokens";
 import { AuthProvider, useAuth } from "../src/context/AuthContext";
 import { NetworkProvider } from "../src/context/NetworkContext";
 import { NotificationProvider } from "../src/context/NotificationContext";
 import { useUIStore } from "../src/stores/uiStore";
-import { Colors } from "../theme/color";
+import { Colors, getColorScheme } from "../theme/color";
 import { ThemeProvider } from "../theme/themeProvider";
-
-// 🌌 Cosmic Sunset Theme - Premium 2025 Design
-// Dynamic theme that switches between light/dark with gorgeous gradients
 
 const getPaperTheme = (isDark: boolean) => ({
   ...MD3LightTheme,
   dark: isDark,
   roundness: 16,
   colors: {
-    // Primary brand colors
     primary: Colors.primary,
     onPrimary: Colors.onPrimary,
     primaryContainer: Colors.primaryContainer,
     onPrimaryContainer: Colors.onPrimaryContainer,
-
-    // Secondary
     secondary: Colors.secondary,
     onSecondary: Colors.onSecondary,
     secondaryContainer: Colors.secondaryContainer,
     onSecondaryContainer: Colors.onSecondaryContainer,
-
-    // Tertiary accent
     tertiary: Colors.tertiary,
     onTertiary: Colors.onTertiary,
     tertiaryContainer: Colors.tertiaryContainer,
     onTertiaryContainer: Colors.onTertiaryContainer,
-
-    // Surface & background (glass-ready)
     background: isDark ? Colors.backgroundDark : Colors.backgroundLight,
     surface: isDark ? Colors.surfaceDark : Colors.surfaceLight,
     surfaceVariant: isDark ? Colors.surfaceVariant : Colors.surfaceVariantLight,
     onSurface: isDark ? Colors.onSurfaceDark : Colors.onSurface,
-    onSurfaceVariant: isDark
-      ? Colors.onSurfaceVariantDark
-      : Colors.onSurfaceVariant,
+    onSurfaceVariant: isDark ? Colors.onSurfaceVariantDark : Colors.onSurfaceVariant,
     surfaceDisabled: "rgba(124, 58, 237, 0.05)",
     onSurfaceDisabled: Colors.textDisabled,
-
-    // Error
     error: Colors.error,
     onError: Colors.onError,
     errorContainer: Colors.errorContainer,
     onErrorContainer: Colors.onErrorContainer,
-
-    // Text hierarchy (ensuring high contrast)
     outline: isDark ? Colors.borderDark : Colors.border,
-    outlineVariant: isDark
-      ? "rgba(167, 139, 250, 0.3)"
-      : "rgba(124, 58, 237, 0.15)",
-
-    // Backdrop for modals
+    outlineVariant: isDark ? "rgba(167, 139, 250, 0.3)" : "rgba(124, 58, 237, 0.15)",
     backdrop: isDark ? "rgba(10, 10, 20, 0.8)" : "rgba(248, 250, 252, 0.6)",
-
-    // Elevated surfaces (app bars, cards)
     elevation: {
       level0: isDark ? Colors.surfaceDark : Colors.surfaceLight,
       level1: isDark ? "rgba(30, 30, 60, 0.8)" : "rgba(255, 255, 255, 0.8)",
@@ -91,8 +62,6 @@ const getPaperTheme = (isDark: boolean) => ({
   },
 });
 
-// Track whether we successfully prevented the native splash
-// In dev builds without native splash config, preventAutoHideAsync throws
 let splashPrevented = false;
 
 async function tryPreventSplashHide() {
@@ -101,8 +70,6 @@ async function tryPreventSplashHide() {
     await SplashScreen.preventAutoHideAsync();
     splashPrevented = true;
   } catch (err: any) {
-    // In dev builds on iOS without expo-splash-screen native module registered,
-    // this throws "No native splash screen registered". Safe to ignore.
     if (!err.message?.includes('No native splash screen registered')) {
       console.warn('Splash screen error:', err.message);
     }
@@ -115,119 +82,132 @@ async function tryHideSplash() {
     await SplashScreen.hideAsync();
     splashPrevented = false;
   } catch (err: any) {
-    // Silently suppress if native splash was never registered
     if (!err.message?.includes('No native splash screen registered')) {
       console.warn('Hide splash error:', err.message);
     }
   }
 }
 
-// Main layout with auth-based navigation and splash screen control
+function ErrorScreen({ message, onRetry }: { message?: string; onRetry?: () => void }) {
+  const { isDarkMode } = useUIStore();
+  const scheme = getColorScheme(isDarkMode);
+  const fadeAnim = new Animated.Value(0);
+  const scaleAnim = new Animated.Value(0.9);
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }),
+      Animated.spring(scaleAnim, { toValue: 1, damping: 15, stiffness: 150, useNativeDriver: true }),
+    ]).start();
+  }, []);
+
+  return (
+    <View style={[styles.errorContainer, { backgroundColor: isDarkMode ? "#0A0A0F" : "#F8F9FC" }]}>
+      <Animated.View
+        style={[
+          styles.errorCard,
+          {
+            backgroundColor: isDarkMode ? "#1C1C2E" : "#FFFFFF",
+            opacity: fadeAnim,
+            transform: [{ scale: scaleAnim }],
+          },
+        ]}
+      >
+        <View style={[styles.errorIconContainer, { backgroundColor: "rgba(239, 68, 68, 0.1)" }]}>
+          <AlertTriangle size={48} color={Colors.error} strokeWidth={1.5} />
+        </View>
+
+        <Text style={[styles.errorTitle, { color: scheme.textPrimary }]}>
+          Initialization Failed
+        </Text>
+
+        <Text style={[styles.errorMessage, { color: scheme.textSecondary }]}>
+          {message || "Unable to connect to Firebase. Please check your internet connection and try again."}
+        </Text>
+
+        <View style={styles.errorActions}>
+          <TouchableOpacity
+            style={[styles.retryButton, { backgroundColor: Colors.primary }]}
+            onPress={onRetry}
+            activeOpacity={0.8}
+          >
+            <RefreshCw size={18} color="#FFFFFF" />
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+
+        <Text style={[styles.errorHint, { color: scheme.textTertiary }]}>
+          If the problem persists, restart the app or contact support.
+        </Text>
+      </Animated.View>
+
+      <View style={styles.errorBrand}>
+        <Text style={[styles.errorBrandText, { color: scheme.textTertiary }]}>Powered by Pulsebox</Text>
+      </View>
+    </View>
+  );
+}
+
 function MainLayout() {
-  const { user, loading, login, initError } = useAuth();
+  const { user, loading, initError } = useAuth();
   const segments = useSegments();
   const router = useRouter();
   const [appIsReady, setAppIsReady] = useState(false);
+  const { isDarkMode } = useUIStore();
+  const scheme = getColorScheme(isDarkMode);
 
-  // Prevent splash screen from auto-hiding
   useEffect(() => {
     async function prepare() {
       try {
         await tryPreventSplashHide();
-
-        // Wait for Firebase to be ready (AuthContext handles this)
-        // Additional delay for smooth visual effect
         await new Promise((resolve) => setTimeout(resolve, 1500));
-
         setAppIsReady(true);
       } catch {
         setAppIsReady(true);
       }
     }
-
     prepare();
   }, []);
 
-  // Handle redirection based on auth state
   useEffect(() => {
     if (loading || !appIsReady) return;
 
     const inAuthGroup = segments[0] === "login";
 
     if (!user && !inAuthGroup) {
-      // Not authenticated and not on login → go to login
-      // Use a small delay to ensure router is ready
-      setTimeout(() => {
-        router.replace("/login");
-      }, 100);
+      setTimeout(() => router.replace("/login"), 100);
     } else if (user && inAuthGroup) {
-      // Authenticated but on login → go to home
-      setTimeout(() => {
-        router.replace("/");
-      }, 100);
+      setTimeout(() => router.replace("/"), 100);
     }
 
-    // Hide splash screen with fade animation when everything is ready
     if (appIsReady && !loading) {
       tryHideSplash();
     }
   }, [user, loading, segments, router, appIsReady]);
 
-  // Show Firebase initialization error if present (after splash)
   if (initError && !loading && appIsReady) {
-    return (
-      <View
-        style={[styles.container, { backgroundColor: Colors.backgroundDark }]}
-      >
-        <View style={styles.errorContent}>
-          <AlertTriangle size={64} color={Colors.error} />
-          <Text style={[styles.errorTitle, { color: Colors.textPrimary }]}>
-            Initialization Failed
-          </Text>
-          <Text style={[styles.errorMessage, { color: Colors.textSecondary }]}>
-            {initError.message ||
-              "Failed to initialize Firebase. Please check your configuration and restart the app."}
-          </Text>
-          <TouchableOpacity
-            style={[styles.retryButton, { backgroundColor: Colors.primary }]}
-            onPress={() => {
-              // Reload the app to retry initialization
-              if (Platform.OS === "web") {
-                window.location.reload();
-              } else {
-                // In native, use expo-updates if available
-                // For now, just show message
-                Alert.alert(
-                  "Restart Required",
-                  "Please close and reopen the app.",
-                );
-              }
-            }}
-          >
-            <Text style={styles.retryButtonText}>Restart App</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
+    return <ErrorScreen message={initError.message} />;
   }
 
-  // Show custom splash content while app is preparing
   if (!appIsReady) {
     return <SplashScreenContent />;
   }
 
-  // Render the appropriate screens
   return (
-    <Stack screenOptions={{ headerShown: false }}>
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        animation: "slide_from_right",
+        animationDuration: 250,
+        gestureEnabled: true,
+        contentStyle: {
+          backgroundColor: scheme.background,
+        },
+      }}
+    >
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen name="login" options={{ headerShown: false }} />
-      <Stack.Screen
-        name="settings"
-        options={{
-          headerShown: false,
-          presentation: "card",
-        }}
-      />
+      <Stack.Screen name="login" options={{ headerShown: false, animation: "fade" }} />
+      <Stack.Screen name="settings" options={{ presentation: "card", headerShown: false }} />
       <Stack.Screen name="bills" options={{ presentation: "card" }} />
       <Stack.Screen name="category-screen" options={{ presentation: "card" }} />
       <Stack.Screen name="vehicles" options={{ presentation: "card" }} />
@@ -236,24 +216,25 @@ function MainLayout() {
       <Stack.Screen name="add-appliance" options={{ presentation: "modal", headerShown: false }} />
       <Stack.Screen name="add-service-record" options={{ presentation: "card" }} />
       <Stack.Screen name="service-record-detail" options={{ presentation: "card", headerShown: false }} />
-      <Stack.Screen name="reports" options={{ presentation: "card" }} />
-      <Stack.Screen name="bill-detail" options={{ presentation: "card" }} />
-      <Stack.Screen name="wifibills/WifiBillDetailScreen" options={{ presentation: "card", headerShown: false }} />
-      {__DEV__ && (
-        <Stack.Screen name="debug" options={{ headerShown: false }} />
-      )}
+      <Stack.Screen name="manage-notifications" options={{ presentation: "modal", headerShown: false }} />
+      <Stack.Screen name="profile" options={{ presentation: "card", headerShown: false }} />
+      <Stack.Screen name="app-info" options={{ presentation: "card", headerShown: false }} />
+      {__DEV__ && <Stack.Screen name="debug" options={{ headerShown: false }} />}
     </Stack>
   );
 }
 
-//Dynamic wrapper that connects theme to UI store
 function ThemedApp({ children }: { children: React.ReactNode }) {
   const { isDarkMode } = useUIStore();
   const theme = getPaperTheme(isDarkMode);
 
   return (
     <PaperProvider theme={theme}>
-      <StatusBar style={isDarkMode ? "light" : "dark"} />
+      <StatusBar 
+        style={isDarkMode ? "light" : "dark"} 
+        translucent
+        backgroundColor="transparent"
+      />
       {children}
     </PaperProvider>
   );
@@ -281,46 +262,92 @@ export default function RootLayout() {
 }
 
 const styles = StyleSheet.create({
-  container: {
+  errorContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    padding: Spacing.lg,
+    padding: Spacing.xl,
   },
-  errorContent: {
-    alignItems: "center",
-    maxWidth: 400,
+  errorCard: {
     width: "100%",
+    maxWidth: 360,
+    borderRadius: BorderRadius.card,
+    padding: Spacing.xxl,
+    alignItems: "center",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.12,
+        shadowRadius: 24,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
+  },
+  errorIconContainer: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: Spacing.xl,
   },
   errorTitle: {
-    fontSize: 24,
+    fontSize: Typography.fontSize.xxl,
     fontWeight: "700",
+    letterSpacing: -0.5,
     textAlign: "center",
-    marginTop: Spacing.lg,
     marginBottom: Spacing.md,
   },
   errorMessage: {
-    fontSize: 16,
+    fontSize: Typography.fontSize.sm,
     textAlign: "center",
-    lineHeight: 24,
+    lineHeight: 22,
     marginBottom: Spacing.xl,
   },
+  errorActions: {
+    width: "100%",
+    marginBottom: Spacing.lg,
+  },
   retryButton: {
-    paddingVertical: Spacing.md,
-    paddingHorizontal: Spacing.xl,
-    borderRadius: 12,
-    minHeight: 50,
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    gap: Spacing.sm,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.xxl,
+    borderRadius: BorderRadius.button,
+    ...Platform.select({
+      ios: {
+        shadowColor: Colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
   retryButtonText: {
     color: "#FFFFFF",
-    fontSize: 17,
+    fontSize: Typography.fontSize.md,
     fontWeight: "600",
+    letterSpacing: 0.2,
   },
-  splashContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
+  errorHint: {
+    fontSize: Typography.fontSize.xs,
+    textAlign: "center",
+    lineHeight: 16,
+  },
+  errorBrand: {
+    position: "absolute",
+    bottom: Spacing.xxl,
+  },
+  errorBrandText: {
+    fontSize: Typography.fontSize.xs,
+    fontWeight: "500",
   },
 });

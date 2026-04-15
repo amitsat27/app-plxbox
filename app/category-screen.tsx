@@ -46,8 +46,8 @@ export default function CategoryScreen() {
   if (loading) return <View style={[styles.center, { backgroundColor: isDark ? '#000' : '#F2F2F7' }]}><ActivityIndicator size="large" color={Colors.primary} /></View>;
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: isDark ? '#000' : '#F2F2F7' }]}>
-      <View style={[styles.header, { paddingTop: Math.max(insets.top, 4) }]}>
+    <View style={[styles.container, { backgroundColor: isDark ? '#000' : '#F2F2F7' }]}>
+      <View style={[styles.header, { paddingTop: insets.top }]}>
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
           <ChevronLeft size={24} color={scheme.textPrimary} />
         </TouchableOpacity>
@@ -76,12 +76,12 @@ export default function CategoryScreen() {
         ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
         ListEmptyComponent={<Text style={[styles.empty, { color: scheme.textTertiary }]}>No {title.toLowerCase()} found.</Text>}
       />
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: { flex: 1, paddingBottom: 34 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   header: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.md },
   backBtn: { alignSelf: 'flex-start', padding: 4, marginBottom: 4 },

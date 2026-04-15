@@ -4,16 +4,18 @@
  * Senior iOS Design patterns applied with Advanced Theme System
  */
 
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { BorderRadius, Spacing, Typography } from "@/constants/designTokens";
 import { useAuth } from "@/src/context/AuthContext";
 import { Colors, getColorScheme } from "@/theme/color";
 import { useTheme } from "@/theme/themeProvider";
 import { BlurView } from "expo-blur";
 import { useRouter } from "expo-router";
-import { ChevronLeft, LogOut, Monitor, Moon, Sun } from "lucide-react-native";
-import React, { useState } from "react";
+import { Bell, BellOff, ChevronLeft, LogOut, Monitor, Moon, Sun } from "lucide-react-native";
+import React, { useEffect, useState } from "react";
 import {
     ActivityIndicator,
+    Alert,
     Platform,
     ScrollView,
     StyleSheet,
@@ -23,6 +25,7 @@ import {
     View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import * as Notifications from "expo-notifications";
 
 type ThemeMode = "light" | "dark" | "auto";
 
@@ -145,6 +148,84 @@ export default function SettingsScreen() {
   const scheme = getColorScheme(isDark);
   const [selectedTheme, setSelectedTheme] = useState<ThemeMode>(mode);
   const [loggingOut, setLoggingOut] = useState(false);
+  
+  // Notification settings
+  const [notifyBills, setNotifyBills] = useState(true);
+  const [notifyDue, setNotifyDue] = useState(true);
+  const [notifyReminders, setNotifyReminders] = useState(true);
+  const [notifySound, setNotifySound] = useState(true);
+
+  // Load notification settings from storage
+  useEffect(() => {
+    loadNotificationSettings();
+  }, []);
+
+  const loadNotificationSettings = async () => {
+    try {
+      const settings = await AsyncStorage.getItem("notification_settings");
+      if (settings) {
+        const parsed = JSON.parse(settings);
+        setNotifyBills(parsed.notifyBills ?? true);
+        setNotifyDue(parsed.notifyDue ?? true);
+        setNotifyReminders(parsed.notifyReminders ?? true);
+        setNotifySound(parsed.notifySound ?? true);
+      }
+    } catch (error) {
+      console.error("Failed to load notification settings:", error);
+    }
+  };
+
+  const saveNotificationSettings = async (key: string, value: boolean) => {
+    try {
+      const settings = {
+        notifyBills,
+        notifyDue,
+        notifyReminders,
+        notifySound,
+        [key]: value,
+      };
+      await AsyncStorage.setItem("notification_settings", JSON.stringify(settings));
+    } catch (error) {
+      console.error("Failed to save notification settings:", error);
+    }
+  };
+
+  const handleNotifyBillsChange = async (value: boolean) => {
+    setNotifyBills(value);
+    await saveNotificationSettings("notifyBills", value);
+  };
+
+  const handleNotifyDueChange = async (value: boolean) => {
+    setNotifyDue(value);
+    await saveNotificationSettings("notifyDue", value);
+  };
+
+  const handleNotifyRemindersChange = async (value: boolean) => {
+    setNotifyReminders(value);
+    await saveNotificationSettings("notifyReminders", value);
+  };
+
+  const handleNotifySoundChange = async (value: boolean) => {
+    setNotifySound(value);
+    await saveNotificationSettings("notifySound", value);
+  };
+
+  const requestNotificationPermissions = async () => {
+    try {
+      const { status } = await Notifications.requestPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert(
+          "Permissions Required",
+          "Please enable notifications in your device settings to receive alerts."
+        );
+        return false;
+      }
+      return true;
+    } catch (error) {
+      console.error("Failed to request notification permissions:", error);
+      return false;
+    }
+  };
 
   const handleThemeChange = async (newMode: ThemeMode) => {
     try {
@@ -171,10 +252,11 @@ export default function SettingsScreen() {
       style={[
         styles.container,
         {
+          paddingTop: 0,
           backgroundColor: theme.surface.primary,
         },
       ]}
-      edges={["bottom"]}
+      edges={["left", "right", "bottom"]}
     >
       {/* Header */}
       <BlurView intensity={isDark ? 40 : 20} style={styles.headerBlur}>
@@ -279,6 +361,51 @@ export default function SettingsScreen() {
             toggle
             toggleValue={false}
             onToggle={() => {}}
+          />
+        </SettingSection>
+
+        {/* Notification Settings */}
+        <SettingSection title="NOTIFICATIONS">
+          <SettingRow
+            icon={<Bell size={20} color={theme.brand.primary} />}
+            label="Bill Reminders"
+            sublabel="Get notified about upcoming bills"
+            toggle
+            toggleValue={notifyBills}
+            onToggle={(value) => {
+              if (value) requestNotificationPermissions();
+              handleNotifyBillsChange(value);
+            }}
+          />
+          <SettingRow
+            icon={<BellOff size={20} color={theme.brand.primary} />}
+            label="Due Date Alerts"
+            sublabel="Alerts for overdue payments"
+            toggle
+            toggleValue={notifyDue}
+            onToggle={(value) => {
+              if (value) requestNotificationPermissions();
+              handleNotifyDueChange(value);
+            }}
+          />
+          <SettingRow
+            icon={<Bell size={20} color={theme.brand.primary} />}
+            label="Payment Reminders"
+            sublabel="Reminders before payment due"
+            toggle
+            toggleValue={notifyReminders}
+            onToggle={(value) => {
+              if (value) requestNotificationPermissions();
+              handleNotifyRemindersChange(value);
+            }}
+          />
+          <SettingRow
+            icon={<Bell size={20} color={theme.brand.primary} />}
+            label="Sound"
+            sublabel="Play sound with notifications"
+            toggle
+            toggleValue={notifySound}
+            onToggle={handleNotifySoundChange}
           />
         </SettingSection>
 

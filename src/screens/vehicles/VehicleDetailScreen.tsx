@@ -327,7 +327,7 @@ export default function VehicleDetailScreen() {
         { backgroundColor: isDark ? "#050510" : "#F8FAFC" },
       ]}
     >
-      <SafeAreaView style={{ flex: 1, paddingTop: Math.max(insets.top, 8) }}>
+      <View style={{ flex: 1, paddingTop: insets.top }}>
         {/* ── Sticky Header ── */}
         <Animated.View
           style={[
@@ -664,7 +664,7 @@ export default function VehicleDetailScreen() {
             />
           </View>
         </Animated.ScrollView>
-      </SafeAreaView>
+      </View>
 
       {/* ── Modals ── */}
       <ComplianceEditModal

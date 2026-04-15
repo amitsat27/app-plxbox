@@ -142,7 +142,7 @@ export default function DebugScreen() {
       {/* Footer */}
       <View style={[styles.footer, { backgroundColor: isDark ? 'rgba(28,28,30,0.8)' : 'rgba(243,243,245,0.8)' }]}>
         <Text style={[styles.footerText, { color: Colors.textTertiary }]}>
-          Logs are automatically saved to your device. Use "Share" to export via email/message.
+          Logs are automatically saved to your device. Use &quot;Share&quot; to export via email/message.
         </Text>
       </View>
     </SafeAreaView>

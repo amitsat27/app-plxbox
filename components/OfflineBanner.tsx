@@ -17,7 +17,7 @@ export const OfflineBanner: React.FC = () => {
     <View style={styles.container}>
       <View style={styles.content}>
         <WifiOff size={16} color="#FFFFFF" />
-        <Text style={styles.text}>You're offline. Some features may be limited.</Text>
+        <Text style={styles.text}>You&apos;re offline. Some features may be limited.</Text>
       </View>
     </View>
   );

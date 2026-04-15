@@ -173,10 +173,10 @@ export default function PropertyTaxScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.screen, { backgroundColor: isDark ? '#000' : '#F2F2F7' }]}>
+    <View style={[styles.screen, { backgroundColor: isDark ? '#000' : '#F2F2F7' }]}>
 
       {/* ─── Header ─── */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top }]}>
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} activeOpacity={0.6}>
           <ChevronLeft size={24} color={scheme.textPrimary} />
         </TouchableOpacity>
@@ -395,7 +395,7 @@ export default function PropertyTaxScreen() {
       </Modal>
 
       <NotifPanel visible={showNotifs} onClose={() => setShowNotifs(false)} notifs={notifications} />
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -415,7 +415,7 @@ function InfoItem({ icon, label, value, scheme, isDark }: {
 
 /* ─── Styles ─── */
 const styles = StyleSheet.create({
-  screen: { flex: 1 },
+  screen: { flex: 1, paddingBottom: 34 },
   header: {
     flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: Spacing.lg,

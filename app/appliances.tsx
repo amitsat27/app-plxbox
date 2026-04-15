@@ -18,13 +18,13 @@ import {
   Keyboard,
   ScrollView,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/src/context/AuthContext';
 import { useTheme } from '@/theme/themeProvider';
-import { getColorScheme } from '@/theme/color';
+import { getColorScheme, Colors } from '@/theme/color';
 import { Spacing, BorderRadius } from '@/constants/designTokens';
-import { ChevronLeft, Plus, Search, X, MapPin, ArrowUpDown, ArrowUpAZ, ArrowDownAZ } from 'lucide-react-native';
+import { ChevronLeft, Plus, Search, X, MapPin, ArrowUpDown, ArrowUpAZ, ArrowDownAZ, Tv } from 'lucide-react-native';
 import { useApplianceData } from '@/src/hooks/useApplianceData';
 import type { ServiceRecord } from '@/src/types';
 
@@ -33,6 +33,7 @@ import ApplianceSummaryCard from '@/components/appliances/ApplianceSummaryCard';
 import SmartInsightsSection from '@/components/appliances/SmartInsightsSection';
 import CategoryFilterRow from '@/components/appliances/CategoryFilterRow';
 import ShimmerCard from '@/components/appliances/ShimmerCard';
+import SectionHeroBanner from '@/components/SectionHeroBanner';
 
 const LOCATIONS = ['all', 'pune', 'nashik', 'jalgaon', 'other'];
 
@@ -49,6 +50,7 @@ const SORT_OPTIONS: { key: SortOption; label: string; Icon: React.ComponentType<
 
 export default function AppliancesScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { isDark } = useTheme();
   const scheme = getColorScheme(isDark);
@@ -211,6 +213,14 @@ export default function AppliancesScreen() {
 
   const renderListHeader = () => (
     <>
+      <SectionHeroBanner
+        title="Appliances"
+        subtitle="Track your home appliances"
+        stats={{ total: appliances.length, active: stats.active }}
+        icon={<Tv size={22} color={Colors.primary} />}
+        countLabel="appliance"
+      />
+
       <ApplianceSummaryCard
         stats={{
           total: stats.total,
@@ -255,7 +265,7 @@ export default function AppliancesScreen() {
   return (
     <View style={[styles.container, { backgroundColor: scheme.background }]}>
       {/* Header */}
-      <View style={[styles.header, { paddingTop: 4 }]}>
+      <View style={[styles.header, { paddingTop: insets.top }]}>
         <View style={styles.headerTop}>
           <TouchableOpacity
             style={styles.backBtn}

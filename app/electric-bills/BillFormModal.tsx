@@ -4,8 +4,9 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { X, Upload, Camera } from 'lucide-react-native';
+import { X, Upload, Camera, FileText } from 'lucide-react-native';
 import { Spacing, Typography, BorderRadius } from '@/constants/designTokens';
 import { Colors, getColorScheme } from '@/theme/color';
 import { useTheme } from '@/theme/themeProvider';
@@ -99,6 +100,23 @@ export function BillFormModal({ bill, city, consumerNumber, onClose, onSave }: {
     }
   };
 
+  const pickDocument = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: 'application/pdf',
+        copyToCacheDirectory: true,
+      });
+      if (result.assets && result.assets[0]?.uri) {
+        setFileUri(result.assets[0].uri);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+    } catch (e: any) {
+      if (e.code !== 'DOCUMENT_PICKER_CANCELED') {
+        Alert.alert('Error', 'Failed to pick document');
+      }
+    }
+  };
+
   return (
     <View style={[styles.screen, { paddingTop: Math.max(insets.top, Spacing.xl), paddingBottom: Math.max(insets.bottom, Spacing.md) }]}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={insets.top}>
@@ -143,7 +161,16 @@ export function BillFormModal({ bill, city, consumerNumber, onClose, onSave }: {
             </View>
 
             <Text style={[styles.label, { color: scheme.textTertiary }]}>Due Date</Text>
-            <DateTimePicker value={dueDate} mode="date" display={Platform.OS === 'ios' ? 'spinner' : 'default'} onChange={(_, d) => d && setDueDate(d)} />
+            <View style={[styles.datePickerContainer, { backgroundColor: isDark ? '#2C2C2E' : '#F3F4F6', borderColor: scheme.border }]}>
+              <DateTimePicker 
+                value={dueDate} 
+                mode="date" 
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'} 
+                onChange={(_, d) => d && setDueDate(d)}
+                style={styles.datePicker}
+                textColor={scheme.textPrimary}
+              />
+            </View>
 
             <Text style={[styles.label, { color: scheme.textTertiary }]}>Payment Status</Text>
             <View style={styles.chipRow}>
@@ -164,14 +191,18 @@ export function BillFormModal({ bill, city, consumerNumber, onClose, onSave }: {
             </View>
 
             <Text style={[styles.label, { color: scheme.textTertiary }]}>Bill Document</Text>
-            <View style={styles.row2}>
+            <View style={styles.uploadRow}>
               <TouchableOpacity style={[styles.uploadBtn, { borderColor: scheme.border, backgroundColor: isDark ? 'rgba(44,44,46,0.6)' : '#F3F4F6' }]} onPress={takePhoto}>
                 <Camera size={20} color={Colors.primary} />
-                <Text style={[styles.uploadText, { color: Colors.primary }]}>Photo</Text>
+                <Text style={[styles.uploadText, { color: Colors.primary }]}>Camera</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[styles.uploadBtn, { borderColor: scheme.border, backgroundColor: isDark ? 'rgba(44,44,46,0.6)' : '#F3F4F6' }]} onPress={pickFile}>
                 <Upload size={20} color={Colors.primary} />
                 <Text style={[styles.uploadText, { color: Colors.primary }]}>{fileUri ? 'Changed' : 'Gallery'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.uploadBtn, { borderColor: scheme.border, backgroundColor: isDark ? 'rgba(44,44,46,0.6)' : '#F3F4F6' }]} onPress={pickDocument}>
+                <FileText size={20} color={Colors.primary} />
+                <Text style={[styles.uploadText, { color: Colors.primary }]}>PDF/Files</Text>
               </TouchableOpacity>
             </View>
             {fileUri && <Text style={{ color: '#10B981', fontSize: Typography.fontSize.xs, marginTop: 4, textAlign: 'center' }}>File selected</Text>}
@@ -208,7 +239,10 @@ const styles = StyleSheet.create({
   chipRow: { flexDirection: 'row', gap: Spacing.xs, marginBottom: Spacing.md },
   chip: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.md, paddingVertical: Spacing.xs, borderRadius: BorderRadius.pill, minHeight: 34 },
   chipText: { fontSize: Typography.fontSize.sm, fontWeight: '600' },
-  uploadBtn: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, borderRadius: BorderRadius.md, padding: Spacing.lg, justifyContent: 'center', borderWidth: 1, borderStyle: 'dashed' },
+  datePickerContainer: { borderRadius: BorderRadius.md, borderWidth: 1, marginBottom: Spacing.md, overflow: 'hidden' },
+  datePicker: { height: 50 },
+  uploadBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, borderRadius: BorderRadius.md, padding: Spacing.md, justifyContent: 'center', borderWidth: 1, borderStyle: 'dashed' },
+  uploadRow: { flexDirection: 'row', gap: Spacing.sm },
   uploadText: { fontSize: Typography.fontSize.sm, fontWeight: '500' },
   submit: { borderRadius: BorderRadius.md, paddingVertical: Spacing.md + 2, justifyContent: 'center', alignItems: 'center', minHeight: 52, marginTop: Spacing.md },
   submitText: { color: '#FFFFFF', fontSize: Typography.fontSize.lg, fontWeight: '700' },

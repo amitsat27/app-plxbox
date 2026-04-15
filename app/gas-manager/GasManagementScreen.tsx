@@ -31,6 +31,7 @@ import GasInfoSection from './GasInfoSection';
 import GasTips from './GasTips';
 import { markGasBillForEdit, pendingEdit } from './GasBillDetailScreen';
 import { ArrowUpNarrowWide, ArrowDownWideNarrow } from 'lucide-react-native';
+import SectionHeroBanner from '@/components/SectionHeroBanner';
 
 const CITIES = ['pune', 'nashik'];
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -203,9 +204,9 @@ export default function GasManagementScreen() {
   const onBillSaved = () => { setShowBillModal(false); setEditingBill(null); };
 
   return (
-    <SafeAreaView style={[styles.screen, { backgroundColor: isDark ? '#000000' : '#F2F2F7' }]}>
+    <View style={[styles.screen, { backgroundColor: isDark ? '#000000' : '#F2F2F7' }]}>
       {/* Header */}
-      <View style={[styles.header, { paddingTop: Math.max(insets.top, 8) }]}>
+      <View style={[styles.header, { paddingTop: insets.top }]}>
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
           <ChevronLeft size={24} color={scheme.textPrimary} />
         </TouchableOpacity>
@@ -216,6 +217,15 @@ export default function GasManagementScreen() {
           <Text style={[styles.headerTitle, { color: scheme.textPrimary }]}>Gas (MNGL)</Text>
         </View>
       </View>
+
+      {/* Hero Banner */}
+      <SectionHeroBanner
+        title="Gas (MNGL)"
+        subtitle="Manage your gas bills"
+        stats={{ billCount: bills.length, paid: stats.paid, pending: stats.pending }}
+        icon={<Flame size={22} color={Colors.primary} />}
+        countLabel="bill"
+      />
 
       {/* Content */}
       <ScrollView
@@ -412,7 +422,7 @@ export default function GasManagementScreen() {
           }}
         />
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -641,7 +651,7 @@ function BillFormModal({
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1 },
+  screen: { flex: 1, paddingBottom: 34 },
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.lg, paddingBottom: Spacing.md },
   backBtn: { padding: 4, marginRight: Spacing.sm },
   headerRight: { flex: 1 },
