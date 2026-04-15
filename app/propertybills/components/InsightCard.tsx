@@ -132,6 +132,9 @@ export function InsightCard() {
   );
 }
 
+const InsightCardExport = InsightCard;
+export default InsightCardExport;
+
 const styles = StyleSheet.create({
   section: {
     marginTop: Spacing.sm,

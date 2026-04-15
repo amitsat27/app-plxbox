@@ -11,7 +11,13 @@ import { Colors, getColorScheme } from '@/theme/color';
 import { useTheme } from '@/theme/themeProvider';
 import { firebaseService, type ElectricBillEntry, type ElectricBillInput } from '@/src/services/FirebaseService';
 import DropdownPicker from './DropdownPicker';
-import { MONTHS, YEARS, STATUS_CONFIG } from './constants';
+import { MONTHS, YEARS, STATUS_CONFIG } from '@/src/constants/electric-bills/constants';
+
+export const pendingEditBillIdRef = { current: '' as string };
+
+export function markBillForEdit(id: string) {
+  pendingEditBillIdRef.current = id;
+}
 
 export function BillFormModal({ bill, city, consumerNumber, onClose, onSave }: {
   bill: ElectricBillEntry | null; city: string; consumerNumber?: string;
@@ -179,6 +185,9 @@ export function BillFormModal({ bill, city, consumerNumber, onClose, onSave }: {
     </View>
   );
 }
+
+const BillFormModalExport = BillFormModal;
+export default BillFormModalExport;
 
 function TextInputField({ value, onChangeText, keyboardType, placeholder, editable = true }: any) {
   const { isDark } = useTheme();

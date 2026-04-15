@@ -41,6 +41,9 @@ export function BillInfoCard({ title, children }: { title: string; children: Rea
   );
 }
 
+const BillInfoCardExport = BillInfoCard;
+export default BillInfoCardExport;
+
 export { DetailRow };
 
 const styles = StyleSheet.create({

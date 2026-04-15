@@ -115,6 +115,9 @@ export function NotifPanel({ visible, onClose, notifs }: {
   );
 }
 
+const NotifPanelExport = NotifPanel;
+export default NotifPanelExport;
+
 const styles = StyleSheet.create({
   overlay: { flex: 1, justifyContent: 'flex-end' },
   panel: {

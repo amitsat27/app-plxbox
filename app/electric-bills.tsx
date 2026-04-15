@@ -19,8 +19,13 @@ import { useTheme } from '@/theme/themeProvider';
 import { useAuth } from '@/src/context/AuthContext';
 import { firebaseService, ElectricBillEntry } from '@/src/services/FirebaseService';
 import BillCard from './electric-bills/BillCard';
-import { BillFormModal, markBillForEdit, pendingEditBillIdRef } from './electric-bills/index';
-import { ConsumerFormModal, ConsumerInfoCard, ElectricBillStatCard, SearchBar, DropdownPicker } from './electric-bills/index';
+import BillFormModal from './electric-bills/BillFormModal';
+import { markBillForEdit, pendingEditBillIdRef } from './electric-bills/BillFormModal';
+import ConsumerFormModal from './electric-bills/ConsumerFormModal';
+import ConsumerInfoCard from './electric-bills/ConsumerInfoCard';
+import ElectricBillStatCard from './electric-bills/ElectricBillStatCard';
+import SearchBar from './electric-bills/SearchBar';
+import DropdownPicker from './electric-bills/DropdownPicker';
 
 const CITIES = ['pune', 'nashik', 'jalgaon'];
 

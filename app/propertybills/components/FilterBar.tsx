@@ -56,6 +56,9 @@ function FilterChip({ label, active, onPress }: { label: string; active: boolean
   );
 }
 
+const FilterBarExport = FilterBar;
+export default FilterBarExport;
+
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', paddingHorizontal: Spacing.lg, gap: Spacing.xs, marginBottom: Spacing.md },
   chip: {

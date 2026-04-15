@@ -51,6 +51,9 @@ export function StatsRow({ stats }: { stats: StatsData }) {
   );
 }
 
+const StatsRowExport = StatsRow;
+export default StatsRowExport;
+
 const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',

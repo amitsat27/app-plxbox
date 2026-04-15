@@ -6,7 +6,7 @@ import { Spacing, Typography, BorderRadius } from '@/constants/designTokens';
 import { Colors, getColorScheme } from '@/theme/color';
 import { useTheme } from '@/theme/themeProvider';
 import type { ElectricBillEntry } from '@/src/services/FirebaseService';
-import { STATUS_CONFIG } from './constants';
+import { STATUS_CONFIG } from '@/src/constants/electric-bills/constants';
 
 export default function BillCard({ bill, onViewBill }: { bill: ElectricBillEntry; onViewBill: () => void }) {
   const { isDark } = useTheme();

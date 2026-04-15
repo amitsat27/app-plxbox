@@ -149,6 +149,9 @@ export function FormField({ value, onChangeText, keyboardType, placeholder, edit
   );
 }
 
+const DropdownRowExport = DropdownPicker;
+export default DropdownRowExport;
+
 const styles = StyleSheet.create({
   dropdownWrapper: { flex: 1 },
   dropdownLabel: { fontSize: Typography.fontSize.xs, fontWeight: '600', marginBottom: 6, letterSpacing: 0.5 },

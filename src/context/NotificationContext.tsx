@@ -5,8 +5,11 @@
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import * as Notifications from 'expo-notifications';
+import Constants from 'expo-constants';
 import { useAuth } from './AuthContext';
 import { trackAnalyticsEvent } from '../config/firebaseConfig';
+
+const isExpoGo = Constants.appOwnership === 'expo';
 
 interface NotificationMessage {
   id: string;
@@ -30,29 +33,32 @@ interface NotificationContextType {
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
-// Configure how notifications are handled when app is in foreground
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+if (!isExpoGo) {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    }),
+  });
+}
 
 export const NotificationProvider = ({ children }: { children: ReactNode }) => {
   const [notifications, setNotifications] = useState<NotificationMessage[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const { user } = useAuth();
 
-  // Request notification permissions
   useEffect(() => {
-    requestNotificationPermissions();
+    if (!isExpoGo) {
+      requestNotificationPermissions();
+    }
   }, []);
 
-  // Set up notification listeners
   useEffect(() => {
+    if (isExpoGo) return;
+
     const notificationSubscription = Notifications.addNotificationReceivedListener((notification) => {
       handleNotificationReceived(notification);
     });
@@ -73,7 +79,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
       if (status !== 'granted') {
         console.warn('Notification permissions not granted');
       } else {
-        console.log('✅ Notification permissions granted');
+        console.log('Notification permissions granted');
       }
     } catch (error) {
       console.error('Error requesting notification permissions:', error);
@@ -99,7 +105,6 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
     const actionUrl = response.notification.request.content.data?.actionUrl;
     if (actionUrl) {
       console.log('User tapped notification with URL:', actionUrl);
-      // Handle navigation based on actionUrl
     }
   };
 
@@ -133,19 +138,20 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
       setNotifications((prev) => [newNotification, ...prev]);
       updateUnreadCount();
 
-      // Send local notification
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: notification.title,
-          body: notification.body,
-          data: {
-            type: notification.type,
-            actionUrl: notification.actionUrl,
+      if (!isExpoGo) {
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            title: notification.title,
+            body: notification.body,
+            data: {
+              type: notification.type,
+              actionUrl: notification.actionUrl,
+            },
+            badge: unreadCount + 1,
           },
-          badge: unreadCount + 1,
-        },
-        trigger: { type: 'timeInterval', seconds: 1 } as any,
-      });
+          trigger: { type: 'timeInterval', seconds: 1 } as any,
+        });
+      }
 
       await trackAnalyticsEvent('notification_sent', {
         type: notification.type,

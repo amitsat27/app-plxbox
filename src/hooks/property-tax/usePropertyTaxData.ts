@@ -1,6 +1,3 @@
-/**
- * usePropertyTaxData — data management hook for property tax bills
- */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { firebaseService, PropertyTaxBillEntry } from '@/src/services/FirebaseService';
 
