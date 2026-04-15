@@ -9,6 +9,9 @@ export function useApplianceData(uid?: string) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Force-refetch by toggling a key
+  const [refreshKey, setRefreshKey] = useState(0);
+
   useEffect(() => {
     if (!uid) {
       setLoading(false);
@@ -23,7 +26,7 @@ export function useApplianceData(uid?: string) {
     return () => {
       if (unsubscribe) unsubscribe();
     };
-  }, [uid]);
+  }, [uid, refreshKey]);
 
   const stats = useMemo(() => {
     const today = new Date();
@@ -151,6 +154,10 @@ export function useApplianceData(uid?: string) {
     return result;
   }, [appliances, stats]);
 
+  const refreshData = useCallback(() => {
+    setRefreshKey((prev) => prev + 1);
+  }, []);
+
   const getApplianceServices = useCallback((applianceId: string): Promise<ServiceRecord[]> => {
     return new Promise((resolve) => {
       (firebaseService as any).getServiceRecordsForAppliance?.(applianceId, (records: ServiceRecord[]) => {
@@ -167,5 +174,6 @@ export function useApplianceData(uid?: string) {
     alerts,
     insights,
     getApplianceServices,
+    refreshData,
   };
 }

@@ -1,8 +1,11 @@
 export { default as ApplianceCard } from './ApplianceCard';
 export { default as ApplianceSummaryCard } from './ApplianceSummaryCard';
 export { default as CategoryFilterRow } from './CategoryFilterRow';
+export { default as ServiceCard } from './ServiceCard';
 export { default as ServiceHistorySection } from './ServiceHistorySection';
 export { default as ShimmerCard } from './ShimmerCard';
 export { default as SmartInsightsSection } from './SmartInsightsSection';
+export { default as ReceiptUploader } from './ReceiptUploader';
+export { default as ReceiptViewer } from './ReceiptViewer';
 export { getApplianceImage, getCategoryEmoji, getCategoryLabel, formatINR, daysBetween, formatDate, yearsSince } from './utils';
 export type { ApplianceAlert, SmartInsight, CategoryFilterOption } from './types';

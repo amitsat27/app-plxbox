@@ -15,7 +15,7 @@ export interface CategorySummary {
   icon: string;
 }
 
-export function useDashboardData(uid?: string) {
+export function useDashboardData(uid?: string, refreshTrigger?: number) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [categories, setCategories] = useState<CategorySummary[]>([]);
@@ -79,7 +79,7 @@ export function useDashboardData(uid?: string) {
     return () => {
       cancelled = true;
     };
-  }, [uid]);
+  }, [uid, refreshTrigger]);
 
   return {
     categories,

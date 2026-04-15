@@ -1,184 +1,185 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, FlatList } from 'react-native';
-import { ServiceRecord } from '@/src/types';
+import { ServiceRecord, ServiceReceipt } from '@/src/types';
 import { useTheme } from '@/theme/themeProvider';
-import { getColorScheme } from '@/theme/color';
+import { Colors, getColorScheme } from '@/theme/color';
 import { BorderRadius } from '@/constants/designTokens';
-import { formatINR, formatDate } from './utils';
-import { Settings, Wrench, Calendar, AlertTriangle, Plus } from 'lucide-react-native';
+import { Wrench, Plus } from 'lucide-react-native';
+import ServiceCard from './ServiceCard';
+import * as Haptics from 'expo-haptics';
 
-interface Props {
+interface ServiceHistorySectionProps {
   records: ServiceRecord[];
+  applianceId: string;
   onAddRecord: () => void;
+  onOpenReceipt?: (receipt: ServiceReceipt) => void;
+  onEditRecord?: (record: ServiceRecord) => void;
+  onDeleteRecord?: (record: ServiceRecord) => void;
+  onOpenDetail?: (record: ServiceRecord) => void;
 }
 
-const TYPE_ICONS: Record<string, React.ComponentType<any>> = {
-  regular: Settings,
-  repair: Wrench,
-  annual: Calendar,
-  emergency: AlertTriangle,
-};
-
-const TYPE_COLORS: Record<string, string> = {
-  regular: '#3B82F6',
-  repair: '#F59E0B',
-  annual: '#10B981',
-  emergency: '#EF4444',
-};
-
-const TYPE_LABELS: Record<string, string> = {
-  regular: 'Regular',
-  repair: 'Repair',
-  annual: 'Annual',
-  emergency: 'Emergency',
-};
-
-export default function ServiceHistorySection({ records, onAddRecord }: Props) {
+export default function ServiceHistorySection({
+  records,
+  applianceId,
+  onAddRecord,
+  onOpenReceipt,
+  onEditRecord,
+  onDeleteRecord,
+  onOpenDetail,
+}: ServiceHistorySectionProps) {
   const { isDark } = useTheme();
   const scheme = getColorScheme(isDark);
 
-  const totalCost = records.reduce((sum, r) => sum + (r.cost || 0), 0);
-
-  const renderRecord = ({ item, index }: { item: ServiceRecord; index: number }) => {
-    const color = TYPE_COLORS[item.serviceType] || '#64748B';
-    const Icon = TYPE_ICONS[item.serviceType] || Settings;
-    const isLast = index === records.length - 1;
-
-    return (
-      <View style={[styles.recordRow, !isLast && { borderBottomColor: scheme.border }]}>
-        <View style={styles.timelineLeft}>
-          <View style={[styles.iconCircle, { backgroundColor: `${color}15` }]}>
-            <Icon size={18} color={color} />
-          </View>
-          {!isLast && (
-            <View style={[styles.timelineLine, {
-              backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
-            }]} />
-          )}
-        </View>
-
-        <View style={styles.recordInfo}>
-          <View style={styles.recordHeader}>
-            <Text style={[styles.recordType, { color: scheme.textPrimary }]}>
-              {TYPE_LABELS[item.serviceType] || item.serviceType}
-            </Text>
-            <Text style={[styles.recordCost, { color }]}>
-              {formatINR(item.cost)}
-            </Text>
-          </View>
-
-          <Text style={[styles.recordDate, { color: scheme.textTertiary }]}>
-            {formatDate(item.serviceDate)}
-          </Text>
-
-          {item.serviceCenter && (
-            <Text style={[styles.recordDetail, { color: scheme.textTertiary }]}>
-              {item.serviceCenter}
-            </Text>
-          )}
-
-          {item.partsReplaced && item.partsReplaced.length > 0 && (
-            <Text style={[styles.recordParts, { color: scheme.textTertiary }]}>
-              Parts: {Array.isArray(item.partsReplaced) ? item.partsReplaced.join(', ') : item.partsReplaced}
-            </Text>
-          )}
-
-          {item.description && (
-            <Text style={[styles.recordDesc, { color: scheme.textTertiary }]}>
-              {item.description}
-            </Text>
-          )}
-        </View>
-      </View>
-    );
+  const handleAdd = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    onAddRecord();
   };
 
+  const renderItem = ({ item }: { item: ServiceRecord }) => (
+    <ServiceCard
+      service={item}
+      applianceId={applianceId}
+      onOpenReceipt={onOpenReceipt}
+      onEdit={onEditRecord ? () => onEditRecord(item) : undefined}
+      onDelete={onDeleteRecord ? () => onDeleteRecord(item) : undefined}
+      onOpenDetail={onOpenDetail ? () => onOpenDetail(item) : undefined}
+    />
+  );
+
+  const keyExtractor = (item: ServiceRecord) => item.id;
+
   return (
-    <View>
-      <View style={styles.sectionHeader}>
-        <View>
-          <Text style={[styles.sectionTitle, { color: scheme.textPrimary }]}>
+    <View style={styles.container}>
+      {/* Section Header */}
+      <View style={styles.header}>
+        <View style={styles.titleRow}>
+          <Text style={[styles.title, { color: scheme.textPrimary }]}>
             Service History
           </Text>
-          {records.length > 0 && (
-            <Text style={[styles.totalText, { color: scheme.textTertiary }]}>
-              {records.length} service records · Total {formatINR(totalCost)}
+          <View style={[styles.countBadge, { backgroundColor: `${Colors.primary}15` }]}>
+            <Text style={[styles.countText, { color: Colors.primary }]}>
+              {records.length}
             </Text>
-          )}
+          </View>
         </View>
       </View>
 
-      <View style={[styles.recordsContainer, {
-        backgroundColor: scheme.cardBackground,
-      }]}>
-        {records.length > 0 ? (
-          <FlatList
-            data={records}
-            renderItem={renderRecord}
-            keyExtractor={(item) => item.id}
-            scrollEnabled={false}
-          />
-        ) : (
+      {/* Content */}
+      <View style={styles.content}>
+        {records.length === 0 ? (
           <View style={styles.emptyState}>
-            <Wrench size={32} color={scheme.textTertiary} />
-            <Text style={[styles.emptyTitle, { color: scheme.textTertiary }]}>
-              No service records
+            <View style={[styles.emptyIcon, { backgroundColor: `${Colors.primary}10` }]}>
+              <Wrench size={32} color={Colors.primary} />
+            </View>
+            <Text style={[styles.emptyTitle, { color: scheme.textPrimary }]}>
+              No service records yet
             </Text>
-            <Text style={[styles.emptySub, { color: scheme.textTertiary }]}>
-              Add a service record to track maintenance
+            <Text style={[styles.emptySubtitle, { color: scheme.textTertiary }]}>
+              Add your first service record
             </Text>
           </View>
+        ) : (
+          <FlatList
+            data={records}
+            renderItem={renderItem}
+            keyExtractor={keyExtractor}
+            scrollEnabled={false}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.listContent}
+          />
         )}
-
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={onAddRecord}
-          activeOpacity={0.7}
-        >
-          <Plus size={20} color="#FFF" />
-          <Text style={styles.addButtonText}>Add Service Record</Text>
-        </TouchableOpacity>
       </View>
+
+      {/* Floating Add Button */}
+      <TouchableOpacity
+        activeOpacity={0.85}
+        onPress={handleAdd}
+        style={[
+          styles.fab,
+          {
+            backgroundColor: Colors.primary,
+            shadowColor: Colors.primary,
+          },
+        ]}
+      >
+        <Plus size={24} color="#FFFFFF" />
+      </TouchableOpacity>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  sectionHeader: { marginBottom: 14, paddingHorizontal: 4 },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    letterSpacing: -0.5,
+  container: {
+    marginTop: 8,
+    paddingBottom: 80,
   },
-  totalText: { fontSize: 13, marginTop: 3 },
-  recordsContainer: { borderRadius: BorderRadius.card, padding: 16, marginBottom: 20 },
-  emptyState: { alignItems: 'center', paddingVertical: 32, gap: 8 },
-  emptyTitle: { fontSize: 16, fontWeight: '600' },
-  emptySub: { fontSize: 13 },
-  recordRow: { flexDirection: 'row', paddingVertical: 14 },
-  timelineLeft: { marginRight: 12, alignItems: 'center', paddingTop: 2, width: 36 },
-  iconCircle: { width: 36, height: 36, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
-  timelineLine: { width: 2, flex: 1, marginTop: 8, borderRadius: 1 },
-  recordInfo: { flex: 1, minWidth: 0 },
-  recordHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 },
-  recordType: { fontSize: 15, fontWeight: '700' },
-  recordCost: {
-    fontSize: 16,
-    fontWeight: '800',
+  header: {
+    paddingHorizontal: 4,
+    marginBottom: 12,
   },
-  recordDate: { fontSize: 12, fontWeight: '500', marginBottom: 4 },
-  recordDetail: { fontSize: 13, marginBottom: 2 },
-  recordParts: { fontSize: 12, marginBottom: 2, fontStyle: 'italic' },
-  recordDesc: { fontSize: 13, lineHeight: 18 },
-  addButton: {
-    marginTop: 12,
-    backgroundColor: '#7C3AED',
-    borderRadius: BorderRadius.md,
-    paddingVertical: 14,
+  titleRow: {
     flexDirection: 'row',
-    justifyContent: 'center',
     alignItems: 'center',
     gap: 8,
   },
-  addButtonText: { color: '#FFF', fontSize: 14, fontWeight: '700' },
+  title: {
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+  },
+  countBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: BorderRadius.full,
+    minWidth: 24,
+    alignItems: 'center',
+  },
+  countText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  content: {
+    minHeight: 120,
+  },
+  listContent: {
+    paddingBottom: 8,
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 48,
+    gap: 8,
+  },
+  emptyIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    lineHeight: 20,
+    textAlign: 'center',
+    paddingHorizontal: 40,
+  },
+  fab: {
+    position: 'absolute',
+    bottom: 24,
+    right: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+  },
 });

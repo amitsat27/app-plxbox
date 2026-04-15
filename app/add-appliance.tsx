@@ -14,7 +14,6 @@ import {
   Platform,
   Alert,
   Animated,
-  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -23,6 +22,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '@/src/context/AuthContext';
 import { useTheme } from '@/theme/themeProvider';
 import { getColorScheme, getApplianceCategoryColor } from '@/theme/color';
+import ImageCarousel from '@/components/ui/ImageCarousel';
 import {
   ChevronLeft,
   Save,
@@ -32,8 +32,6 @@ import {
   Bed,
   Bath,
   Home,
-  Camera,
-  X,
   Tag,
   MapPin,
 } from 'lucide-react-native';
@@ -42,7 +40,7 @@ import type { Appliance } from '@/src/types';
 import { useApplianceData } from '@/src/hooks/useApplianceData';
 
 type ApplianceCategory = 'kitchen' | 'living' | 'bedroom' | 'bathroom' | 'other';
-type LocationOption = 'pune' | 'nashik' | 'other';
+type LocationOption = 'pune' | 'nashik' | 'jalgaon' | 'other';
 
 const CATEGORIES: { key: ApplianceCategory; label: string; Icon: React.ComponentType<any> }[] = [
   { key: 'kitchen', label: 'Kitchen', Icon: Utensils },
@@ -55,6 +53,7 @@ const CATEGORIES: { key: ApplianceCategory; label: string; Icon: React.Component
 const LOCATIONS: { key: LocationOption; label: string }[] = [
   { key: 'pune', label: 'Pune' },
   { key: 'nashik', label: 'Nashik' },
+  { key: 'jalgaon', label: 'Jalgaon' },
   { key: 'other', label: 'Other' },
 ];
 
@@ -85,6 +84,7 @@ export default function AddApplianceScreen() {
   const [amcExpiry, setAmcExpiry] = useState<Date | null>(null);
   const [notes, setNotes] = useState('');
   const [images, setImages] = useState<string[]>([]);
+  const [originalLocation, setOriginalLocation] = useState<string | undefined>(undefined);
 
   // Date picker state
   const [datePickerTarget, setDatePickerTarget] = useState<string | null>(null);
@@ -102,7 +102,7 @@ export default function AddApplianceScreen() {
   }, []);
 
   useEffect(() => {
-    if (isEdit && existingApplianceId && appliances.length > 0) {
+    if (existingApplianceId && appliances.length > 0) {
       const existing = appliances.find((a) => a.id === existingApplianceId);
       if (existing) {
         setName(existing.name || '');
@@ -112,6 +112,7 @@ export default function AddApplianceScreen() {
         setSerialNumber(existing.serialNumber || '');
         setCategory(existing.category || 'kitchen');
         setLocation(existing.location || 'pune');
+        setOriginalLocation(existing.location);
         setPurchaseDate(existing.purchaseDate instanceof Date ? existing.purchaseDate : new Date(existing.purchaseDate));
         setPurchasePrice(String(existing.purchasePrice || ''));
         setCurrentValue(String(existing.currentValue || ''));
@@ -130,7 +131,7 @@ export default function AddApplianceScreen() {
       aspect: [4, 3],
     });
 
-    if (!result.canceled) {
+    if (!result.canceled && !!result.assets) {
       setImages((prev) => [...prev, result.assets[0].uri]);
     }
   };
@@ -140,14 +141,14 @@ export default function AddApplianceScreen() {
   };
 
   const handleDateChange = (_: DateTimePickerEvent, selectedDate?: Date) => {
-    if (Platform.OS === 'android') {
-      setDatePickerTarget(null);
-    }
     if (selectedDate) {
       if (datePickerTarget === 'purchase') setPurchaseDate(selectedDate);
       else if (datePickerTarget === 'warranty') setWarrantyExpiry(selectedDate);
       else if (datePickerTarget === 'amc') setAmcExpiry(selectedDate);
       else setTempDate(selectedDate);
+    }
+    if (Platform.OS === 'android') {
+      setDatePickerTarget(null);
     }
   };
 
@@ -162,6 +163,27 @@ export default function AddApplianceScreen() {
   const handleSave = async () => {
     if (!validate()) return;
 
+    const uid = user?.uid || '';
+    const isNew = !isEdit || !existingApplianceId;
+
+    // Upload only local images to Firebase Storage
+    // Old Firebase URLs from existing appliance are discarded and replaced by new uploads
+    const uploadedImageUrls: string[] = [];
+
+    for (const uri of images) {
+      // Skip already-uploaded Firebase URLs — keep them as-is
+      if (uri.startsWith('http') || uri.startsWith('https')) {
+        uploadedImageUrls.push(uri);
+        continue;
+      }
+      try {
+        const url = await firebaseService.uploadApplianceImage(uri, location);
+        uploadedImageUrls.push(url);
+      } catch (err) {
+        console.error('Image upload failed:', err);
+      }
+    }
+
     const data: any = {
       name: name.trim(),
       brand: brand.trim(),
@@ -173,7 +195,7 @@ export default function AddApplianceScreen() {
     };
 
     // Preserve isActive state in edit mode, set to true for new
-    if (!isEdit) {
+    if (isNew) {
       data.isActive = true;
     }
 
@@ -183,17 +205,28 @@ export default function AddApplianceScreen() {
     if (warrantyExpiry) data.warrantyExpiry = warrantyExpiry;
     if (amcExpiry) data.amcExpiry = amcExpiry;
     if (notes.trim()) data.notes = notes.trim();
-    data.images = images;
+    data.images = uploadedImageUrls;
 
     try {
+      console.log('[add-appliance] save mode:', isEdit ? 'update' : 'create', 'id:', existingApplianceId, 'data:', JSON.stringify(data, null, 2));
       if (isEdit && existingApplianceId) {
-        await firebaseService.updateAppliance(existingApplianceId, data, location);
+        await firebaseService.updateAppliance(existingApplianceId, data, originalLocation);
       } else {
-        await firebaseService.addAppliance(user?.uid || '', data);
+        await firebaseService.addAppliance(uid, data, location);
       }
-      router.back();
-    } catch {
-      Alert.alert('Error', 'Failed to save appliance');
+      // Navigate back safely
+      try {
+        router.back();
+      } catch {
+        try {
+          (router as any).dismiss?.();
+        } catch {
+          router.replace('/appliances');
+        }
+      }
+    } catch (err: any) {
+      console.error('[add-appliance] save error:', err);
+      Alert.alert('Error', err?.message || 'Failed to save appliance');
     }
   };
 
@@ -303,19 +336,13 @@ export default function AddApplianceScreen() {
 
             {/* Photos */}
             <Text style={[styles.sectionLabel, { color: scheme.textPrimary }]}>Photos</Text>
-            <View style={styles.photosRow}>
-              {images.map((uri, i) => (
-                <View key={i} style={styles.photoThumb}>
-                  <Image source={{ uri }} style={styles.photoImage} />
-                  <TouchableOpacity style={styles.photoRemove} onPress={() => removeImage(i)}>
-                    <X size={12} color="#FFF" />
-                  </TouchableOpacity>
-                </View>
-              ))}
-              <TouchableOpacity style={[styles.photoAdd, { backgroundColor: isDark ? 'rgba(28,28,30,0.8)' : '#F5F5F7' }]} onPress={pickImage}>
-                <Camera size={24} color={scheme.textTertiary} />
-              </TouchableOpacity>
-            </View>
+            <ImageCarousel
+              images={images}
+              onRemove={removeImage}
+              onAdd={pickImage}
+              showAdd
+              height={200}
+            />
 
             {/* Notes */}
             <Text style={[styles.sectionLabel, { color: scheme.textPrimary }]}>Notes</Text>
@@ -334,12 +361,47 @@ export default function AddApplianceScreen() {
         </KeyboardAvoidingView>
       </Animated.View>
 
-      {/* Date Picker */}
-      {datePickerTarget && (
+      {/* Date Picker (iOS modal sheet) */}
+      {Platform.OS === 'ios' && datePickerTarget && (
+        <View style={[styles.datePickerBackdrop, { backgroundColor: isDark ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.3)' }]}>
+          <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={() => setDatePickerTarget(null)} />
+          <View style={[styles.datePickerSheet, { backgroundColor: isDark ? '#1C1C1E' : '#FFF' }]}>
+            <View style={styles.datePickerToolbar}>
+              <TouchableOpacity onPress={() => setDatePickerTarget(null)} hitSlop={8}>
+                <Text style={[styles.datePickerCancel, { color: '#8E8E93' }]}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => {
+                  if (datePickerTarget === 'purchase') setPurchaseDate(tempDate);
+                  else if (datePickerTarget === 'warranty') setWarrantyExpiry(tempDate);
+                  else if (datePickerTarget === 'amc') setAmcExpiry(tempDate);
+                  setDatePickerTarget(null);
+                }}
+                hitSlop={8}
+              >
+                <Text style={[styles.datePickerDone, { color: '#7C3AED' }]}>Done</Text>
+              </TouchableOpacity>
+            </View>
+            <DateTimePicker
+              value={tempDate}
+              mode="date"
+              display="spinner"
+              onChange={(_evt: DateTimePickerEvent, d?: Date) => {
+                if (d) setTempDate(d);
+              }}
+              style={{ height: 160 }}
+              themeVariant={isDark ? 'dark' : 'light'}
+            />
+          </View>
+        </View>
+      )}
+
+      {/* Date Picker (Android) */}
+      {Platform.OS === 'android' && datePickerTarget && (
         <DateTimePicker
           value={tempDate}
           mode="date"
-          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          display="default"
           onChange={handleDateChange}
         />
       )}
@@ -396,9 +458,35 @@ const styles = StyleSheet.create({
   dateField: { padding: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderRadius: 8 },
   dateFieldLabel: { fontSize: 14, fontWeight: '500' },
   dateFieldValue: { fontSize: 14, fontWeight: '600' },
-  photosRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  photoThumb: { width: 80, height: 80, borderRadius: 16, overflow: 'hidden', position: 'relative' },
-  photoImage: { width: '100%', height: '100%' },
-  photoRemove: { position: 'absolute', top: 4, right: 4, width: 20, height: 20, borderRadius: 10, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
-  photoAdd: { width: 80, height: 80, borderRadius: 16, borderWidth: 1.5, borderStyle: 'dashed', justifyContent: 'center', alignItems: 'center' },
+  datePickerBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 2000,
+    flexDirection: 'column',
+    justifyContent: 'flex-end',
+  },
+  datePickerSheet: {
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    overflow: 'hidden',
+  },
+  datePickerToolbar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 8,
+  },
+  datePickerCancel: {
+    fontSize: 17,
+    fontWeight: '400',
+  },
+  datePickerDone: {
+    fontSize: 17,
+    fontWeight: '600',
+  },
 });

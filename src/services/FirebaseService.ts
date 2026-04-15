@@ -1,3 +1,5 @@
+import * as FileSystem from 'expo-file-system';
+import { cacheDirectory, documentDirectory, EncodingType } from 'expo-file-system';
 import { collection, addDoc, query, where, onSnapshot, getDocs, updateDoc, deleteDoc, doc, serverTimestamp, getDoc, setDoc, collectionGroup } from 'firebase/firestore';
 import { getFirebaseDb, getFirebaseStorage } from '../config/firebaseConfig';
 import type { DashboardMetric, Bill, SystemLog, Vehicle, Appliance, ServiceRecord, BillStatus, ApplianceCategory } from '../types';
@@ -141,12 +143,18 @@ class FirebaseService {
   async addVehicle(userId: string, vehicle: Omit<Vehicle, 'id' | 'createdAt' | 'updatedAt'>) {
     try {
       const db = getDb();
-      const docRef = await addDoc(collection(db, 'vehicles'), {
-        ...vehicle,
+      const docData: any = {
         userId,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-      });
+      };
+      // Only add non-undefined fields (Firestore rejects undefined)
+      for (const [key, value] of Object.entries(vehicle)) {
+        if (value !== undefined) {
+          docData[key] = value;
+        }
+      }
+      const docRef = await addDoc(collection(db, 'vehicles'), docData);
       return docRef.id;
     } catch (error) {
       console.error('Error adding vehicle:', error);
@@ -156,57 +164,245 @@ class FirebaseService {
 
   getVehicles(userId: string, callback: (vehicles: Vehicle[]) => void) {
     try {
-      console.log('🔍 FirebaseService: Fetching vehicles for userId:', userId);
       const db = getDb();
-      const q = query(collection(db, 'vehicles'), where('userId', '==', userId));
-      console.log('✅ Query created, setting up onSnapshot listener');
+      let active = true;
+      const unsubscribes: Array<() => void> = [];
 
-      const unsubscribe = onSnapshot(q, (snapshot) => {
-        console.log('🚗 Snapshot received:', snapshot.size, 'documents');
-        const vehicles = snapshot.docs.map((doc) => {
-          const data = doc.data();
-          console.log(`  Vehicle ${doc.id}:`, JSON.stringify(data, null, 2));
-          return {
-            id: doc.id,
-            ...data,
-            lastServiceDate: data.lastServiceDate?.toDate(),
-            nextServiceDue: data.nextServiceDue?.toDate(),
-            insuranceExpiry: data.insuranceExpiry?.toDate(),
-            createdAt: data.createdAt?.toDate() || new Date(),
-            updatedAt: data.updatedAt?.toDate() || new Date(),
-          } as Vehicle;
-        });
-        const sorted = vehicles.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        console.log('✅ Processed vehicles:', sorted.length, 'items');
-        callback(sorted);
-      }, (error) => {
-        console.error('❌ onSnapshot error for vehicles:', error);
+      const fetchAllAndNotify = async () => {
+        if (!active) return;
+        const vehicles: Vehicle[] = [];
+
+        // Flat collection
+        try {
+          const flatQ = query(collection(db, 'vehicles'), where('userId', '==', userId));
+          const flatSnap = await getDocs(flatQ);
+          flatSnap.forEach(docSnap => {
+            const data = docSnap.data();
+            vehicles.push({
+              id: docSnap.id,
+              userId,
+              name: data.name || `Vehicle ${docSnap.id}`,
+              type: data.type || 'other',
+              make: data.make || '',
+              model: data.model || '',
+              year: data.year || new Date().getFullYear(),
+              registrationNumber: data.registrationNumber || '',
+              registrationExpiry: data.registrationExpiry?.toDate ? data.registrationExpiry.toDate() : undefined,
+              insuranceExpiry: data.insuranceExpiry?.toDate ? data.insuranceExpiry.toDate() : undefined,
+              pucExpiry: data.pucExpiry?.toDate ? data.pucExpiry.toDate() : undefined,
+              fuelType: data.fuelType || 'petrol',
+              mileage: data.mileage,
+              odometerReading: data.odometerReading,
+              fuelTankCapacity: data.fuelTankCapacity,
+              color: data.color || '',
+              vin: data.vin,
+              engineNumber: data.engineNumber,
+              chassisNumber: data.chassisNumber,
+              purchaseDate: data.purchaseDate?.toDate ? data.purchaseDate.toDate() : undefined,
+              purchasePrice: data.purchasePrice,
+              currentValue: data.currentValue,
+              notes: data.notes,
+              isActive: data.isActive !== false,
+              images: data.images || [],
+              location: data.location || 'pune',
+              lastServiceDate: data.lastServiceDate?.toDate ? data.lastServiceDate.toDate() : undefined,
+              nextServiceDue: data.nextServiceDue?.toDate ? data.nextServiceDue.toDate() : undefined,
+              createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(),
+              updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : new Date(),
+            } as Vehicle);
+          });
+        } catch (e) {
+          console.warn('Flat vehicles fetch failed:', e);
+        }
+
+        // Legacy collections
+        const legacyIds = new Set(vehicles.map(v => v.id));
+        for (const city of ['pune', 'nashik', 'jalgaon', 'other']) {
+          try {
+            const legacySnap = await getDocs(collection(db, 'pulsebox', 'vehicles', city));
+            legacySnap.forEach(docSnap => {
+              if (legacyIds.has(docSnap.id)) return;
+              const data = docSnap.data();
+              legacyIds.add(docSnap.id);
+              vehicles.push({
+                id: docSnap.id,
+                userId,
+                name: data.name || data.vehicleName || `Vehicle ${docSnap.id}`,
+                type: data.type || 'other',
+                make: data.make || '',
+                model: data.model || '',
+                year: data.year || new Date().getFullYear(),
+                registrationNumber: data.registrationNumber || '',
+                registrationExpiry: data.registrationExpiry?.toDate ? data.registrationExpiry.toDate() : undefined,
+                insuranceExpiry: data.insuranceExpiry?.toDate ? data.insuranceExpiry.toDate() : undefined,
+                pucExpiry: data.pucExpiry?.toDate ? data.pucExpiry.toDate() : undefined,
+                fuelType: data.fuelType || 'petrol',
+                mileage: data.mileage,
+                odometerReading: data.odometerReading,
+                fuelTankCapacity: data.fuelTankCapacity,
+                color: data.color || '',
+                vin: data.vin,
+                engineNumber: data.engineNumber,
+                chassisNumber: data.chassisNumber,
+                purchaseDate: data.purchaseDate?.toDate ? data.purchaseDate.toDate() : undefined,
+                purchasePrice: data.purchasePrice,
+                currentValue: data.currentValue,
+                notes: data.notes,
+                isActive: data.isActive !== false,
+                images: data.images || [],
+                location: data.location || city || 'pune',
+                lastServiceDate: data.lastServiceDate?.toDate ? data.lastServiceDate.toDate() : undefined,
+                nextServiceDue: data.nextServiceDue?.toDate ? data.nextServiceDue.toDate() : undefined,
+                createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(),
+                updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : new Date(),
+              } as Vehicle);
+            });
+          } catch (e) {
+            console.warn(`Legacy vehicles fetch failed for ${city}:`, e);
+          }
+        }
+
+        if (active) {
+          const sorted = vehicles.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+          callback(sorted);
+        }
+      };
+
+      // Flat collection listener
+      const flatQ = query(collection(db, 'vehicles'), where('userId', '==', userId));
+      const flatUnsub = onSnapshot(flatQ, () => { fetchAllAndNotify(); }, (err) => {
+        console.error('Flat vehicles listener error:', err);
+        fetchAllAndNotify();
       });
+      unsubscribes.push(flatUnsub);
 
-      return unsubscribe;
+      // Legacy listeners
+      for (const city of ['pune', 'nashik', 'jalgaon', 'other']) {
+        const legacyUnsub = onSnapshot(
+          collection(db, 'pulsebox', 'vehicles', city),
+          () => { fetchAllAndNotify(); },
+          (err) => {
+            console.error(`Legacy vehicles listener error (${city}):`, err);
+            fetchAllAndNotify();
+          }
+        );
+        unsubscribes.push(legacyUnsub);
+      }
+
+      fetchAllAndNotify();
+
+      return () => {
+        active = false;
+        unsubscribes.forEach(unsub => unsub());
+      };
     } catch (error) {
-      console.error('❌ Error setting up vehicles listener:', error);
+      console.error('Error setting up vehicles listener:', error);
       throw error;
     }
   }
 
-  async updateVehicle(vehicleId: string, updates: Partial<Vehicle>) {
+  async updateVehicle(vehicleId: string, updates: Partial<Vehicle>, city?: string) {
     try {
       const db = getDb();
-      await updateDoc(doc(db, 'vehicles', vehicleId), {
-        ...updates,
-        updatedAt: serverTimestamp(),
-      });
+
+      // Strip undefined values to avoid accidental field deletion
+      const sanitized = Object.fromEntries(Object.entries(updates).filter(([, v]) => v !== undefined));
+      if (Object.keys(sanitized).length === 0) return;
+
+      console.log('[updateVehicle] id:', vehicleId, 'city:', city, 'keys:', Object.keys(sanitized));
+
+      // Try flat collection first
+      const flatDoc = doc(db, 'vehicles', vehicleId);
+      const flatSnap = await getDoc(flatDoc);
+      if (flatSnap.exists()) {
+        await updateDoc(flatDoc, { ...sanitized, updatedAt: serverTimestamp() });
+        console.log('[updateVehicle] updated flat vehicle');
+        return;
+      }
+
+      // If city is known, try legacy path directly
+      if (city) {
+        const docRef = doc(db, 'pulsebox', 'vehicles', city, vehicleId);
+        const snap = await getDoc(docRef);
+        if (snap.exists()) {
+          await updateDoc(docRef, { ...sanitized, updatedAt: new Date() });
+          console.log('[updateVehicle] updated legacy at', city);
+          return;
+        }
+      }
+
+      // Search all legacy locations
+      for (const c of ['pune', 'nashik', 'jalgaon', 'other']) {
+        if (city && c === city) continue;
+        const docRef = doc(db, 'pulsebox', 'vehicles', c, vehicleId);
+        const snap = await getDoc(docRef);
+        if (snap.exists()) {
+          await updateDoc(docRef, { ...sanitized, updatedAt: new Date() });
+          console.log('[updateVehicle] updated legacy at', c);
+          return;
+        }
+      }
+
+      throw new Error(`Vehicle ${vehicleId} not found in any collection`);
     } catch (error) {
       console.error('Error updating vehicle:', error);
       throw error;
     }
   }
 
-  async deleteVehicle(vehicleId: string) {
+  async uploadVehicleImage(fileUri: string, vehicleId: string): Promise<string> {
+    const storage = getFirebaseStorage();
+    if (!storage) throw new Error('Firebase Storage not available');
+
+    const extension = fileUri.split('.').pop() || 'jpg';
+    const fileName = `${vehicleId}/${Date.now()}.${extension}`;
+    const storageRef = ref(storage, `vehicle-images/${fileName}`);
+
+    const response = await fetch(fileUri);
+    const blob = await response.blob();
+
+    await uploadBytes(storageRef, blob);
+
+    return await getDownloadURL(storageRef);
+  }
+
+  async deleteVehicle(vehicleId: string, city?: string) {
     try {
       const db = getDb();
-      await deleteDoc(doc(db, 'vehicles', vehicleId));
+
+      // Try flat collection first
+      const flatDoc = doc(db, 'vehicles', vehicleId);
+      const flatSnap = await getDoc(flatDoc);
+      if (flatSnap.exists()) {
+        await deleteDoc(flatDoc);
+        console.log('[deleteVehicle] deleted flat vehicle');
+        return;
+      }
+
+      // If city is known, try legacy path directly
+      if (city) {
+        const legacyDoc = doc(db, 'pulsebox', 'vehicles', city, vehicleId);
+        const legacySnap = await getDoc(legacyDoc);
+        if (legacySnap.exists()) {
+          await deleteDoc(legacyDoc);
+          console.log('[deleteVehicle] deleted legacy at', city);
+          return;
+        }
+      }
+
+      // Search all legacy locations
+      for (const c of ['pune', 'nashik', 'jalgaon', 'other']) {
+        if (city && c === city) continue;
+        const legacyDoc = doc(db, 'pulsebox', 'vehicles', c, vehicleId);
+        const legacySnap = await getDoc(legacyDoc);
+        if (legacySnap.exists()) {
+          await deleteDoc(legacyDoc);
+          console.log('[deleteVehicle] deleted legacy at', c);
+          return;
+        }
+      }
+
+      throw new Error(`Vehicle ${vehicleId} not found in any collection`);
     } catch (error) {
       console.error('Error deleting vehicle:', error);
       throw error;
@@ -214,18 +410,88 @@ class FirebaseService {
   }
 
   // Appliance Operations
-  async addAppliance(userId: string, appliance: Omit<Appliance, 'id' | 'createdAt' | 'updatedAt'>) {
+  async uploadApplianceImage(fileUri: string, city: string): Promise<string> {
+    const storage = getFirebaseStorage();
+    if (!storage) throw new Error('Firebase Storage not available');
+
+    // Strip data: prefix to detect extension, otherwise use from URI
+    const rawUri = fileUri.startsWith('data:') ? '' : fileUri;
+    const extension = rawUri.match(/\.([a-zA-Z0-9]+)(\?.*)?$/)?.[1]?.toLowerCase() || 'jpg';
+    const fileName = `appliances/${city}/${Date.now()}.${extension}`;
+    const storageRef = ref(storage, fileName);
+
+    if (fileUri.startsWith('data:')) {
+      // Convert data URI to local file to avoid RN Blob issues with Uint8Array
+      // Strip header and base64 data
+      const [, base64Data] = fileUri.split(',');
+      const mimeType = fileUri.match(/data:(.*?);base64/)?.[1] || 'image/jpeg';
+      const ext = mimeType.split('/')[1]?.split(';')[0] || 'jpg';
+      const dir = cacheDirectory || documentDirectory;
+      const localUri = `${dir}temp_appliance_${Date.now()}.${ext}`;
+      await FileSystem.writeAsStringAsync(localUri, base64Data, {
+        encoding: EncodingType.Base64,
+      });
+      fileUri = localUri;
+    }
+
+    const response = await fetch(fileUri);
+    const blob = await response.blob();
+    await uploadBytes(storageRef, blob);
+    // Clean up temp file
+    if (fileUri.includes('temp_appliance_')) {
+      await FileSystem.deleteAsync(fileUri, { idempotent: true });
+    }
+    return await getDownloadURL(storageRef);
+  }
+
+  async addAppliance(userId: string, appliance: Omit<Appliance, 'id' | 'createdAt' | 'updatedAt'>, city?: string) {
     try {
       const db = getDb();
-      const docRef = await addDoc(collection(db, 'appliances'), {
-        ...appliance,
+      const resolvedCity = city || appliance.location || 'pune';
+      // Write to legacy city-based path, since getAppliances reads from it
+      const docData: any = {
         userId,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-      });
+      };
+      // Only add non-undefined fields (Firestore rejects undefined)
+      for (const [key, value] of Object.entries(appliance)) {
+        if (value !== undefined) {
+          docData[key] = value;
+        }
+      }
+      const docRef = await addDoc(collection(db, 'pulsebox', 'appliances', resolvedCity), docData);
       return docRef.id;
     } catch (error) {
       console.error('Error adding appliance:', error);
+      throw error;
+    }
+  }
+
+  async addApplianceServiceRecord(applianceId: string, record: Omit<ServiceRecord, 'id' | 'createdAt' | 'updatedAt'>) {
+    try {
+      const db = getDb();
+      const docData: any = {
+        applianceId,
+        receipts: record.receipts || [],
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      };
+      // Only add fields that are non-undefined (Firestore rejects undefined)
+      if (record.userId) docData.userId = record.userId;
+      if (record.serviceDate) docData.serviceDate = record.serviceDate;
+      if (record.serviceType) docData.serviceType = record.serviceType;
+      if (record.provider) docData.provider = record.provider;
+      if (record.cost !== undefined) docData.cost = record.cost;
+      if (record.description) docData.description = record.description;
+      if (record.notes) docData.notes = record.notes;
+      if (record.mileageAtService !== undefined) docData.mileageAtService = record.mileageAtService;
+      if (record.serviceCenter) docData.serviceCenter = record.serviceCenter;
+      if (record.mechanic) docData.mechanic = record.mechanic;
+      const docRef = await addDoc(collection(db, 'serviceRecords'), docData);
+      return docRef.id;
+    } catch (error) {
+      console.error('Error adding appliance service record:', error);
       throw error;
     }
   }
@@ -312,7 +578,7 @@ class FirebaseService {
                 model: String(data.model || data.modelNumber || ''),
                 modelNumber: data.modelNumber ? String(data.modelNumber) : undefined,
                 serialNumber: data.serialNumber,
-                category: guessCategory(data.name, data.model),
+                category: data.category || guessCategory(data.name, data.model),
                 purchaseDate: parseMonthYear(data.applianceBought) || new Date(),
                 purchasePrice: typeof data.priceBought === 'number' ? data.priceBought : parseFloat(String(data.priceBought || '').replace(/,/g, '')) || 0,
                 currentValue: data.currentValue,
@@ -320,7 +586,7 @@ class FirebaseService {
                 amcExpiry: data.amcExpiry?.toDate ? data.amcExpiry.toDate() : undefined,
                 notes: data.notes,
                 isActive: data.isActive !== false,
-                images: data.imageUrl ? [data.imageUrl] : (data.images || []),
+                images: data.images && data.images.length > 0 ? data.images : (data.imageUrl ? [data.imageUrl] : []),
                 location: (data.applianceCity || city) as any,
                 createdAt: new Date(),
                 updatedAt: new Date(),
@@ -347,6 +613,19 @@ class FirebaseService {
       });
       unsubscribes.push(flatUnsub);
 
+      // Real-time listeners on legacy collections (updates here won't trigger flat listener)
+      for (const city of ['pune', 'nashik', 'jalgaon', 'other']) {
+        const legacyUnsub = onSnapshot(
+          collection(db, 'pulsebox', 'appliances', city),
+          () => { fetchAllAndNotify(); },
+          (err) => {
+            console.error(`Legacy appliances listener error (${city}):`, err);
+            fetchAllAndNotify();
+          }
+        );
+        unsubscribes.push(legacyUnsub);
+      }
+
       // Initial fetch
       fetchAllAndNotify();
 
@@ -366,13 +645,20 @@ class FirebaseService {
    */
   async updateAppliance(applianceId: string, updates: Partial<Appliance>, city?: string) {
     const db = getDb();
+    console.log('[updateAppliance] id:', applianceId, 'city:', city, 'updates keys:', Object.keys(updates));
+
+    // Strip undefined values to avoid accidental field deletion in Firestore
+    const sanitized = Object.fromEntries(Object.entries(updates).filter(([, v]) => v !== undefined));
+    if (Object.keys(sanitized).length === 0) return;
 
     // If city is known (legacy appliance), update there directly
     if (city) {
       const docRef = doc(db, 'pulsebox', 'appliances', city, applianceId);
       const snap = await getDoc(docRef);
+      console.log('[updateAppliance] checking legacy path', city, 'exists:', snap.exists());
       if (snap.exists()) {
-        await updateDoc(docRef, { ...updates, updatedAt: new Date() });
+        await updateDoc(docRef, { ...sanitized, updatedAt: new Date() });
+        console.log('[updateAppliance] updated legacy at', city);
         return;
       }
     }
@@ -381,18 +667,18 @@ class FirebaseService {
     const flatDoc = doc(db, 'appliances', applianceId);
     const flatSnap = await getDoc(flatDoc);
     if (flatSnap.exists()) {
-      await updateDoc(flatDoc, { ...updates, updatedAt: serverTimestamp() });
+      await updateDoc(flatDoc, { ...sanitized, updatedAt: serverTimestamp() });
       return;
     }
 
     // Check all legacy locations
-    for (const c of ['pune', 'nashik', 'jalgaon']) {
+    for (const c of ['pune', 'nashik', 'jalgaon', 'other']) {
       if (city && c === city) continue;
       try {
         const docRef = doc(db, 'pulsebox', 'appliances', c, applianceId);
         const snap = await getDoc(docRef);
         if (snap.exists()) {
-          await updateDoc(docRef, { ...updates, updatedAt: new Date() });
+          await updateDoc(docRef, { ...sanitized, updatedAt: new Date() });
           return;
         }
       } catch {}
@@ -450,14 +736,24 @@ class FirebaseService {
   }
 
   // Service Record Operations
-  async addServiceRecord(applianceId: string, record: Omit<ServiceRecord, 'id' | 'createdAt'>) {
+  async addServiceRecord(vehicleIdOrApplianceId: string, record: Omit<ServiceRecord, 'id' | 'createdAt'>, type: 'vehicle' | 'appliance' = 'appliance') {
     try {
       const db = getDb();
-      const docRef = await addDoc(collection(db, 'serviceRecords'), {
-        ...record,
-        applianceId,
+      const docData: any = {
         createdAt: serverTimestamp(),
-      });
+      };
+      if (type === 'vehicle') {
+        docData.vehicleId = vehicleIdOrApplianceId;
+      } else {
+        docData.applianceId = vehicleIdOrApplianceId;
+      }
+      // Add only non-undefined fields to avoid Firestore "unsupported field value: undefined"
+      for (const [key, value] of Object.entries(record)) {
+        if (value !== undefined) {
+          docData[key] = value;
+        }
+      }
+      const docRef = await addDoc(collection(db, 'serviceRecords'), docData);
       return docRef.id;
     } catch (error) {
       console.error('Error adding service record:', error);
@@ -465,7 +761,81 @@ class FirebaseService {
     }
   }
 
-  getServiceRecordsForAppliance(applianceId: string, callback: (records: ServiceRecord[]) => void) {
+  /** Upload compliance document (insurance/PUC/service bill) to Firebase Storage */
+  async uploadComplianceDocument(
+    userId: string,
+    vehicleId: string,
+    docType: 'insurance' | 'puc' | 'service',
+    fileUri: string,
+    onProgress?: (pct: number) => void,
+  ): Promise<string> {
+    try {
+      const storage = getFirebaseStorage();
+      if (!storage) throw new Error('Firebase Storage not available');
+
+      const timestamp = Date.now();
+      const ext = fileUri.split('.').pop() || 'jpg';
+      const fileName = `${userId}/${vehicleId}/${docType}/${timestamp}.${ext}`;
+      const storageRef = ref(storage, `compliance-documents/${fileName}`);
+
+      const response = await fetch(fileUri);
+      const blob = await response.blob();
+
+      // Use uploadBytesResumable for progress tracking
+      const { uploadBytesResumable, getDownloadURL: getDLUrl } = await import('firebase/storage');
+      const uploadTask = uploadBytesResumable(storageRef, blob);
+
+      return new Promise((resolve, reject) => {
+        uploadTask.on(
+          'state_changed',
+          (snapshot) => {
+            const pct = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            onProgress?.(Math.round(pct));
+          },
+          (error) => {
+            console.error('Upload error:', error);
+            reject(error);
+          },
+          async () => {
+            const url = await getDLUrl(uploadTask.snapshot.ref);
+            if ((blob as any).close) (blob as any).close();
+            resolve(url);
+          },
+        );
+      });
+    } catch (error) {
+      console.error('Error uploading compliance document:', error);
+      throw error;
+    }
+  }
+
+  /** Get service records for a specific vehicle */
+  getServiceRecordsForVehicle(vehicleId: string, callback: (records: ServiceRecord[]) => void) {
+    try {
+      const db = getDb();
+      const q = query(collection(db, 'serviceRecords'), where('vehicleId', '==', vehicleId));
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        const records = snapshot.docs.map((docSnap) => {
+          const data = docSnap.data();
+          return {
+            id: docSnap.id,
+            ...data,
+            serviceDate: data.serviceDate?.toDate?.() || new Date(data.serviceDate),
+            nextServiceDue: data.nextServiceDue?.toDate?.(),
+            createdAt: data.createdAt?.toDate?.() || new Date(),
+          } as ServiceRecord;
+        });
+        const sorted = records.sort((a, b) => new Date(b.serviceDate).getTime() - new Date(a.serviceDate).getTime());
+        callback(sorted);
+      });
+      return unsubscribe;
+    } catch (error) {
+      console.error('Error fetching vehicle service records:', error);
+      throw error;
+    }
+  }
+
+  getApplianceServiceRecords(applianceId: string, callback: (records: ServiceRecord[]) => void) {
     try {
       const db = getDb();
       const q = query(collection(db, 'serviceRecords'), where('applianceId', '==', applianceId));
@@ -493,7 +863,13 @@ class FirebaseService {
   async updateServiceRecord(recordId: string, updates: Partial<ServiceRecord>) {
     try {
       const db = getDb();
-      await updateDoc(doc(db, 'serviceRecords', recordId), updates);
+      // Filter out undefined fields — Firestore rejects undefined values
+      const sanitized: Record<string, any> = {};
+      for (const [key, value] of Object.entries(updates)) {
+        if (value !== undefined) sanitized[key] = value;
+      }
+      sanitized.updatedAt = new Date();
+      await updateDoc(doc(db, 'serviceRecords', recordId), sanitized);
     } catch (error) {
       console.error('Error updating service record:', error);
       throw error;
@@ -506,6 +882,70 @@ class FirebaseService {
       await deleteDoc(doc(db, 'serviceRecords', recordId));
     } catch (error) {
       console.error('Error deleting service record:', error);
+      throw error;
+    }
+  }
+
+  /** Alias: get vehicle service history (calls getServiceRecordsForVehicle) */
+  getVehicleServiceHistory(vehicleId: string, callback: (records: ServiceRecord[]) => void) {
+    return this.getServiceRecordsForVehicle(vehicleId, callback);
+  }
+
+  /** Alias: add vehicle service record (calls addServiceRecord with type='vehicle') */
+  async addVehicleServiceRecord(vehicleId: string, record: Omit<ServiceRecord, 'id' | 'createdAt'>) {
+    return this.addServiceRecord(vehicleId, record, 'vehicle');
+  }
+
+  /** Alias: get appliance service records by applianceId */
+  getServiceRecordsForAppliance(applianceId: string, callback: (records: ServiceRecord[]) => void) {
+    return this.getApplianceServiceRecords(applianceId, callback);
+  }
+
+  /** Upload a receipt image/PDF for appliance service record to Firebase Storage */
+  async uploadApplianceReceipt(
+    userId: string,
+    applianceId: string,
+    fileUri: string,
+    onProgress?: (pct: number) => void,
+  ): Promise<{ url: string; type: 'image' | 'pdf' }> {
+    try {
+      const storage = getFirebaseStorage();
+      if (!storage) throw new Error('Firebase Storage not available');
+
+      const timestamp = Date.now();
+      const ext = fileUri.split('.').pop() || 'jpg';
+      const isPdf = ext.toLowerCase() === 'pdf';
+      const fileName = `appliance-receipts/${userId}/${applianceId}/${timestamp}.${ext}`;
+      const storageRef = ref(storage, fileName);
+
+      const response = await fetch(fileUri);
+      const blob = await response.blob();
+
+      const { uploadBytesResumable, getDownloadURL: getDLUrl } = await import('firebase/storage');
+      const uploadTask = uploadBytesResumable(storageRef, blob);
+
+      const url = await new Promise<string>((resolve, reject) => {
+        uploadTask.on(
+          'state_changed',
+          (snapshot) => {
+            const pct = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            onProgress?.(Math.round(pct));
+          },
+          (error) => {
+            console.error('Receipt upload error:', error);
+            reject(error);
+          },
+          async () => {
+            const downloadUrl = await getDLUrl(uploadTask.snapshot.ref);
+            if ((blob as any).close) (blob as any).close();
+            resolve(downloadUrl);
+          },
+        );
+      });
+
+      return { url, type: isPdf ? 'pdf' : 'image' };
+    } catch (error) {
+      console.error('Error uploading appliance receipt:', error);
       throw error;
     }
   }
@@ -658,11 +1098,14 @@ class FirebaseService {
       }
     }
 
-    // Fetch Vehicles from pulsebox/vehicles/{city}
+    // Fetch Vehicles from pulsebox/vehicles/{city} (deduplicate by id)
+    const seenVehicleIds = new Set<string>();
     for (const city of cities) {
       try {
         const snapshot = await getDocs(collection(db, 'pulsebox', 'vehicles', city));
         snapshot.forEach(doc => {
+          if (seenVehicleIds.has(doc.id)) return;
+          seenVehicleIds.add(doc.id);
           const data = doc.data();
           vehicles.push({
             id: doc.id,
@@ -700,11 +1143,14 @@ class FirebaseService {
       }
     }
 
-    // Fetch Appliances from pulsebox/appliances/{city}
+    // Fetch Appliances from pulsebox/appliances/{city} (deduplicate by id)
+    const seenApplianceIds = new Set<string>();
     for (const city of cities) {
       try {
         const snapshot = await getDocs(collection(db, 'pulsebox', 'appliances', city));
         snapshot.forEach(doc => {
+          if (seenApplianceIds.has(doc.id)) return;
+          seenApplianceIds.add(doc.id);
           const data = doc.data();
           appliances.push({
             id: doc.id,
@@ -1158,6 +1604,11 @@ class FirebaseService {
     }
 
     await deleteDoc(doc(db, 'pulsebox', 'mnglbills', location, billId));
+  }
+
+  async deleteWifiBill(location: string, billId: string): Promise<void> {
+    const db = getDb();
+    await deleteDoc(doc(db, 'pulsebox', 'wifibills', location, billId));
   }
 
   /** Upload gas bill file to Firebase Storage */

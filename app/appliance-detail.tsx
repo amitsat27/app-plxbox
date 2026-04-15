@@ -2,20 +2,20 @@
  * Appliance Detail Screen
  */
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Image,
   Animated,
   Alert,
   ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { useAuth } from '@/src/context/AuthContext';
 import { useTheme } from '@/theme/themeProvider';
 import { getColorScheme, getApplianceCategoryColor } from '@/theme/color';
@@ -35,7 +35,8 @@ import {
 } from 'lucide-react-native';
 import { useApplianceData } from '@/src/hooks/useApplianceData';
 import type { Appliance } from '@/src/types';
-import { getApplianceImage, getCategoryLabel, getCategoryEmoji, formatDate, formatINR, daysBetween, yearsSince } from '@/components/appliances/utils';
+import { getCategoryLabel, getCategoryEmoji, formatDate, formatINR, daysBetween, yearsSince } from '@/components/appliances/utils';
+import ImageCarousel from '@/components/ui/ImageCarousel';
 import ServiceHistorySection from '@/components/appliances/ServiceHistorySection';
 import { firebaseService } from '@/src/services/FirebaseService';
 
@@ -53,6 +54,17 @@ export default function ApplianceDetailScreen() {
 
   const [serviceRecords, setServiceRecords] = useState<any[]>([]);
   const [loadingServices, setLoadingServices] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const refetchServices = useCallback(() => {
+    if (!applianceId) { setLoadingServices(false); return () => {}; }
+    setRefreshing(true);
+    return (firebaseService as any).getServiceRecordsForAppliance?.(applianceId, (records: any[]) => {
+      setServiceRecords(records);
+      setLoadingServices(false);
+      setRefreshing(false);
+    });
+  }, [applianceId]);
 
   useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -96,7 +108,7 @@ export default function ApplianceDetailScreen() {
   }
 
   const catColor = getApplianceCategoryColor(appliance.category);
-  const imageUrl = getApplianceImage(appliance);
+  const hasImages = appliance.images && appliance.images.length > 0;
 
   // Warranty info
   const warrantyDays = appliance.warrantyExpiry ? daysBetween(new Date(), appliance.warrantyExpiry) : null;
@@ -182,19 +194,23 @@ export default function ApplianceDetailScreen() {
           </TouchableOpacity>
         </View>
 
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 120 }}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); refetchServices(); }} tintColor="#7C3AED" />
+          }
+        >
           {/* Hero Image */}
-          <View style={styles.heroContainer}>
-            {imageUrl ? (
-              <View style={styles.heroImageWrapper}>
-                <Image source={{ uri: imageUrl }} style={styles.heroImage} resizeMode="cover" />
-              </View>
-            ) : (
-              <View style={[styles.heroPlaceholder, { backgroundColor: `${catColor}20` }]}>
-                <Text style={{ fontSize: 64 }}>{getCategoryEmoji(appliance.category)}</Text>
-              </View>
-            )}
-          </View>
+          {appliance.images && appliance.images.length > 0 ? (
+            <View style={styles.heroContainer}>
+              <ImageCarousel images={appliance.images} height={220} marginHorizontal={0} />
+            </View>
+          ) : (
+            <View style={[styles.heroContainer, styles.heroPlaceholder, { backgroundColor: `${catColor}15` }]}>
+              <Text style={{ fontSize: 64 }}>{getCategoryEmoji(appliance.category)}</Text>
+            </View>
+          )}
 
           {/* Info Header */}
           <View style={styles.infoHeader}>
@@ -298,9 +314,61 @@ export default function ApplianceDetailScreen() {
           {!loadingServices && (
             <ServiceHistorySection
               records={serviceRecords}
+              applianceId={appliance.id}
               onAddRecord={() => router.push({
                 pathname: '/add-service-record',
                 params: { applianceId: appliance.id, applianceName: appliance.name },
+              })}
+              onEditRecord={(record) => router.push({
+                pathname: '/add-service-record',
+                params: {
+                  applianceId: appliance.id,
+                  applianceName: appliance.name,
+                  mode: 'edit',
+                  serviceRecordId: record.id,
+                  serviceDate: record.serviceDate instanceof Date ? record.serviceDate.toISOString() : record.serviceDate,
+                  serviceType: record.serviceType,
+                  cost: String(record.cost),
+                  provider: record.provider,
+                  description: record.description,
+                  notes: record.notes,
+                },
+              })}
+              onDeleteRecord={(record) => {
+                Alert.alert(
+                  'Delete Service Record',
+                  'Are you sure you want to delete this service record?',
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                      text: 'Delete',
+                      style: 'destructive',
+                      onPress: async () => {
+                        try {
+                          await firebaseService.deleteServiceRecord(record.id);
+                        } catch {
+                          Alert.alert('Error', 'Failed to delete service record');
+                        }
+                      },
+                    },
+                  ],
+                );
+              }}
+              onOpenDetail={(record) => router.push({
+                pathname: '/service-record-detail',
+                params: {
+                  applianceId: appliance.id,
+                  applianceName: appliance.name,
+                  serviceRecordId: record.id,
+                  mode: 'view',
+                  _fromSection: 'true',
+                  serviceDate: record.serviceDate instanceof Date ? record.serviceDate.toISOString() : record.serviceDate,
+                  serviceType: record.serviceType,
+                  cost: String(record.cost),
+                  provider: record.provider,
+                  description: record.description,
+                  notes: record.notes,
+                },
               })}
             />
           )}

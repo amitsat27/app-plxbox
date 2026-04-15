@@ -13,7 +13,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import * as WebBrowser from 'expo-web-browser';
 import * as Sharing from 'expo-sharing';
-import * as FileSystem from 'expo-file-system/legacy';
+import * as FileSystem from 'expo-file-system';
 import {
   ChevronLeft, Flame, CheckCircle, Clock, AlertCircle,
   CreditCard, Calendar, Edit, Trash2, Share2, Download, Gauge, ExternalLink, File
@@ -77,10 +77,11 @@ function DocumentSection({ url, fileExtension, mimeType }: { url: string; fileEx
     if (loading) return;
     setLoading(true);
     try {
-      const fileExt = ext || 'file';
       // Extract original filename from path (e.g. September_2025_bill_1234567890123.jpeg)
       const pathMatch = safeUrl.match(/documents\/mnglBills\/([^?]+)/);
-      const baseName = pathMatch ? pathMatch[1] : `gas_bill_${Date.now()}`;
+      let baseName = pathMatch ? pathMatch[1] : `gas_bill_${Date.now()}`;
+      // If no extension, add .jpeg
+      if (!/\.\w+$/.test(baseName)) baseName += '.jpeg';
       const localUri = (FileSystem as any).cacheDirectory + baseName;
       await FileSystem.downloadAsync(safeUrl, localUri);
       const canShare = await Sharing.isAvailableAsync();

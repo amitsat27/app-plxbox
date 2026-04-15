@@ -1,142 +1,154 @@
 /**
- * Vehicle Card — premium card with vehicle info, compliance badges, press animation
+ * Vehicle Card — redesigned with cleaner layout
  */
 
-import React, { useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated, Platform } from 'react-native';
-import { Colors, getColorScheme } from '@/theme/color';
+import React, { useCallback, useEffect } from 'react';
+import { View, Text, StyleSheet, Platform, TouchableOpacity } from 'react-native';
+import { Image } from 'expo-image';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, withDelay, withSpring } from 'react-native-reanimated';
+import * as Haptics from 'expo-haptics';
+import { getVehicleTypeColor } from '@/theme/color';
 import { useTheme } from '@/theme/themeProvider';
+import { getVehicleImageUrl } from '../utils/vehicleImages';
+import { formatOdometer } from '../utils/formatNumbers';
+import { FUEL_EMOJI_MAP } from '../utils/vehicleImages';
 import type { Vehicle } from '@/src/types';
 import StatusBadge from './StatusBadge';
+
+const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
 
 interface Props {
   vehicle: Vehicle;
   onPress: () => void;
+  index?: number;
 }
 
-export default function VehicleCard({ vehicle, onPress }: Props) {
+export default function VehicleCard({ vehicle, onPress, index = 0 }: Props) {
   const { isDark } = useTheme();
-  const scheme = getColorScheme(isDark);
-  const scaleAnim = useRef(new Animated.Value(1)).current;
-  const opacityAnim = useRef(new Animated.Value(0.7)).current;
+  const scale = useSharedValue(0.97);
+  const opacity = useSharedValue(0);
 
-  React.useEffect(() => {
-    Animated.timing(opacityAnim, { toValue: 1, duration: 350, useNativeDriver: true }).start();
+  useEffect(() => {
+    opacity.value = withDelay(index * 80, withTiming(1, { duration: 350 }));
   }, []);
 
-  const handlePressIn = () => {
-    Animated.parallel([
-      Animated.spring(scaleAnim, { toValue: 0.97, damping: 14, useNativeDriver: true }),
-    ]).start();
-  };
-  const handlePressOut = () => {
-    Animated.spring(scaleAnim, { toValue: 1, damping: 14, useNativeDriver: true }).start();
-  };
+  const cardAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+    opacity: opacity.value,
+  }));
 
-  const vehicleEmoji = () => {
-    switch (vehicle.type) { case 'car': return '🚗'; case 'bike': return '🏍️'; case 'truck': return '🚛'; default: return '🚘'; }
-  };
-  const fuelEmoji = () => {
-    switch (vehicle.fuelType) { case 'electric': return '⚡'; case 'cng': case 'lpg': return '🔵'; case 'hybrid': return '🌿'; default: return '⛽'; }
-  };
+  const handlePressIn = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    scale.value = withSpring(0.98, { damping: 15 });
+  }, []);
 
-  const cardBg = isDark ? '#1C1C1E' : '#FFFFFF';
-  const dividerColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)';
+  const handlePressOut = useCallback(() => {
+    scale.value = withSpring(1, { damping: 15 });
+  }, []);
+
+  const accentColor = getVehicleTypeColor(vehicle.type);
+  const rowBorder = isDark ? '#1E1E20' : '#E8E8ED';
+  const fuelEmoji = FUEL_EMOJI_MAP[vehicle.fuelType] || '⛽';
 
   return (
-    <TouchableOpacity activeOpacity={1} onPress={onPress} onPressIn={handlePressIn} onPressOut={handlePressOut}>
+    <AnimatedTouchableOpacity activeOpacity={0.88} onPress={onPress} onPressIn={handlePressIn} onPressOut={handlePressOut}>
       <Animated.View style={[styles.card, {
-        transform: [{ scale: scaleAnim }],
-        opacity: opacityAnim,
-        backgroundColor: cardBg,
-      }]}>
-        {/* ── Header ── */}
-        <View style={styles.header}>
-          <View style={[styles.iconWrap, { backgroundColor: isDark ? 'rgba(245,158,11,0.08)' : 'rgba(245,158,11,0.06)' }]}>
-            <Text style={{ fontSize: 26 }}>{vehicleEmoji()}</Text>
-          </View>
-          <View style={styles.info}>
-            <Text style={[styles.name, { color: scheme.textPrimary }]} numberOfLines={1}>{vehicle.name}</Text>
-            <Text style={[styles.type, { color: scheme.textTertiary }]} numberOfLines={1}>{vehicle.make} {vehicle.model} · {vehicle.year}</Text>
-            {vehicle.registrationNumber && (
-              <Text style={[styles.reg, { color: scheme.textTertiary }]} numberOfLines={1}>{vehicle.registrationNumber}</Text>
-            )}
-          </View>
-          <View style={[
-            styles.tag,
-            { backgroundColor: vehicle.isActive ? 'rgba(16,185,129,0.1)' : 'rgba(148,163,184,0.08)' }
-          ]}>
-            <Text style={[
-              styles.tagText,
-              { color: vehicle.isActive ? '#10B981' : '#94A3B8' }
-            ]}>{vehicle.isActive ? 'ON' : 'OFF'}</Text>
+        backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF',
+        ...Platform.select({
+          ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: isDark ? 0.3 : 0.06, shadowRadius: 8 },
+          android: { elevation: 2 },
+        }),
+      }, cardAnimatedStyle]}>
+        {/* Accent border strip */}
+        <View style={[styles.accentBorder, { backgroundColor: accentColor }]} />
+
+        {/* Image area */}
+        <View style={[styles.imageWrap, { backgroundColor: `${accentColor}10` }]}>
+          <Image
+            source={{ uri: getVehicleImageUrl(vehicle.type, index) }}
+            style={styles.cardImage}
+            contentFit="cover"
+            cachePolicy="memory-disk"
+            transition={300}
+          />
+          <View style={[styles.statusPill, { backgroundColor: isDark ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.85)' }]}>
+            <View style={[styles.statusDot, { backgroundColor: vehicle.isActive ? '#10B981' : '#94A3B8' }]} />
+            <Text style={[styles.statusText, { color: vehicle.isActive ? '#10B981' : '#94A3B8' }]}>
+              {vehicle.isActive ? 'Active' : 'Inactive'}
+            </Text>
           </View>
         </View>
 
-        {/* ── Divider ── */}
-        <View style={[styles.divider, { backgroundColor: dividerColor }]} />
-
-        {/* ── Footer stats ── */}
-        <View style={styles.footer}>
-          <View style={[styles.fuelBadge, { backgroundColor: isDark ? '#27272A' : '#F5F5F5' }]}>
-            <Text style={{ fontSize: 12 }}>{fuelEmoji()}</Text>
-            <Text style={[styles.fuelText, { color: scheme.textSecondary, textTransform: 'capitalize' }]}>{vehicle.fuelType}</Text>
+        {/* Content */}
+        <View style={styles.content}>
+          <View style={styles.headerRow}>
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text style={[styles.name, { color: isDark ? '#F8FAFC' : '#1E293B' }]} numberOfLines={1}>{vehicle.name}</Text>
+              <Text style={[styles.subtitle, { color: isDark ? '#A1A1AA' : '#64748B' }]} numberOfLines={1}>
+                {vehicle.make} {vehicle.model} {String(vehicle.year)}{vehicle.registrationNumber ? `  ${vehicle.registrationNumber}` : ''}
+              </Text>
+            </View>
           </View>
 
-          {vehicle.mileage && (
-            <View style={styles.statItem}>
-              <Text style={[styles.statValue, { color: scheme.textPrimary }]}>{vehicle.mileage}</Text>
-              <Text style={[styles.statLabel, { color: scheme.textTertiary }]}>km/l</Text>
-            </View>
-          )}
+          <View style={[styles.divider, { backgroundColor: rowBorder }]} />
 
-          {vehicle.odometerReading && (
-            <View style={styles.statItem}>
-              <Text style={[styles.statValue, { color: scheme.textPrimary }]}>{(vehicle.odometerReading / 1000).toFixed(0)}k</Text>
-              <Text style={[styles.statLabel, { color: scheme.textTertiary }]}>km</Text>
+          <View style={styles.footer}>
+            <View style={[styles.fuelBadge, { backgroundColor: `${accentColor}10` }]}>
+              <Text style={{ fontSize: 11 }}>{fuelEmoji}</Text>
+              <Text style={[styles.fuelText, { color: accentColor, textTransform: 'capitalize' }]}>{vehicle.fuelType}</Text>
             </View>
-          )}
 
-          {/* Compliance badges */}
-          <View style={styles.badges}>
-            {vehicle.insuranceExpiry && (
-              <StatusBadge type="insurance" date={vehicle.insuranceExpiry} compact />
+            {vehicle.odometerReading && (
+              <View style={styles.stat}>
+                <Text style={[styles.statValue, { color: isDark ? '#F8FAFC' : '#1E293B' }]}>{formatOdometer(vehicle.odometerReading)}</Text>
+                <Text style={styles.statLabel}>km</Text>
+              </View>
             )}
-            {vehicle.pucExpiry && (
-              <StatusBadge type="puc" date={vehicle.pucExpiry} compact />
+
+            {vehicle.mileage && (
+              <View style={styles.stat}>
+                <Text style={[styles.statValue, { color: isDark ? '#F8FAFC' : '#1E293B' }]}>{vehicle.mileage}</Text>
+                <Text style={styles.statLabel}>km/l</Text>
+              </View>
             )}
+
+            <View style={styles.compliance}>
+              {vehicle.insuranceExpiry && <StatusBadge type="insurance" date={vehicle.insuranceExpiry} compact showDot />}
+              {vehicle.pucExpiry && <StatusBadge type="puc" date={vehicle.pucExpiry} compact showDot />}
+            </View>
           </View>
         </View>
       </Animated.View>
-    </TouchableOpacity>
+    </AnimatedTouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    padding: 14, borderRadius: 20,
-    ...Platform.select({
-      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.4, shadowRadius: 8 },
-      android: { elevation: 3 },
-    }),
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginBottom: 10,
   },
-  header: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  iconWrap: { width: 48, height: 48, borderRadius: 16, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
-  info: { flex: 1, minWidth: 0 },
-  name: { fontSize: 15, fontWeight: '700' },
-  type: { fontSize: 12, marginTop: 2 },
-  reg: { fontSize: 11, marginTop: 1, fontFamily: Platform.OS === 'ios' ? 'SF Mono' : 'monospace' },
-  tag: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10 },
-  tagText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.8 },
-  divider: { height: 0.5, marginVertical: 10 },
-  footer: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'nowrap' },
-  fuelBadge: {
+  accentBorder: { position: 'absolute', top: 0, left: 0, right: 0, height: 2, zIndex: 10 },
+  imageWrap: { height: 110, overflow: 'hidden' },
+  cardImage: { width: '100%', height: '100%' },
+  statusPill: {
+    position: 'absolute', top: 8, right: 8,
     flexDirection: 'row', alignItems: 'center', gap: 4,
-    paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12,
+    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12,
   },
-  fuelText: { fontSize: 11, fontWeight: '700' },
-  statItem: { alignItems: 'center', paddingHorizontal: 4 },
-  statValue: { fontSize: 15, fontWeight: '800' },
-  statLabel: { fontSize: 9, fontWeight: '600' },
-  badges: { flexDirection: 'row', gap: 6, marginLeft: 'auto' },
+  statusDot: { width: 5, height: 5, borderRadius: 3 },
+  statusText: { fontSize: 9, fontWeight: '700', letterSpacing: 0.3 },
+  content: { padding: 12, gap: 0 },
+  headerRow: { marginBottom: 4 },
+  name: { fontSize: 15, fontWeight: '700', letterSpacing: -0.2 },
+  subtitle: { fontSize: 12, lineHeight: 16 },
+  divider: { height: 0.5, marginVertical: 10 },
+  footer: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  fuelBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+  fuelText: { fontSize: 10, fontWeight: '700' },
+  stat: { alignItems: 'center', paddingHorizontal: 4 },
+  statValue: { fontSize: 12, fontWeight: '800', lineHeight: 16 },
+  statLabel: { fontSize: 8, color: '#8B8B93', fontWeight: '600' },
+  compliance: { flexDirection: 'row', gap: 5, marginLeft: 'auto' },
 });

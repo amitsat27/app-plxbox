@@ -12,7 +12,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import * as WebBrowser from 'expo-web-browser';
 import * as Sharing from 'expo-sharing';
-import * as FileSystem from 'expo-file-system/legacy';
+import * as FileSystem from 'expo-file-system';
 import {
   ChevronLeft, Zap, CheckCircle, Clock, AlertCircle,
   CreditCard, MapPin, User, Building2, Phone, Droplets,
@@ -22,7 +22,7 @@ import { Spacing, Typography, BorderRadius } from '@/constants/designTokens';
 import { Colors, getColorScheme } from '@/theme/color';
 import { useTheme } from '@/theme/themeProvider';
 import { firebaseService } from '@/src/services/FirebaseService';
-import { markBillForEdit } from './electric-bills';
+import { markBillForEdit } from './electric-bills/index';
 
 const STATUS_MAP: Record<string, { color: string; bgTint: { light: string; dark: string }; icon: any; text: string }> = {
   Paid: { color: '#10B981', bgTint: { light: 'rgba(16,185,129,0.12)', dark: 'rgba(16,185,129,0.2)' }, icon: CheckCircle, text: 'Paid' },
@@ -72,8 +72,13 @@ function DocumentSection({ url }: { url: string }) {
     if (downloading) return;
     setDownloading(true);
     try {
-      const fileExt = ext || 'file';
-      const localUri = (FileSystem as any).cacheDirectory + `bill_${Date.now()}.${fileExt}`;
+      // Extract original filename from Firebase Storage path
+      const fileExt = getExt(safeUrl) || ext || 'jpeg';
+      const pathMatch = safeUrl.match(/documents\/electricBills\/([^?]+)/);
+      let baseName = pathMatch ? pathMatch[1] : `bill_${Date.now()}`;
+      // If no extension, add .jpeg
+      if (!/\.\w+$/.test(baseName)) baseName += '.jpeg';
+      const localUri = (FileSystem as any).cacheDirectory + baseName;
       await FileSystem.downloadAsync(safeUrl, localUri);
       const canShare = await Sharing.isAvailableAsync();
       if (canShare) {
