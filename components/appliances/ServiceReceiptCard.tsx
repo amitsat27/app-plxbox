@@ -9,7 +9,7 @@ import {
   ActivityIndicator, Share, Modal, Linking,
 } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
-import * as FileSystem from 'expo-file-system/legacy';
+import { downloadAsync, cacheDirectory } from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { ExternalLink, Download, File, X, FileText } from 'lucide-react-native';
 import { useTheme } from '@/theme/themeProvider';
@@ -63,8 +63,8 @@ export default function ServiceReceiptCard({ receipt }: ServiceReceiptCardProps)
     setLoading(true);
     try {
       const baseName = `receipt-${receipt.id}.${isPdf ? 'pdf' : 'jpg'}`;
-      const localUri = (FileSystem as any).cacheDirectory + baseName;
-      await FileSystem.downloadAsync(url, localUri);
+      const localUri = cacheDirectory + baseName;
+      await downloadAsync(url, localUri);
       const canShare = await Sharing.isAvailableAsync();
       if (canShare) {
         await Sharing.shareAsync(localUri, {

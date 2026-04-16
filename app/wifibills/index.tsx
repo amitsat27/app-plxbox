@@ -23,6 +23,7 @@ import { ShimmerList } from "@/components/wifibills/ShimmerList";
 import { SummarySection } from "@/components/wifibills/SummarySection";
 import { TipsSection, secTitle } from "@/components/wifibills/TipsSection";
 import { pendingWifiEdit } from "@/components/wifibills/editStore";
+import SectionHeroBanner from "@/components/SectionHeroBanner";
 
 export default function WifiBillsScreen() {
   const router = useRouter();
@@ -130,10 +131,10 @@ export default function WifiBillsScreen() {
   const billCount = bills.length;
 
   return (
-    <SafeAreaView style={[styles.screen, { backgroundColor: isDark ? "#000" : "#F2F2F7" }]}>
+    <View style={[styles.screen, { backgroundColor: isDark ? "#000" : "#F2F2F7" }]}>
 
       {/* ── Header ─────────────────────────────────────── */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top }]}>
         <TouchableOpacity
           style={styles.backBtn}
           activeOpacity={0.6}
@@ -166,6 +167,15 @@ export default function WifiBillsScreen() {
           <RefreshControl refreshing={loading} onRefresh={refreshAll} tintColor="#8B5CF6" />
         }
       >
+        {/* Hero Banner */}
+        <SectionHeroBanner
+          title="WiFi Bills"
+          subtitle="Manage your internet bills"
+          stats={{ billCount: bills.length, paid: stats.paidCount, pending: stats.pendingCount }}
+          icon={<Wifi size={22} color={Colors.primary} />}
+          countLabel="bill"
+        />
+
         {/* Summary section */}
         <Animated.View style={{ opacity: fade, transform: [{ translateY: slide }] }}>
           <SummarySection stats={stats} />
@@ -216,7 +226,7 @@ export default function WifiBillsScreen() {
         onSave={editBillData ? handleUpdate : handleAdd}
         isLoading={formLoading}
       />
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -281,7 +291,7 @@ function getDetailParams(bill: WifiBillEntry) {
 import { Colors } from "@/theme/color";
 
 const styles = StyleSheet.create({
-  screen: { flex: 1 },
+  screen: { flex: 1, paddingBottom: 34 },
   header: {
     flexDirection: "row",
     alignItems: "center",

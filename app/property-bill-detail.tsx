@@ -13,7 +13,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import * as WebBrowser from 'expo-web-browser';
 import * as Sharing from 'expo-sharing';
-import * as FileSystem from 'expo-file-system';
+import { downloadAsync, cacheDirectory } from 'expo-file-system/legacy';
 import {
   ChevronLeft, CheckCircle, Clock, AlertCircle,
   CreditCard, MapPin, User, Phone,
@@ -65,8 +65,8 @@ function DocumentSection({ url }: { url: string }) {
     setDownloading(true);
     try {
       const baseName = url.match(/documents\/propertyTaxBills\/([^?]+)/)?.[1] || `property_tax_bill_${Date.now()}`;
-      const localUri = (FileSystem as any).cacheDirectory + baseName;
-      await FileSystem.downloadAsync(url, localUri);
+      const localUri = cacheDirectory + baseName;
+      await downloadAsync(url, localUri);
       const canShare = await Sharing.isAvailableAsync();
       if (canShare) {
         await Sharing.shareAsync(localUri);
@@ -403,38 +403,38 @@ function PropertyBillDetailScreen() {
 
   if (billLoading) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: isDark ? '#000000' : '#F2F2F7' }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.lg, paddingTop: Math.max(insets.top, 8), paddingBottom: Spacing.md }}>
+      <View style={{ flex: 1, backgroundColor: isDark ? '#000000' : '#F2F2F7' }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.lg, paddingTop: insets.top, paddingBottom: Spacing.md }}>
           <TouchableOpacity style={{ padding: 4 }} onPress={() => router.back()}><ChevronLeft size={24} color={scheme.textPrimary} /></TouchableOpacity>
         </View>
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <ActivityIndicator size="large" color={Colors.primary} />
           <Text style={{ color: scheme.textTertiary, marginTop: Spacing.md, fontSize: Typography.fontSize.sm }}>Loading bill…</Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   if (!bill) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: isDark ? '#000000' : '#F2F2F7' }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.lg, paddingTop: Math.max(insets.top, 8), paddingBottom: Spacing.md }}>
+      <View style={{ flex: 1, backgroundColor: isDark ? '#000000' : '#F2F2F7' }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.lg, paddingTop: insets.top, paddingBottom: Spacing.md }}>
           <TouchableOpacity style={{ padding: 4 }} onPress={() => router.back()}><ChevronLeft size={24} color={scheme.textPrimary} /></TouchableOpacity>
         </View>
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <FileText size={48} color={scheme.textTertiary} opacity={0.3} />
           <Text style={{ color: scheme.textTertiary, marginTop: Spacing.md, fontSize: Typography.fontSize.md }}>Bill not found</Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={[styles.screen, { backgroundColor: isDark ? '#000000' : '#F2F2F7' }]}>
+    <View style={[styles.screen, { backgroundColor: isDark ? '#000000' : '#F2F2F7' }]}>
       {actionLoading && <View style={[styles.loadingOverlay, { backgroundColor: isDark ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.7)' }]}><ActivityIndicator size="large" color={Colors.primary} /></View>}
 
       {/* Header */}
-      <View style={[styles.header, { paddingTop: Math.max(insets.top, 4) }]}>
+      <View style={[styles.header, { paddingTop: insets.top }]}>
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
           <ChevronLeft size={24} color={scheme.textPrimary} />
         </TouchableOpacity>
@@ -509,7 +509,7 @@ function PropertyBillDetailScreen() {
         bill={bill}
         city={city}
       />
-    </SafeAreaView>
+    </View>
   );
 }
 

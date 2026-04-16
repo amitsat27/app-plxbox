@@ -4,6 +4,7 @@ import {
     Animated,
     Dimensions,
     Easing,
+    Image,
     KeyboardAvoidingView,
     Platform,
     ScrollView,
@@ -326,9 +327,11 @@ export default function LoginScreen() {
                 },
               ]}
             >
-              <View style={styles.logoIconContainer}>
-                <Text style={styles.logoIcon}>⚡</Text>
-              </View>
+              <Image
+                source={require("@/assets/images/icon.png")}
+                style={styles.logoImage}
+                resizeMode="contain"
+              />
               <Text style={[styles.logoText, { color: theme.textPrimary }]}>
                 PulseBox
               </Text>
@@ -693,25 +696,6 @@ export default function LoginScreen() {
                       </>
                     )}
                   </TouchableOpacity>
-
-                  {/* Sign Up Link */}
-                  <View style={styles.signupContainer}>
-                    <Text
-                      style={[
-                        styles.signupText,
-                        { color: theme.textSecondary },
-                      ]}
-                    >
-                      Don't have an account?
-                    </Text>
-                    <TouchableOpacity>
-                      <Text
-                        style={[styles.signupLink, { color: Colors.primary }]}
-                      >
-                        Sign Up
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
                 </View>
               </BlurView>
             </Animated.View>
@@ -757,25 +741,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 40,
   },
-  logoIconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 20,
-    backgroundColor: Colors.primaryContainer,
-    justifyContent: "center",
-    alignItems: "center",
+  logoImage: {
+    width: 100,
+    height: 100,
     marginBottom: Spacing.md,
-    ...Platform.select({
-      ios: {
-        shadowColor: Colors.primary,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 12,
-      },
-    }),
-  },
-  logoIcon: {
-    fontSize: 40,
   },
   logoText: {
     fontSize: Typography.fontSize.xxxl,

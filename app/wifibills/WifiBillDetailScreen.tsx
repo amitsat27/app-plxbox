@@ -13,7 +13,7 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import * as Haptics from "expo-haptics";
 import * as WebBrowser from "expo-web-browser";
 import * as Sharing from "expo-sharing";
-import * as FileSystem from "expo-file-system/legacy";
+import { downloadAsync, cacheDirectory } from "expo-file-system/legacy";
 import {
   ChevronLeft, CheckCircle, Clock, AlertCircle,
   CreditCard, MapPin, Calendar, Edit, Trash2, Share2, Wifi,
@@ -91,8 +91,8 @@ function DocumentSection({ url }: { url: string }) {
     setDownloading(true);
     try {
       const baseName = safeUrl.match(/documents\/(?:wifiBills|wifibills)\/([^?]+)/)?.[1] || `wifi_bill_${Date.now()}`;
-      const localUri = (FileSystem as any).cacheDirectory + baseName;
-      await FileSystem.downloadAsync(safeUrl, localUri);
+      const localUri = cacheDirectory + baseName;
+      await downloadAsync(safeUrl, localUri);
       const canShare = await Sharing.isAvailableAsync();
       if (canShare) {
         await Sharing.shareAsync(localUri);
@@ -315,7 +315,7 @@ export default function WifiBillDetailScreen() {
   const fullCity = city.charAt(0).toUpperCase() + city.slice(1);
 
   return (
-    <SafeAreaView style={[styles.screen, { backgroundColor: isDark ? "#000000" : "#F2F2F7" }]}>
+    <View style={[styles.screen, { backgroundColor: isDark ? "#000000" : "#F2F2F7" }]}>
       {loading && (
         <View style={[styles.loadingOverlay, { backgroundColor: isDark ? "rgba(0,0,0,0.7)" : "rgba(255,255,255,0.7)" }]}>
           <ActivityIndicator size="large" color={Colors.primary} />
@@ -323,7 +323,7 @@ export default function WifiBillDetailScreen() {
       )}
 
       {/* Header */}
-      <View style={[styles.header, { paddingTop: Math.max(insets.top, 4) }]}>
+      <View style={[styles.header, { paddingTop: insets.top }]}>
         <TouchableOpacity style={styles.iconBtn} onPress={() => router.back()} activeOpacity={0.6}>
           <ChevronLeft size={24} color={scheme.textPrimary} />
         </TouchableOpacity>
@@ -482,12 +482,12 @@ export default function WifiBillDetailScreen() {
           </TouchableOpacity>
         </Animated.View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1 },
+  screen: { flex: 1, paddingBottom: 34 },
   loadingOverlay: { ...StyleSheet.absoluteFillObject, justifyContent: "center", alignItems: "center", zIndex: 100 },
 
   // Header

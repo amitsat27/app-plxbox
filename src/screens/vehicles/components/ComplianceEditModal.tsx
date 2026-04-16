@@ -34,10 +34,10 @@ const COMPLIANCE_COLORS: Record<ComplianceEditTarget, string> = {
 export default function ComplianceEditModal({
   visible, target, date, label, isDark, onChange, onSave, onClose, documentUrl, onDocumentUpload,
 }: ComplianceEditModalProps) {
+  const [uploading, setUploading] = useState(false);
+  
   if (!visible || !target) return null;
   const color = COMPLIANCE_COLORS[target];
-
-  const [uploading, setUploading] = useState(false);
 
   const handlePickDocument = async () => {
     try {

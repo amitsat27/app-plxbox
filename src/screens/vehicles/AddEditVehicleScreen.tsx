@@ -239,10 +239,10 @@ export default function AddEditVehicleScreen() {
   const fieldBorder = isDark ? '#3A3A3C' : '#E5E5EA';
 
   return (
-    <SafeAreaView style={[styles.root, { backgroundColor: isDark ? '#050510' : '#F8FAFC' }]}>
+    <View style={[styles.root, { backgroundColor: isDark ? '#050510' : '#F8FAFC' }]}>
       <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
         {/* Header */}
-        <View style={[styles.header, { paddingTop: Math.max(insets.top, 8) }]}>
+        <View style={[styles.header, { paddingTop: insets.top }]}>
           <TouchableOpacity style={[styles.iconBtn, { backgroundColor: isDark ? '#2C2C2E' : '#F2F2F7' }]} onPress={() => router.back()}>
             <CloseIcon size={20} color={isDark ? '#F8FAFC' : '#1E293B'} />
           </TouchableOpacity>
@@ -386,7 +386,7 @@ export default function AddEditVehicleScreen() {
           ) : null;
         })()}
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 

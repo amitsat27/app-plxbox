@@ -3,12 +3,14 @@
  * Theme switching, user preferences, and app info
  */
 
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { BorderRadius, Spacing, Typography } from "@/constants/designTokens";
 import { Colors, getColorScheme } from "@/theme/color";
 import { useTheme } from "@/theme/themeProvider";
 import { BlurView } from "expo-blur";
 import React, { useState } from "react";
 import {
+    Alert,
     Platform,
     ScrollView,
     StyleSheet,
@@ -17,25 +19,22 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import {
     Bell,
+    BellOff,
+    BellRing,
     ChevronRight,
-    Fingerprint,
-    LayoutGrid,
+    Info,
     LogOut,
-    Mail,
     Monitor,
     Moon,
-    Shield,
+    Settings,
     Sun,
-    User,
-    BellRing,
-    Info,
-    Eye,
-    BellOff,
 } from "lucide-react-native";
 import { useAuth } from "@/src/context/AuthContext";
+import { useRouter } from "expo-router";
+import * as Notifications from "expo-notifications";
 
 // ============================================================================
 // Reusable Components
@@ -220,13 +219,73 @@ const ToggleRow: React.FC<ToggleRowProps> = ({
 // ============================================================================
 
 export default function SettingsScreen() {
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { logout, user } = useAuth();
   const { mode, setMode, isDark } = useTheme();
   const scheme = getColorScheme(isDark);
   const [loggingOut, setLoggingOut] = useState(false);
+  
+  // Notification settings
   const [notifyBills, setNotifyBills] = useState(true);
   const [notifyDue, setNotifyDue] = useState(true);
-  const [showBalance, setShowBalance] = useState(true);
+  const [notifyReminders, setNotifyReminders] = useState(true);
+  const [notifySound, setNotifySound] = useState(true);
+
+  // Load notification settings
+  React.useEffect(() => {
+    loadNotificationSettings();
+  }, []);
+
+  const loadNotificationSettings = async () => {
+    try {
+      const settings = await AsyncStorage.getItem("notification_settings");
+      if (settings) {
+        const parsed = JSON.parse(settings);
+        setNotifyBills(parsed.notifyBills ?? true);
+        setNotifyDue(parsed.notifyDue ?? true);
+        setNotifyReminders(parsed.notifyReminders ?? true);
+        setNotifySound(parsed.notifySound ?? true);
+      }
+    } catch (error) {
+      console.error("Failed to load notification settings:", error);
+    }
+  };
+
+  const saveNotificationSettings = async (key: string, value: boolean) => {
+    try {
+      const currentSettings = {
+        notifyBills,
+        notifyDue,
+        notifyReminders,
+        notifySound,
+      };
+      const settings = {
+        ...currentSettings,
+        [key]: value,
+      };
+      await AsyncStorage.setItem("notification_settings", JSON.stringify(settings));
+    } catch (error) {
+      console.error("Failed to save notification settings:", error);
+    }
+  };
+
+  const requestNotificationPermissions = async () => {
+    try {
+      const { status } = await Notifications.requestPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert(
+          "Permissions Required",
+          "Please enable notifications in your device settings to receive alerts."
+        );
+        return false;
+      }
+      return true;
+    } catch (error) {
+      console.error("Failed to request notification permissions:", error);
+      return false;
+    }
+  };
 
   const handleThemeChange = async (newMode: "light" | "dark" | "auto") => {
     try {
@@ -247,12 +306,12 @@ export default function SettingsScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: isDark ? "#000000" : "#F2F2F7" }]}>
+    <View style={[styles.container, { backgroundColor: isDark ? "#000000" : "#F2F2F7" }]}>
       {/* Header */}
       <BlurView
         intensity={isDark ? 60 : 80}
         tint={isDark ? "dark" : "light"}
-        style={styles.headerBlur}
+        style={[styles.headerBlur, { paddingTop: insets.top }]}
       >
         <Text style={[styles.headerTitle, { color: scheme.textPrimary }]}>
           Settings
@@ -265,13 +324,15 @@ export default function SettingsScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Profile Card */}
-        <View
+        <TouchableOpacity
           style={[
             styles.profileCard,
             {
               backgroundColor: isDark ? "#1C1C1E" : "#F2F2F7",
             },
           ]}
+          onPress={() => router.push("/profile")}
+          activeOpacity={0.7}
         >
           <View
             style={[
@@ -282,101 +343,106 @@ export default function SettingsScreen() {
             <Text style={styles.profileAvatarText}>
               {user?.displayName
                 ? user.displayName.charAt(0).toUpperCase()
-                : "U"}
+                : user?.email?.charAt(0).toUpperCase() || "U"}
             </Text>
           </View>
           <View style={styles.profileInfo}>
             <Text style={[styles.profileName, { color: scheme.textPrimary }]}>
-              {user?.displayName || "Amit"}
+              {user?.displayName || "User"}
             </Text>
             <Text style={[styles.profileEmail, { color: scheme.textTertiary }]}>
-              {user?.email || "user@pulsebox.app"}
+              {user?.email || "Tap to set up profile"}
             </Text>
           </View>
           <ChevronRight
             size={20}
             color={isDark ? "rgba(255,255,255,0.25)" : "rgba(60,60,67,0.3)"}
           />
-        </View>
+        </TouchableOpacity>
 
         {/* Appearance */}
         <Section title="APPEARANCE">
-          <NavRow
-            icon={<Sun size={20} color={Colors.primary} />}
-            label="Light"
-            trailing={
-              mode === "light"
-                ? <View style={[styles.radioDot, { backgroundColor: Colors.primary }]} />
-                : null
-            }
-            onPress={() => handleThemeChange("light")}
-          />
-          <NavRow
-            icon={<Monitor size={20} color={Colors.primary} />}
-            label="Auto"
-            trailing={
-              mode === "auto"
-                ? <View style={[styles.radioDot, { backgroundColor: Colors.primary }]} />
-                : null
-            }
-            onPress={() => handleThemeChange("auto")}
-          />
-          <NavRow
-            icon={<Moon size={20} color={Colors.primary} />}
-            label="Dark"
-            trailing={
-              mode === "dark"
-                ? <View style={[styles.radioDot, { backgroundColor: Colors.primary }]} />
-                : null
-            }
-            onPress={() => handleThemeChange("dark")}
-          />
+          <View style={styles.themeContainer}>
+            <View
+              style={[
+                styles.themeSelector,
+                { backgroundColor: isDark ? "#2C2C2E" : "#E8E8ED" },
+              ]}
+            >
+              {[
+                { key: "light", label: "Light", icon: <Sun size={18} color={Colors.primary} /> },
+                { key: "auto", label: "Auto", icon: <Monitor size={18} color={Colors.primary} /> },
+                { key: "dark", label: "Dark", icon: <Moon size={18} color={Colors.primary} /> },
+              ].map((item) => (
+                <TouchableOpacity
+                  key={item.key}
+                  style={[
+                    styles.themeOption,
+                    mode === item.key && { backgroundColor: isDark ? "#1C1C1E" : "#FFFFFF" },
+                  ]}
+                  onPress={() => handleThemeChange(item.key as "light" | "dark" | "auto")}
+                  activeOpacity={0.7}
+                >
+                  {item.icon}
+                  <Text
+                    style={[
+                      styles.themeLabel,
+                      { color: mode === item.key ? Colors.primary : scheme.textSecondary },
+                    ]}
+                  >
+                    {item.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
         </Section>
 
         {/* Notifications */}
         <Section title="NOTIFICATIONS">
           <ToggleRow
-            icon={<BellRing size={20} color={Colors.primary} />}
+            icon={<Bell size={20} color={Colors.primary} />}
             label="Bill Reminders"
             value={notifyBills}
-            onValueChange={setNotifyBills}
+            onValueChange={(value) => {
+              if (value) requestNotificationPermissions();
+              setNotifyBills(value);
+              saveNotificationSettings("notifyBills", value);
+            }}
           />
           <ToggleRow
             icon={<BellOff size={20} color={Colors.primary} />}
-            label="Overdue Alerts"
+            label="Due Date Alerts"
             value={notifyDue}
-            onValueChange={setNotifyDue}
-          />
-        </Section>
-
-        {/* Privacy & Security */}
-        <Section title="PRIVACY & SECURITY">
-          <NavRow
-            icon={<Fingerprint size={20} color={Colors.primary} />}
-            label="Biometric Lock"
-            sublabel="Use Face ID or Touch ID"
-            onPress={() => {}}
+            onValueChange={(value) => {
+              if (value) requestNotificationPermissions();
+              setNotifyDue(value);
+              saveNotificationSettings("notifyDue", value);
+            }}
           />
           <ToggleRow
-            icon={<Eye size={20} color={Colors.primary} />}
-            label="Show Balance Amount"
-            value={showBalance}
-            onValueChange={setShowBalance}
+            icon={<Bell size={20} color={Colors.primary} />}
+            label="Payment Reminders"
+            value={notifyReminders}
+            onValueChange={(value) => {
+              if (value) requestNotificationPermissions();
+              setNotifyReminders(value);
+              saveNotificationSettings("notifyReminders", value);
+            }}
+          />
+          <ToggleRow
+            icon={<Bell size={20} color={Colors.primary} />}
+            label="Sound"
+            value={notifySound}
+            onValueChange={(value) => {
+              setNotifySound(value);
+              saveNotificationSettings("notifySound", value);
+            }}
           />
           <NavRow
-            icon={<Shield size={20} color={Colors.primary} />}
-            label="Data & Privacy"
-            onPress={() => {}}
-          />
-        </Section>
-
-        {/* Display */}
-        <Section title="DISPLAY">
-          <NavRow
-            icon={<LayoutGrid size={20} color={Colors.primary} />}
-            label="Home Layout"
-            value="Default"
-            onPress={() => {}}
+            icon={<BellRing size={20} color={Colors.primary} />}
+            label="Manage Notifications"
+            onPress={() => router.push("/manage-notifications")}
           />
         </Section>
 
@@ -384,14 +450,9 @@ export default function SettingsScreen() {
         <Section title="ABOUT">
           <NavRow
             icon={<Info size={20} color={Colors.primary} />}
-            label="App Version"
+            label="App Info"
             value="1.0.0"
-            onPress={() => {}}
-          />
-          <NavRow
-            icon={<Mail size={20} color={Colors.primary} />}
-            label="Contact Support"
-            onPress={() => {}}
+            onPress={() => router.push("/app-info")}
           />
         </Section>
 
@@ -431,7 +492,7 @@ export default function SettingsScreen() {
           </View>
         </View>
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -440,9 +501,7 @@ export default function SettingsScreen() {
 // ============================================================================
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  container: { flex: 1, paddingBottom: 34 },
   headerBlur: {
     width: "100%",
     paddingTop: Spacing.md,
@@ -561,6 +620,29 @@ const styles = StyleSheet.create({
     height: 14,
     borderRadius: 7,
     marginRight: Spacing.xs,
+  },
+
+  // --- Theme Selector ---
+  themeContainer: {
+    padding: Spacing.md,
+  },
+  themeSelector: {
+    flexDirection: "row",
+    borderRadius: BorderRadius.card,
+    padding: 4,
+  },
+  themeOption: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 12,
+    borderRadius: BorderRadius.md,
+  },
+  themeLabel: {
+    fontSize: Typography.fontSize.sm,
+    fontWeight: "600",
   },
 
   // --- Footer ---

@@ -1,8 +1,7 @@
 import { Spacing, Typography } from "@/constants/designTokens";
 import { Colors } from "@/theme/color";
-import { BlurView } from "expo-blur";
 import React, { useEffect } from "react";
-import { Platform, StyleSheet, Text, View } from "react-native";
+import { Image, Platform, StyleSheet, Text, View } from "react-native";
 import Animated, {
     Easing,
     interpolate,
@@ -65,15 +64,13 @@ export const SplashScreenContent: React.FC = () => {
 
       {/* Main content */}
       <View style={styles.content}>
-        {/* Logo circle with blur */}
+        {/* Logo */}
         <Animated.View style={[styles.logoContainer, logoAnimatedStyle]}>
-          <BlurView intensity={20} tint="dark" style={styles.logoBlur}>
-            <View
-              style={[styles.logoInner, { backgroundColor: Colors.primary }]}
-            >
-              <Text style={styles.logoText}>P</Text>
-            </View>
-          </BlurView>
+          <Image
+            source={require("@/assets/images/icon.png")}
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
         </Animated.View>
 
         {/* App name */}
@@ -144,37 +141,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  logoBlur: {
-    width: "100%",
-    height: "100%",
-    borderRadius: 35,
-    justifyContent: "center",
-    alignItems: "center",
-    overflow: "hidden",
-  },
-  logoInner: {
-    width: 90,
-    height: 90,
-    borderRadius: 28,
-    justifyContent: "center",
-    alignItems: "center",
-    ...Platform.select({
-      ios: {
-        shadowColor: Colors.shadowStrong,
-        shadowOffset: { width: 0, height: 12 },
-        shadowOpacity: 0.3,
-        shadowRadius: 24,
-      },
-      android: {
-        elevation: 12,
-      },
-    }),
-  },
-  logoText: {
-    fontSize: 48,
-    fontWeight: "800",
-    color: "#FFFFFF",
-    fontFamily: Platform.OS === "ios" ? "SF Pro Display" : "System",
+  logoImage: {
+    width: 120,
+    height: 120,
   },
   title: {
     fontSize: 42,

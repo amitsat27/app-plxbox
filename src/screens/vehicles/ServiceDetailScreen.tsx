@@ -13,7 +13,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import * as WebBrowser from 'expo-web-browser';
 import * as Sharing from 'expo-sharing';
-import * as FileSystem from 'expo-file-system/legacy';
+import { downloadAsync, cacheDirectory } from 'expo-file-system/legacy';
 import {
   ChevronLeft, Calendar, File, X, Download, ExternalLink,
   Camera, Receipt, Upload, MapPin, User, Wrench, Tag,
@@ -88,8 +88,8 @@ export default function ServiceDetailScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     try {
       const baseName = `service-${record?.id || Date.now()}.${isPdf ? 'pdf' : 'jpg'}`;
-      const localUri = (FileSystem as any).cacheDirectory + baseName;
-      await FileSystem.downloadAsync(documentUrl, localUri);
+      const localUri = cacheDirectory + baseName;
+      await downloadAsync(documentUrl, localUri);
       const canShare = await Sharing.isAvailableAsync();
       if (canShare) {
         await Sharing.shareAsync(localUri, { mimeType: isPdf ? 'application/pdf' : 'image/jpeg' });
@@ -191,9 +191,9 @@ export default function ServiceDetailScreen() {
   const textTertiary = isDark ? '#94A3B8' : '#6B7280';
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: bg }}>
+    <View style={{ flex: 1, backgroundColor: bg }}>
       {/* Header */}
-      <View style={[styles.header, { backgroundColor: cardBg, paddingTop: Math.max(insets.top, 8) }]}>
+      <View style={[styles.header, { backgroundColor: cardBg, paddingTop: insets.top }]}>
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} hitSlop={12}>
           <ChevronLeft size={24} color={textSecondary} />
         </TouchableOpacity>
@@ -359,7 +359,7 @@ export default function ServiceDetailScreen() {
           <Image source={{ uri: documentUrl }} style={styles.previewImage} resizeMode="contain" />
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }
 

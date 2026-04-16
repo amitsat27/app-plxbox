@@ -1,7 +1,6 @@
-// 🌐 Premium Home Dashboard — Static Display
-// Navigation lives in Sections tab only
+// 🌐 Premium Fintech Home Dashboard
 
-import React, { useMemo, useRef, useEffect } from 'react';
+import React, { useMemo, useRef, useEffect, useState, useCallback } from 'react';
 import {
   ActivityIndicator,
   Dimensions,
@@ -13,6 +12,7 @@ import {
   View,
   RefreshControl,
   Animated,
+  Pressable,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
@@ -25,9 +25,9 @@ import {
   Flame,
   Wifi,
   Home,
-
-  Gauge,
-  CalendarClock,
+  TrendingUp,
+  ChevronRight,
+  Briefcase,
 } from 'lucide-react-native';
 import { Spacing, Typography, BorderRadius } from '@/constants/designTokens';
 import { Colors, getColorScheme } from '@/theme/color';
@@ -53,10 +53,10 @@ const CATEGORY_COLORS: Record<string, string> = {
 };
 
 const CATEGORY_BG_TINT: Record<string, { light: string; dark: string }> = {
-  electric: { light: 'rgba(245,158,11,0.08)', dark: 'rgba(245,158,11,0.12)' },
-  gas: { light: 'rgba(59,130,246,0.08)', dark: 'rgba(59,130,246,0.12)' },
-  wifi: { light: 'rgba(139,92,246,0.08)', dark: 'rgba(139,92,246,0.12)' },
-  property: { light: 'rgba(16,185,129,0.08)', dark: 'rgba(16,185,129,0.12)' },
+  electric: { light: 'rgba(245,158,11,0.12)', dark: 'rgba(245,158,11,0.18)' },
+  gas: { light: 'rgba(59,130,246,0.12)', dark: 'rgba(59,130,246,0.18)' },
+  wifi: { light: 'rgba(139,92,246,0.12)', dark: 'rgba(139,92,246,0.18)' },
+  property: { light: 'rgba(16,185,129,0.12)', dark: 'rgba(16,185,129,0.18)' },
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -71,549 +71,291 @@ function getTimeGreeting(): string {
   return h < 12 ? 'Good Morning' : h < 17 ? 'Good Afternoon' : 'Good Evening';
 }
 
-// ── Stat Tile ──────────────────────────────────────────────────────────────────
+// ── Premium Stat Tile ─────────────────────────────────────────────────────
 
-function StatTile({
-  label,
-  value,
-  icon,
-}: {
-  label: string;
-  value: string;
-  icon: React.ReactNode;
-}) {
+function StatTile({ label, value, icon, index }: { label: string; value: string; icon: React.ReactNode; index: number }) {
   const { isDark } = useTheme();
-  const scheme = getColorScheme(isDark);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.8)).current;
+
+  useEffect(() => {
+    setTimeout(() => {
+      Animated.parallel([
+        Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
+        Animated.spring(scaleAnim, { toValue: 1, friction: 8, useNativeDriver: true }),
+      ]).start();
+    }, index * 120);
+  }, [index]);
 
   return (
-    <View style={[styles.statTile, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}>
-      <View style={styles.statIcon}>{icon}</View>
-      <Text style={[styles.statValue, { color: scheme.textPrimary }]}>{value}</Text>
-      <Text style={[styles.statLabel, { color: scheme.textTertiary }]}>{label}</Text>
-    </View>
+    <Animated.View style={[{ opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}>
+      <Pressable style={({ pressed }) => [
+        styles.statTile,
+        { 
+          backgroundColor: isDark ? '#1A1A1A' : '#FFFFFF',
+          transform: [{ scale: pressed ? 0.96 : 1 }],
+        },
+      ]}>
+        <View style={styles.statIconWrapper}>{icon}</View>
+        <Text style={[styles.statValue, { color: isDark ? '#FFF' : '#0F172A' }]}>{value}</Text>
+        <Text style={[styles.statLabel, { color: isDark ? '#64748B' : '#94A3B8' }]}>{label}</Text>
+      </Pressable>
+    </Animated.View>
   );
 }
 
-// ── Category Card (static, no navigation) ──────────────────────────────────────
+// ── Premium Category Card ─────────────────────────────────────────────────
 
-function CategoryCard({
-  category,
-  totalAmount,
-  count,
-}: {
-  category: string;
-  totalAmount: number;
-  count: number;
-}) {
+function CategoryCard({ category, totalAmount, count, index }: { category: string; totalAmount: number; count: number; index: number }) {
   const { isDark } = useTheme();
-  const scheme = getColorScheme(isDark);
   const color = CATEGORY_COLORS[category] || Colors.primary;
   const icon = CATEGORY_ICONS[category] || <Home size={22} color={color} />;
   const label = CATEGORY_LABELS[category] || category;
   const bgTint = CATEGORY_BG_TINT[category]?.[isDark ? 'dark' : 'light'] || 'transparent';
 
+  const scaleAnim = useRef(new Animated.Value(0.8)).current;
+
+  useEffect(() => {
+    setTimeout(() => {
+      Animated.spring(scaleAnim, { toValue: 1, friction: 8, useNativeDriver: true }).start();
+    }, 300 + index * 100);
+  }, [index]);
+
   return (
-    <View style={[styles.catCard, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}>
-      <View style={[styles.catIcon, { backgroundColor: bgTint }]}>{icon}</View>
-      <Text style={[styles.catName, { color: scheme.textPrimary }]} numberOfLines={1}>
-        {label}
-      </Text>
-      <Text style={[styles.catAmount, { color }]}>
-        ₹{totalAmount.toLocaleString('en-IN')}
-      </Text>
-      <Text style={[styles.catCount, { color: scheme.textTertiary }]}>
-        {count} bill{count !== 1 ? 's' : ''}
-      </Text>
-    </View>
+    <Animated.View style={{ transform: [{ scale: scaleAnim }], width: CARD_W }}>
+      <Pressable style={({ pressed }) => [
+        styles.catCard,
+        { 
+          backgroundColor: isDark ? '#1A1A1A' : '#FFFFFF',
+          transform: [{ scale: pressed ? 0.96 : 1 }],
+        },
+      ]}>
+        <View style={[styles.catIconWrapper, { backgroundColor: bgTint }]}>
+          {icon}
+        </View>
+        <Text style={[styles.catLabel, { color: isDark ? '#94A3B8' : '#64748B' }]} numberOfLines={1}>{label}</Text>
+        <Text style={[styles.catAmount, { color: isDark ? '#FFF' : '#0F172A' }]}>₹{totalAmount.toLocaleString('en-IN')}</Text>
+        <Text style={[styles.catCount, { color: isDark ? '#64748B' : '#94A3B8' }]}>{count} bill{count !== 1 ? 's' : ''}</Text>
+      </Pressable>
+    </Animated.View>
   );
 }
 
-// ── Info Row (static, no navigation) ───────────────────────────────────────────
+// ── Premium Info Row ───────────────────────────────────────────────────────
 
-function InfoRow({
-  icon,
-  label,
-  sublabel,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  sublabel: string;
-}) {
+function InfoRow({ icon, label, sublabel, index }: { icon: React.ReactNode; label: string; sublabel: string; index: number }) {
   const { isDark } = useTheme();
-  const scheme = getColorScheme(isDark);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    setTimeout(() => {
+      Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start();
+    }, 500 + index * 100);
+  }, [index]);
 
   return (
-    <View style={styles.infoRow}>
-      <View style={[styles.infoIcon, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)' }]}>
-        {icon}
-      </View>
-      <View style={styles.infoText}>
-        <Text style={[styles.infoLabel, { color: scheme.textPrimary }]}>{label}</Text>
-        <Text style={[styles.infoSub, { color: scheme.textTertiary }]}>{sublabel}</Text>
-      </View>
-    </View>
+    <Animated.View style={{ opacity: fadeAnim }}>
+      <Pressable style={({ pressed }) => [
+        styles.infoRow,
+        { backgroundColor: pressed ? (isDark ? '#1A1A1A' : '#F1F5F9') : (isDark ? '#0D0D0D' : '#FFFFFF') },
+      ]}>
+        <View style={[styles.infoIconBg, { backgroundColor: isDark ? '#1A1A1A' : '#F1F5F9' }]}>
+          {icon}
+        </View>
+        <View style={styles.infoContent}>
+          <Text style={[styles.infoLabel, { color: isDark ? '#FFF' : '#0F172A' }]}>{label}</Text>
+          <Text style={[styles.infoSub, { color: isDark ? '#64748B' : '#94A3B8' }]}>{sublabel}</Text>
+        </View>
+        <ChevronRight size={20} color={isDark ? '#3B3B3B' : '#CBD5E1'} />
+      </Pressable>
+    </Animated.View>
   );
 }
 
-// ── Main Screen ────────────────────────────────────────────────────────────────
+// ── Premium Alert Banner ─────────────────────────────────────────────────
+
+function AlertBanner({ label, amount, date, index }: { label: string; amount: number; date: string; index: number }) {
+  const { isDark } = useTheme();
+  const scaleAnim = useRef(new Animated.Value(0.8)).current;
+
+  useEffect(() => {
+    setTimeout(() => {
+      Animated.spring(scaleAnim, { toValue: 1, friction: 8, useNativeDriver: true }).start();
+    }, 600 + index * 80);
+  }, [index]);
+
+  return (
+    <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+      <Pressable style={({ pressed }) => [
+        styles.alertBanner,
+        { 
+          backgroundColor: isDark ? '#1A1A1A' : '#FFFFFF',
+          transform: [{ scale: pressed ? 0.98 : 1 }],
+        },
+      ]}>
+        <View style={styles.alertLeft}>
+          <View style={[styles.alertDot, { backgroundColor: Colors.warning }]} />
+          <Text style={[styles.alertLabel, { color: isDark ? '#FFF' : '#0F172A' }]} numberOfLines={1}>{label}</Text>
+        </View>
+        <View style={styles.alertRight}>
+          <Text style={[styles.alertAmount, { color: Colors.warning }]}>₹{amount.toLocaleString('en-IN')}</Text>
+          <Text style={[styles.alertDate, { color: isDark ? '#64748B' : '#94A3B8' }]}>{date}</Text>
+        </View>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+// ── Main Home Screen ─────────────────────────────────────────────────────────
 
 export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { isDark } = useTheme();
-  const scheme = getColorScheme(isDark);
-  const {
-    categories,
-    totalBillsAmount,
-    totalBillsCount,
-    pendingBills,
-    overdueBills,
-    vehicles,
-    appliances,
-    loading,
-    allBills,
-  } = useDashboardData(user?.uid);
+  const { categories, totalBillsAmount, totalBillsCount, pendingBills, overdueBills, vehicles, appliances, loading } = useDashboardData(user?.uid);
 
-  const displayName = user?.displayName || 'Amit';
-  const fadeHeader = useRef(new Animated.Value(0)).current;
-  const fadeStats = useRef(new Animated.Value(0)).current;
-  const fadeCats = useRef(new Animated.Value(0)).current;
-  const fadeAlerts = useRef(new Animated.Value(0)).current;
-  const fadeQuick = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    if (!loading) {
-      Animated.stagger(80, [
-        Animated.timing(fadeHeader, { toValue: 1, duration: 300, useNativeDriver: true }),
-        Animated.timing(fadeStats, { toValue: 1, duration: 300, useNativeDriver: true }),
-        Animated.timing(fadeCats, { toValue: 1, duration: 300, useNativeDriver: true }),
-        Animated.timing(fadeAlerts, { toValue: 1, duration: 300, useNativeDriver: true }),
-        Animated.timing(fadeQuick, { toValue: 1, duration: 300, useNativeDriver: true }),
-      ]).start();
-    }
-  }, [loading, fadeHeader, fadeStats, fadeCats, fadeAlerts, fadeQuick]);
+  const displayName = useMemo(() => {
+    if (!user?.displayName) return 'User';
+    const parts = user.displayName.trim().split(' ');
+    return parts[0].length > 10 ? parts[0].substring(0, 10) + '.' : parts[0];
+  }, [user?.displayName]);
 
   const stats = useMemo(
     () => [
-      {
-        label: 'Total Paid',
-        value: `₹${totalBillsAmount.toLocaleString('en-IN')}`,
-        icon: <Wallet size={18} color={Colors.primary} />,
-      },
-      {
-        label: 'Bills',
-        value: String(totalBillsCount),
-        icon: <CalendarClock size={18} color="#8B5CF6" />,
-      },
-      {
-        label: 'Vehicles',
-        value: String(vehicles.length),
-        icon: <Car size={18} color="#F59E0B" />,
-      },
-      {
-        label: 'Appliances',
-        value: String(appliances.length),
-        icon: <Monitor size={18} color="#06B6D4" />,
-      },
+      { label: 'Total Paid', value: `₹${totalBillsAmount.toLocaleString('en-IN')}`, icon: <Wallet size={20} color={Colors.primary} /> },
+      { label: 'Bills', value: String(totalBillsCount), icon: <Briefcase size={20} color="#8B5CF6" /> },
+      { label: 'Vehicles', value: String(vehicles.length), icon: <Car size={20} color="#F59E0B" /> },
+      { label: 'Appliances', value: String(appliances.length), icon: <Monitor size={20} color="#06B6D4" /> },
     ],
-    [totalBillsAmount, totalBillsCount, vehicles, appliances],
+    [totalBillsAmount, totalBillsCount, vehicles, appliances]
   );
 
   const alerts = useMemo(() => {
     const pending = pendingBills.slice(0, 3).map((b) => ({
-      id: b.id,
-      type: 'pending' as const,
-      label: b.title,
-      amount: b.amount,
+      id: b.id, label: b.title, amount: b.amount,
       date: new Date(b.dueDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
     }));
     const overdue = overdueBills.slice(0, 3).map((b) => ({
-      id: b.id,
-      type: 'overdue' as const,
-      label: b.title,
-      amount: b.amount,
+      id: b.id, label: b.title, amount: b.amount,
       date: new Date(b.dueDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
     }));
-    return [...pending, ...overdue];
+    return [...overdue, ...pending];
   }, [pendingBills, overdueBills]);
 
   return (
-    <View style={[styles.screen, { backgroundColor: isDark ? '#000000' : '#F2F2F7' }]}>
-      {/* Header */}
-      <View
-        style={[
-          styles.header,
-          {
-            paddingTop: Math.max(insets.top, 8) + Spacing.sm,
-            paddingBottom: Spacing.md,
-            paddingHorizontal: Spacing.lg,
-          },
-        ]}
-      >
-        <Animated.View style={[{ opacity: fadeHeader }, styles.headerLeft]}>
-          <Text style={[styles.greeting, { color: scheme.textTertiary }]}>
-            {getTimeGreeting()}
-          </Text>
-          <Text style={[styles.headerTitle, { color: scheme.textPrimary }]}>
-            {displayName.split(' ')[0]}.
-          </Text>
-        </Animated.View>
-        <TouchableOpacity
-          style={[styles.settingsBtn, { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' }]}
-          activeOpacity={0.6}
-          onPressIn={() => Animated.timing(fadeHeader, { toValue: 1, duration: 100, useNativeDriver: true }).start()}
-          onPressOut={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            router.push('/(tabs)/settings');
-          }}
-        >
-          <Gauge size={18} color={isDark ? '#FFFFFF' : Colors.primary} />
-        </TouchableOpacity>
-      </View>
-
-      {/* Content */}
-      {!loading && (
-        <ScrollView
-          contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 100 }]}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl refreshing={loading} onRefresh={() => {}} tintColor={Colors.primary} />
-          }
-        >
-          {/* Stat Tiles */}
-          <Animated.View style={{ opacity: fadeStats }}>
-            <View style={styles.statGrid}>
-              {stats.map((s) => (
-                <StatTile key={s.label} label={s.label} value={s.value} icon={s.icon} />
-              ))}
-            </View>
-          </Animated.View>
-
-          {/* Category Cards */}
-          <Animated.View style={{ opacity: fadeCats }}>
-            <Text style={[styles.sectionTitle, { color: scheme.textTertiary }]}>
-              Bill Categories
-            </Text>
-            <View style={styles.catGrid}>
-              {categories.map((cat) => (
-                <CategoryCard
-                  key={cat.category}
-                  category={cat.category}
-                  totalAmount={cat.totalAmount}
-                  count={cat.count}
-                />
-              ))}
-            </View>
-          </Animated.View>
-
-          {/* Attention Needed */}
-          {alerts.length > 0 && (
-            <Animated.View style={{ opacity: fadeAlerts }}>
-              <Text style={[styles.sectionTitle, { color: scheme.textTertiary }]}>
-                Attention Needed
-              </Text>
-              <View style={[styles.alertList, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}>
-                {alerts.map((a, i) => (
-                  <React.Fragment key={a.id}>
-                    {i > 0 && (
-                      <View
-                        style={[
-                          styles.divider,
-                          {
-                            backgroundColor: isDark
-                              ? 'rgba(255,255,255,0.06)'
-                              : 'rgba(0,0,0,0.06)',
-                          },
-                        ]}
-                      />
-                    )}
-                    <View style={styles.alertRow}>
-                      <View
-                        style={[
-                          styles.alertDot,
-                          {
-                            backgroundColor:
-                              a.type === 'overdue' ? '#EF4444' : '#F59E0B',
-                          },
-                        ]}
-                      />
-                      <View style={styles.alertInfo}>
-                        <Text
-                          style={[styles.alertName, { color: scheme.textPrimary }]}
-                          numberOfLines={1}
-                        >
-                          {a.label}
-                        </Text>
-                        <Text style={[styles.alertDate, { color: scheme.textTertiary }]}>
-                          Due {a.date}
-                        </Text>
-                      </View>
-                      <Text style={[styles.alertAmt, { color: scheme.textPrimary }]}>
-                        ₹{a.amount.toLocaleString('en-IN')}
-                      </Text>
-                    </View>
-                  </React.Fragment>
-                ))}
-              </View>
-            </Animated.View>
-          )}
-
-          {/* Quick View */}
-          <Animated.View style={{ opacity: fadeQuick }}>
-            <Text style={[styles.sectionTitle, { color: scheme.textTertiary }]}>
-              Overview
-            </Text>
-            <View style={[styles.quickList, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}>
-              <InfoRow
-                icon={<Wallet size={18} color="#8B5CF6" />}
-                label="All Bills"
-                sublabel={`${allBills.length} records synced`}
-              />
-              <InfoRow
-                icon={<Car size={18} color="#F59E0B" />}
-                label="Vehicles"
-                sublabel={`${vehicles.length} registered`}
-              />
-              <InfoRow
-                icon={<Monitor size={18} color="#06B6D4" />}
-                label="Appliances"
-                sublabel={`${appliances.length} tracked`}
-              />
-            </View>
-          </Animated.View>
-        </ScrollView>
-      )}
-
-      {/* Loading */}
-      {loading && (
-        <View style={[styles.loadingOverlay, { backgroundColor: isDark ? '#000000' : '#F2F2F7' }]}>
-          <ActivityIndicator size="large" color={Colors.primary} />
+    <View style={[styles.screen, { backgroundColor: isDark ? '#000000' : '#F8FAFC' }]}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 100 }]} showsVerticalScrollIndicator={false}>
+        
+        {/* Premium Header */}
+        <View style={[styles.header, { paddingTop: insets.top + Spacing.md }]}>
+          <View>
+            <Text style={[styles.greeting, { color: isDark ? '#64748B' : '#94A3B8' }]}>{getTimeGreeting()}</Text>
+            <Text style={[styles.userName, { color: isDark ? '#FFF' : '#0F172A' }]}>{displayName}</Text>
+          </View>
+          <View style={[styles.summaryPill, { backgroundColor: isDark ? '#1A1A1A' : '#FFFFFF' }]}>
+            <TrendingUp size={14} color="#10B981" />
+            <Text style={[styles.summaryText, { color: isDark ? '#FFF' : '#0F172A' }]}>All bills paid</Text>
+          </View>
         </View>
-      )}
+
+        {!loading && (
+          <>
+            {/* Stats Grid */}
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: isDark ? '#FFF' : '#0F172A' }]}>Overview</Text>
+              <View style={styles.statGrid}>
+                {stats.map((s, i) => <StatTile key={s.label} label={s.label} value={s.value} icon={s.icon} index={i} />)}
+              </View>
+            </View>
+
+            {/* Alerts */}
+            {alerts.length > 0 && (
+              <View style={styles.section}>
+                <Text style={[styles.sectionTitle, { color: isDark ? '#FFF' : '#0F172A' }]}>Upcoming</Text>
+                <View style={styles.alertsList}>
+                  {alerts.map((a, i) => <AlertBanner key={a.id} label={a.label} amount={a.amount} date={a.date} index={i} />)}
+                </View>
+              </View>
+            )}
+
+            {/* Categories */}
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: isDark ? '#FFF' : '#0F172A' }]}>Your Bills</Text>
+              <View style={styles.catGrid}>
+                {categories.map((c, i) => <CategoryCard key={c.category} category={c.category} totalAmount={c.totalAmount} count={c.count} index={i} />)}
+              </View>
+            </View>
+
+            {/* Quick Links */}
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: isDark ? '#FFF' : '#0F172A' }]}>Quick Access</Text>
+              <View style={styles.infoList}>
+                <InfoRow index={0} icon={<Zap size={20} color="#F59E0B" />} label="Electricity" sublabel="Manage your electricity bills" />
+                <InfoRow index={1} icon={<Flame size={20} color="#3B82F6" />} label="Gas" sublabel="MNGL gas bill payments" />
+                <InfoRow index={2} icon={<Wifi size={20} color="#8B5CF6" />} label="WiFi" sublabel="Internet service bills" />
+                <InfoRow index={3} icon={<Home size={20} color="#10B981" />} label="Property Tax" sublabel="Municipal tax payments" />
+              </View>
+            </View>
+          </>
+        )}
+
+        {loading && (
+          <View style={styles.loadingView}>
+            <ActivityIndicator size="large" color={Colors.primary} />
+          </View>
+        )}
+      </ScrollView>
     </View>
   );
 }
 
-// ── Styles ─────────────────────────────────────────────────────────────────────
-
 const styles = StyleSheet.create({
   screen: { flex: 1 },
+  content: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.sm },
+  loadingView: { paddingVertical: 100, alignItems: 'center' },
 
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-  },
-  headerLeft: {
-    flex: 1,
-    minWidth: 0,
-  },
-  greeting: {
-    fontSize: 14,
-    fontWeight: '500',
-    letterSpacing: 0.2,
-  },
-  headerTitle: {
-    fontSize: 26,
-    fontWeight: '700',
-    letterSpacing: -0.5,
-  },
-  settingsBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.06,
-        shadowRadius: 4,
-      },
-      android: { elevation: 2 },
-    }),
-  },
+  // Header
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: Spacing.xl },
+  greeting: { fontSize: Typography.fontSize.sm, fontWeight: '500', marginBottom: 2 },
+  userName: { fontSize: 28, fontWeight: '700', letterSpacing: -0.5 },
+  summaryPill: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, gap: 6 },
+  summaryText: { fontSize: 12, fontWeight: '600' },
 
-  content: {
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.xs,
-  },
+  // Section
+  section: { marginBottom: Spacing.xl },
+  sectionTitle: { fontSize: Typography.fontSize.lg, fontWeight: '700', marginBottom: Spacing.md, letterSpacing: -0.3 },
 
-  statGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.sm,
-    marginBottom: Spacing.xl,
-  },
-  statTile: {
-    flex: 1,
-    minWidth: (SCREEN_W - Spacing.lg * 2 - Spacing.sm) / 2,
-    paddingVertical: Spacing.md,
-    borderRadius: BorderRadius.card,
-    alignItems: 'center',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.04,
-        shadowRadius: 4,
-      },
-      android: { elevation: 1 },
-    }),
-  },
-  statIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: Spacing.xs,
-  },
-  statValue: {
-    fontSize: Typography.fontSize.md,
-    fontWeight: '700',
-  },
-  statLabel: {
-    fontSize: Typography.fontSize.xs,
-    marginTop: 2,
-  },
+  // Stats Grid
+  statGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
+  statTile: { width: CARD_W, padding: Spacing.md, borderRadius: 20, ...Platform.select({ ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12 }, android: { elevation: 4 } }) },
+  statIconWrapper: { marginBottom: Spacing.xs },
+  statValue: { fontSize: Typography.fontSize.xl, fontWeight: '700', marginBottom: 2 },
+  statLabel: { fontSize: Typography.fontSize.xs, fontWeight: '500' },
 
-  sectionTitle: {
-    fontSize: Typography.fontSize.xs,
-    fontWeight: '600',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-    marginBottom: Spacing.sm,
-    marginLeft: Spacing.xs,
-  },
+  // Alerts
+  alertsList: { gap: Spacing.sm },
+  alertBanner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: Spacing.md, borderRadius: 16 },
+  alertLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  alertDot: { width: 8, height: 8, borderRadius: 4, marginRight: Spacing.sm },
+  alertLabel: { flex: 1, fontSize: Typography.fontSize.sm, fontWeight: '600' },
+  alertRight: { alignItems: 'flex-end' },
+  alertAmount: { fontSize: Typography.fontSize.sm, fontWeight: '700' },
+  alertDate: { fontSize: Typography.fontSize.xs },
 
-  catGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.sm,
-    marginBottom: Spacing.xl,
-  },
-  catCard: {
-    width: CARD_W,
-    padding: Spacing.md,
-    borderRadius: BorderRadius.card,
-    alignItems: 'center',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.04,
-        shadowRadius: 4,
-      },
-      android: { elevation: 1 },
-    }),
-  },
-  catIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: Spacing.sm,
-  },
-  catName: {
-    fontSize: Typography.fontSize.sm,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  catAmount: {
-    fontSize: Typography.fontSize.md,
-    fontWeight: '700',
-    marginTop: 4,
-  },
-  catCount: {
-    fontSize: Typography.fontSize.xs,
-  },
+  // Categories
+  catGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
+  catCard: { width: CARD_W, padding: Spacing.md, borderRadius: 20 },
+  catIconWrapper: { width: 44, height: 44, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginBottom: Spacing.sm },
+  catLabel: { fontSize: Typography.fontSize.xs, fontWeight: '500', marginBottom: 2 },
+  catAmount: { fontSize: Typography.fontSize.xl, fontWeight: '700', marginBottom: 2 },
+  catCount: { fontSize: Typography.fontSize.xs },
 
-  alertList: {
-    borderRadius: BorderRadius.card,
-    overflow: 'hidden',
-    marginBottom: Spacing.xl,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.04,
-        shadowRadius: 4,
-      },
-      android: { elevation: 1 },
-    }),
-  },
-  divider: { height: 0.5, marginLeft: 56 },
-  alertRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.md,
-  },
-  alertDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: Spacing.md,
-  },
-  alertInfo: { flex: 1, minWidth: 0 },
-  alertName: {
-    fontSize: Typography.fontSize.sm,
-    fontWeight: '600',
-  },
-  alertDate: {
-    fontSize: Typography.fontSize.xs,
-    marginTop: 2,
-  },
-  alertAmt: {
-    fontSize: Typography.fontSize.sm,
-    fontWeight: '700',
-  },
-
-  quickList: {
-    borderRadius: BorderRadius.card,
-    overflow: 'hidden',
-    marginBottom: Spacing.xl,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.04,
-        shadowRadius: 4,
-      },
-      android: { elevation: 1 },
-    }),
-  },
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.md,
-  },
-  infoIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: Spacing.md,
-  },
-  infoText: { flex: 1 },
-  infoLabel: {
-    fontSize: Typography.fontSize.md,
-    fontWeight: '500',
-  },
-  infoSub: {
-    fontSize: Typography.fontSize.xs,
-    marginTop: 2,
-  },
-
-  loadingOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+  // Info List
+  infoList: { gap: Spacing.sm },
+  infoRow: { flexDirection: 'row', alignItems: 'center', padding: Spacing.md, borderRadius: 16 },
+  infoIconBg: { width: 44, height: 44, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginRight: Spacing.md },
+  infoContent: { flex: 1 },
+  infoLabel: { fontSize: Typography.fontSize.md, fontWeight: '600', marginBottom: 2 },
+  infoSub: { fontSize: Typography.fontSize.xs },
 });

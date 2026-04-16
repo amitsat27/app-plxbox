@@ -262,9 +262,9 @@ export default function ServiceHistoryScreen() {
   const textTertiary = isDark ? '#94A3B8' : '#6B7280';
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: bg }]}>
+    <View style={[styles.container, { backgroundColor: bg }]}>
       {/* Header */}
-      <View style={[styles.header, { paddingTop: Math.max(insets.top, 8) }]}>
+      <View style={[styles.header, { paddingTop: insets.top }]}>
         <TouchableOpacity style={[styles.iconBtn, { backgroundColor: isDark ? '#2C2C2E' : '#F2F2F7' }]} onPress={() => router.back()}>
           <ChevronLeft size={20} color={textPrimary} />
         </TouchableOpacity>
@@ -488,7 +488,7 @@ export default function ServiceHistoryScreen() {
           maximumDate={new Date(2040, 0, 1)}
         />
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -603,7 +603,7 @@ function ServiceRecordCard({
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: { flex: 1, paddingBottom: 34 },
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12 },
   iconBtn: { padding: 10, borderRadius: 14 },
   headerCenter: { flex: 1, alignItems: 'center' },

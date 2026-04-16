@@ -26,6 +26,7 @@ import ConsumerInfoCard from './electric-bills/ConsumerInfoCard';
 import ElectricBillStatCard from './electric-bills/ElectricBillStatCard';
 import SearchBar from './electric-bills/SearchBar';
 import DropdownPicker from './electric-bills/DropdownPicker';
+import SectionHeroBanner from '@/components/SectionHeroBanner';
 
 const CITIES = ['pune', 'nashik', 'jalgaon'];
 
@@ -188,9 +189,9 @@ export default function ElectricBillsScreen() {
   }, [focusTick]);
 
   return (
-    <SafeAreaView style={[styles.screen, { backgroundColor: isDark ? '#000000' : '#F2F2F7' }]}>
+    <View style={[styles.screen, { backgroundColor: isDark ? '#000000' : '#F2F2F7' }]}>
       {/* Header */}
-      <View style={[styles.header, { paddingTop: Math.max(insets.top, 8) }]}>
+      <View style={[styles.header, { paddingTop: insets.top }]}>
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
           <ChevronLeft size={24} color={scheme.textPrimary} />
         </TouchableOpacity>
@@ -201,6 +202,15 @@ export default function ElectricBillsScreen() {
           <Text style={[styles.headerTitle, { color: scheme.textPrimary }]}>Electric Bills</Text>
         </View>
       </View>
+
+      {/* Hero Banner */}
+      <SectionHeroBanner
+        title="Electric Bills"
+        subtitle="Track and manage your electricity bills"
+        stats={{ billCount: bills.length, paid: stats.paid, pending: stats.pending }}
+        icon={<Zap size={22} color={Colors.primary} />}
+        countLabel="bill"
+      />
 
       {/* Content */}
       <ScrollView
@@ -322,14 +332,14 @@ export default function ElectricBillsScreen() {
           if (selectedCity) firebaseService.getConsumersByCity(selectedCity).then(setConsumers);
         }} />
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }
 
 // ── Styles ──────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  screen: { flex: 1 },
+  screen: { flex: 1, paddingBottom: 34 },
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.lg, paddingBottom: Spacing.md },
   backBtn: { padding: 4, marginRight: Spacing.sm },
   headerRight: { flex: 1 },

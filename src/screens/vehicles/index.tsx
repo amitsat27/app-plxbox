@@ -101,8 +101,8 @@ export default function VehiclesScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: scheme.background }]}>
-        <View style={[styles.header, { paddingTop: Math.max(insets.top, 8) }]}>
+      <View style={[styles.container, { backgroundColor: scheme.background }]}>
+        <View style={[styles.header, { paddingTop: insets.top }]}>
           <View style={{ width: 38, height: 38, borderRadius: 14, backgroundColor: isDark ? '#2C2C2E' : '#F2F2F7' }} />
           <View style={{ flex: 1 }}>
             <View style={{ width: 60, height: 10, backgroundColor: isDark ? '#2C2C2E' : '#F2F2F7', borderRadius: 5, alignSelf: 'center', marginBottom: 6 }} />
@@ -113,14 +113,14 @@ export default function VehiclesScreen() {
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 100, gap: 12 }}>
           <SkeletonCard count={3} />
         </ScrollView>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: scheme.background }]}>
+    <View style={[styles.container, { backgroundColor: scheme.background }]}>
       {/* ── Header ── */}
-      <View style={[styles.header, { paddingTop: Math.max(insets.top, 8) }]}>
+      <View style={[styles.header, { paddingTop: insets.top }]}>
         <View style={styles.headerTop}>
           <TouchableOpacity style={[styles.iconBtn, { backgroundColor: isDark ? '#2C2C2E' : '#F2F2F7' }]} onPress={() => router.back()}>
             <X size={18} color={scheme.textPrimary} />
@@ -210,13 +210,13 @@ export default function VehiclesScreen() {
 
       {/* ── FAB ── */}
       <TouchableOpacity
-        style={[styles.fab, { bottom: insets.bottom + 60 }]}
+        style={[styles.fab, { bottom: insets.bottom + 20 }]}
         activeOpacity={0.85}
         onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); router.push({ pathname: '/vehicle-add' } as any); }}
       >
         <Plus size={24} color={isDark ? '#000' : '#FFF'} />
       </TouchableOpacity>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -404,7 +404,7 @@ function navigateToDetail(router: ReturnType<typeof useRouter>, vehicle: Vehicle
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: { flex: 1, paddingBottom: 34 },
   header: { paddingHorizontal: 16, paddingBottom: 6 },
   headerTop: { flexDirection: 'row', alignItems: 'center' },
   headerCenter: { flex: 1, alignItems: 'center' },

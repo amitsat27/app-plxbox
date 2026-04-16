@@ -58,6 +58,16 @@ jobs:
           EXPO_PUBLIC_APP_PIN: ${{ secrets.EXPO_PUBLIC_APP_PIN }}
         run: npx expo prebuild --platform ios --clean --no-install
 
+      - name: Fix Podfile for Firebase modular headers
+        run: |
+          cd ios
+          # Add modular_headers for GoogleUtilities to fix Swift pod issue
+          if ! grep -q "use_modular_headers!" Podfile; then
+            echo "" >> Podfile
+            echo "# Fix for Firebase Swift compatibility" >> Podfile
+            echo "use_modular_headers!" >> Podfile
+          fi
+
       - name: Install Pods
         run: |
           cd ios

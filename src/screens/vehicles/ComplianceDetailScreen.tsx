@@ -13,7 +13,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import * as WebBrowser from 'expo-web-browser';
 import * as Sharing from 'expo-sharing';
-import * as FileSystem from 'expo-file-system/legacy';
+import { downloadAsync, cacheDirectory } from 'expo-file-system/legacy';
 import {
   ChevronLeft, Calendar, File, X, Download, ExternalLink,
   Camera, Receipt, Edit3, Upload,
@@ -172,8 +172,8 @@ export default function ComplianceDetailScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     try {
       const baseName = `compliance-${type}-${Date.now()}.${isPdf ? 'pdf' : 'jpg'}`;
-      const localUri = (FileSystem as any).cacheDirectory + baseName;
-      await FileSystem.downloadAsync(documentUrl, localUri);
+      const localUri = cacheDirectory + baseName;
+      await downloadAsync(documentUrl, localUri);
       const canShare = await Sharing.isAvailableAsync();
       if (canShare) {
         await Sharing.shareAsync(localUri, { mimeType: isPdf ? 'application/pdf' : 'image/jpeg' });
@@ -226,9 +226,9 @@ export default function ComplianceDetailScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: scheme.background }}>
+    <View style={{ flex: 1, backgroundColor: scheme.background }}>
       {/* Header */}
-      <View style={[styles.header, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF', paddingTop: Math.max(insets.top, 8) }]}>
+      <View style={[styles.header, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF', paddingTop: insets.top }]}>
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} hitSlop={12}>
           <ChevronLeft size={24} color={isDark ? '#A1A1AA' : '#6B7280'} />
         </TouchableOpacity>
@@ -390,7 +390,7 @@ export default function ComplianceDetailScreen() {
           }}
         />
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 
