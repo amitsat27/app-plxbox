@@ -3,7 +3,7 @@
  */
 
 import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Platform, ActivityIndicator, TouchableOpacity, Dimensions, Modal, Pressable } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Platform, ActivityIndicator, TouchableOpacity, Dimensions, Modal, Pressable, Alert } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Spacing, Typography, BorderRadius } from '@/constants/designTokens';
@@ -34,6 +34,8 @@ import {
   X,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
 
 const { width } = Dimensions.get('window');
 
@@ -88,9 +90,22 @@ export default function ReportsScreen() {
 
   const [showExportModal, setShowExportModal] = useState(false);
   const [selectedSections, setSelectedSections] = useState<string[]>(['all']);
-  const [selectedMonth, setSelectedMonth] = useState('all');
+  const [selectedMonth, setSelectedMonth] = useState<string[]>([]);
+  const [selectedYear, setSelectedYear] = useState(String(new Date().getFullYear()));
   const [selectedCity, setSelectedCity] = useState('all');
   const [exporting, setExporting] = useState(false);
+
+  const toggleMonth = (monthId: string) => {
+    if (monthId === 'all') {
+      setSelectedMonth([]);
+    } else {
+      setSelectedMonth(prev => 
+        prev.includes(monthId) 
+          ? prev.filter(m => m !== monthId)
+          : [...prev, monthId]
+      );
+    }
+  };
 
   if (loading) {
     return (
@@ -131,11 +146,140 @@ export default function ReportsScreen() {
     setExporting(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     
-    setTimeout(() => {
-      setExporting(false);
-      setShowExportModal(false);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    }, 1500);
+    try {
+      const months = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+      
+      const filteredBills = allBills.filter(b => {
+        if (selectedCity !== 'all') {
+          const billCategory = b.category?.toLowerCase();
+          if (billCategory !== selectedCity) return false;
+        }
+        
+        if (selectedMonth.length > 0) {
+          const billDate = String(b.dueDate || '');
+          const months = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+          const billMonthIdx = months.findIndex(m => billDate.toLowerCase().startsWith(m));
+          const billMonth = String(billMonthIdx + 1).padStart(2, '0');
+          if (!selectedMonth.includes(billMonth)) return false;
+        }
+        
+        if (selectedYear) {
+          const billDate = String(b.dueDate || '');
+          const yearMatch = billDate.match(/\d{4}/);
+          if (yearMatch && yearMatch[0] !== selectedYear) return false;
+        }
+        
+        return true;
+      });
+
+      const monthsLabel = selectedMonth.length > 0 
+        ? selectedMonth.map(m => ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][parseInt(m)-1]).join('-')
+        : 'All-Year';
+      const fileName = `Pulsebox_Report_${selectedYear}_${monthsLabel}.pdf`;
+
+      const filteredTotal = filteredBills.reduce((sum, b) => sum + (b.amount || 0), 0);
+      const filteredPending = filteredBills.filter(b => b.status === 'pending').reduce((s, b) => s + (b.amount || 0), 0);
+      const filteredPaid = filteredTotal - filteredPending;
+
+      const categoryData = categories.map(cat => ({
+        name: CATEGORY_CONFIG[cat.category]?.label || cat.category,
+        amount: cat.totalAmount,
+        count: cat.count
+      }));
+
+      const html = `
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <style>
+              * { margin: 0; padding: 0; box-sizing: border-box; }
+              body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 20px; color: #1a1a1a; }
+              .header { text-align: center; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 2px solid #7C3AED; }
+              .header h1 { color: #7C3AED; font-size: 24px; margin-bottom: 4px; }
+              .header p { color: #666; font-size: 14px; }
+              .summary { display: flex; justify-content: space-around; margin-bottom: 24px; }
+              .summary-card { background: #f5f3ff; padding: 16px; border-radius: 12px; text-align: center; flex: 1; margin: 0 4px; }
+              .summary-card .label { font-size: 12px; color: #666; }
+              .summary-card .value { font-size: 18px; font-weight: bold; color: #7C3AED; }
+              table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 12px; }
+              th { background: #7C3AED; color: white; padding: 10px; text-align: left; font-weight: 600; }
+              td { border-bottom: 1px solid #e5e5e5; padding: 10px; }
+              tr:nth-child(even) { background: #fafafa; }
+              .footer { margin-top: 24px; text-align: center; color: #999; font-size: 10px; }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <h1>📊 Pulsebox Reports</h1>
+              <p>${selectedYear}${selectedMonth.length > 0 ? ` - ${selectedMonth.join('-')}` : ' - All Months'}</p>
+            </div>
+            
+            <div class="summary">
+              <div class="summary-card">
+                <div class="label">Total Amount</div>
+                <div class="value">₹${filteredTotal.toLocaleString('en-IN')}</div>
+              </div>
+              <div class="summary-card">
+                <div class="label">Total Bills</div>
+                <div class="value">${filteredBills.length}</div>
+              </div>
+              <div class="summary-card">
+                <div class="label">Paid</div>
+                <div class="value">₹${filteredPaid.toLocaleString('en-IN')}</div>
+              </div>
+              <div class="summary-card">
+                <div class="label">Pending</div>
+                <div class="value">₹${filteredPending.toLocaleString('en-IN')}</div>
+              </div>
+            </div>
+
+            <h3 style="margin-top: 24px; color: #7C3AED;">Category Breakdown</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th>Category</th>
+                  <th>Bills</th>
+                  <th>Amount</th>
+                  <th>%</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${categoryData.map(cat => `
+                  <tr>
+                    <td>${cat.name}</td>
+                    <td>${cat.count}</td>
+                    <td>₹${cat.amount.toLocaleString('en-IN')}</td>
+                    <td>${totalBillsAmount > 0 ? ((cat.amount / totalBillsAmount) * 100).toFixed(1) : 0}%</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+            
+            <div class="footer">
+              <p>Generated by Pulsebox on ${new Date().toLocaleDateString('en-IN')}</p>
+            </div>
+          </body>
+        </html>
+      `;
+
+      const { uri } = await Print.printToFileAsync({ html });
+      
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, {
+          mimeType: 'application/pdf',
+          dialogTitle: 'Export Report',
+        });
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        Alert.alert('Export Complete', 'PDF has been generated and is ready to share.');
+      } else {
+        Alert.alert('Export Complete', `PDF saved to:\n${uri}`);
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to export PDF');
+    }
+    
+    setExporting(false);
+    setShowExportModal(false);
   };
 
   return (
@@ -326,19 +470,50 @@ export default function ReportsScreen() {
                 ))}
               </View>
 
-              <Text style={[styles.exportLabel, { color: scheme.textSecondary }]}>MONTH</Text>
+              <Text style={[styles.exportLabel, { color: scheme.textSecondary }]}>YEAR</Text>
               <View style={styles.exportChips}>
-                {MONTHS.map(month => (
+                {[2026, 2025, 2024, 2023, 2022].map(year => (
+                  <TouchableOpacity
+                    key={year}
+                    style={[
+                      styles.exportChip,
+                      { backgroundColor: isDark ? '#2C2C2E' : '#F2F2F7' },
+                      selectedYear === String(year) && { backgroundColor: Colors.primary }
+                    ]}
+                    onPress={() => setSelectedYear(String(year))}
+                  >
+                    <Text style={[styles.exportChipText, { color: selectedYear === String(year) ? '#FFF' : scheme.textPrimary }]}>
+                      {year}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text style={[styles.exportLabel, { color: scheme.textSecondary }]}>MONTH (Select multiple)</Text>
+              <View style={styles.exportChips}>
+                <TouchableOpacity
+                  style={[
+                    styles.exportChip,
+                    { backgroundColor: isDark ? '#2C2C2E' : '#F2F2F7' },
+                    selectedMonth.length === 0 && { backgroundColor: Colors.primary }
+                  ]}
+                  onPress={() => toggleMonth('all')}
+                >
+                  <Text style={[styles.exportChipText, { color: selectedMonth.length === 0 ? '#FFF' : scheme.textPrimary }]}>
+                    All
+                  </Text>
+                </TouchableOpacity>
+                {MONTHS.slice(1).map(month => (
                   <TouchableOpacity
                     key={month.id}
                     style={[
                       styles.exportChip,
                       { backgroundColor: isDark ? '#2C2C2E' : '#F2F2F7' },
-                      selectedMonth === month.id && { backgroundColor: Colors.primary }
+                      selectedMonth.includes(month.id) && { backgroundColor: Colors.primary }
                     ]}
-                    onPress={() => setSelectedMonth(month.id)}
+                    onPress={() => toggleMonth(month.id)}
                   >
-                    <Text style={[styles.exportChipText, { color: selectedMonth === month.id ? '#FFF' : scheme.textPrimary }]}>
+                    <Text style={[styles.exportChipText, { color: selectedMonth.includes(month.id) ? '#FFF' : scheme.textPrimary }]}>
                       {month.label}
                     </Text>
                   </TouchableOpacity>
