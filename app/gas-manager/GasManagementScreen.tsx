@@ -8,17 +8,19 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   View, Text, StyleSheet, Platform, ActivityIndicator,
   TouchableOpacity, Modal, TextInput, Animated,
-  Alert, ScrollView, RefreshControl, KeyboardAvoidingView, Keyboard
+  Alert, ScrollView, RefreshControl, KeyboardAvoidingView, Keyboard, Pressable
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import {
   ChevronLeft, Flame, Plus, MapPin, User,
   Calendar, CheckCircle, Clock, AlertCircle,
-  X, Upload, Camera, IdCard, Phone, Search,
+  X, Upload, Camera, IdCard, Phone, Search, Download
 } from 'lucide-react-native';
 import { Spacing, Typography, BorderRadius } from '@/constants/designTokens';
 import { Colors, getColorScheme } from '@/theme/color';
@@ -78,6 +80,23 @@ export default function GasManagementScreen() {
   // Modals
   const [showBillModal, setShowBillModal] = useState(false);
   const [showBPModal, setShowBPModal] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [selectedExportMonth, setSelectedExportMonth] = useState<string[]>([]);
+  const [selectedExportYear, setSelectedExportYear] = useState(String(new Date().getFullYear()));
+  const [selectedExportCity, setSelectedExportCity] = useState('all');
+
+  const toggleMonth = (monthId: string) => {
+    if (monthId === 'all') {
+      setSelectedExportMonth([]);
+    } else {
+      setSelectedExportMonth(prev => 
+        prev.includes(monthId) 
+          ? prev.filter(m => m !== monthId)
+          : [...prev, monthId]
+      );
+    }
+  };
   const [editingBill, setEditingBill] = useState<GasBillEntry | null>(null);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -136,6 +155,144 @@ export default function GasManagementScreen() {
     const pending = bills.filter(b => b.payStatus === 'Pending').length;
     return { total, paid, pending };
   }, [bills]);
+
+  const handleExport = useCallback(async () => {
+    setExporting(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    
+    try {
+      const filtered = bills.filter(b => {
+        if (selectedExportCity !== 'all' && b.city?.toLowerCase() !== selectedExportCity) return false;
+        
+        if (selectedExportMonth.length > 0) {
+          const billDate = b.billGenerationMonth || '';
+          const months = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+          const billMonthIdx = months.findIndex(m => billDate.toLowerCase().startsWith(m));
+          const billMonth = String(billMonthIdx + 1).padStart(2, '0');
+          if (!selectedExportMonth.includes(billMonth)) return false;
+        }
+        
+        if (selectedExportYear) {
+          const billDate = b.billGenerationMonth || '';
+          const yearMatch = billDate.match(/\d{4}/);
+          if (yearMatch && yearMatch[0] !== selectedExportYear) return false;
+        }
+        
+        return true;
+      });
+
+      const monthsLabel = selectedExportMonth.length > 0 
+        ? selectedExportMonth.map(m => ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][parseInt(m)-1]).join('-')
+        : 'All-Year';
+      const cityLabel = selectedExportCity === 'all' ? 'AllCities' : selectedExportCity.charAt(0).toUpperCase() + selectedExportCity.slice(1);
+      const fileName = `Gas_Bills_${cityLabel}_${selectedExportYear}_${monthsLabel}.pdf`;
+
+      const totalAmount = filtered.reduce((sum, b) => {
+        const amt = typeof b.amountToBePaid === 'string' ? parseFloat(b.amountToBePaid.replace(/,/g, '')) : b.amountToBePaid;
+        return sum + (isFinite(amt) ? amt : 0);
+      }, 0);
+      const paidCount = filtered.filter(b => b.payStatus === 'Paid').length;
+      const pendingCount = filtered.filter(b => b.payStatus === 'Pending').length;
+
+      const html = `
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <style>
+              * { margin: 0; padding: 0; box-sizing: border-box; }
+              body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 20px; color: #1a1a1a; }
+              .header { text-align: center; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 2px solid #3B82F6; }
+              .header h1 { color: #3B82F6; font-size: 24px; margin-bottom: 4px; }
+              .header p { color: #666; font-size: 14px; }
+              .summary { display: flex; justify-content: space-around; margin-bottom: 24px; }
+              .summary-card { background: #eff6ff; padding: 16px; border-radius: 12px; text-align: center; flex: 1; margin: 0 4px; }
+              .summary-card .label { font-size: 12px; color: #666; }
+              .summary-card .value { font-size: 18px; font-weight: bold; color: #3B82F6; }
+              table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 12px; }
+              th { background: #3B82F6; color: white; padding: 10px; text-align: left; font-weight: 600; }
+              td { border-bottom: 1px solid #e5e5e5; padding: 10px; }
+              tr:nth-child(even) { background: #fafafa; }
+              .status-paid { color: #10B981; font-weight: 600; }
+              .status-pending { color: #F59E0B; font-weight: 600; }
+              .footer { margin-top: 24px; text-align: center; color: #999; font-size: 10px; }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <h1>🔥 Gas Bills (MNGL)</h1>
+              <p>${selectedExportYear}${selectedExportMonth.length > 0 ? ` - ${selectedExportMonth.join('-')}` : ' - All Months'}</p>
+            </div>
+            
+            <div class="summary">
+              <div class="summary-card">
+                <div class="label">Total Bills</div>
+                <div class="value">${filtered.length}</div>
+              </div>
+              <div class="summary-card">
+                <div class="label">Amount</div>
+                <div class="value">₹${totalAmount.toLocaleString('en-IN')}</div>
+              </div>
+              <div class="summary-card">
+                <div class="label">Paid</div>
+                <div class="value">${paidCount}</div>
+              </div>
+              <div class="summary-card">
+                <div class="label">Pending</div>
+                <div class="value">${pendingCount}</div>
+              </div>
+            </div>
+
+            <table>
+              <thead>
+                <tr>
+                  <th>Month</th>
+                  <th>BP Number</th>
+                  <th>Amount</th>
+                  <th>Due Date</th>
+                  <th>Status</th>
+                  <th>Payment Mode</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${filtered.length > 0 ? filtered.map(b => `
+                  <tr>
+                    <td>${b.billGenerationMonth || '-'}</td>
+                    <td>${b.BPNumber || '-'}</td>
+                    <td>₹${b.amountToBePaid || '-'}</td>
+                    <td>${b.lastDateToPay ? new Date(b.lastDateToPay).toLocaleDateString('en-IN') : '-'}</td>
+                    <td class="status-${b.payStatus?.toLowerCase()}">${b.payStatus || '-'}</td>
+                    <td>${b.paymentMode || '-'}</td>
+                  </tr>
+                `).join('') : '<tr><td colspan="6" style="text-align:center;">No bills found</td></tr>'}
+              </tbody>
+            </table>
+            
+            <div class="footer">
+              <p>Generated by Pulsebox on ${new Date().toLocaleDateString('en-IN')}</p>
+            </div>
+          </body>
+        </html>
+      `;
+
+      const { uri } = await Print.printToFileAsync({ html });
+      
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, {
+          mimeType: 'application/pdf',
+          dialogTitle: 'Export Gas Bills',
+        });
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        Alert.alert('Export Complete', `PDF "${fileName}" has been generated and is ready to share.`);
+      } else {
+        Alert.alert('Export Complete', `PDF saved to:\n${uri}`);
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to export PDF');
+    }
+    
+    setExporting(false);
+    setShowExportModal(false);
+  }, [bills, selectedExportMonth, selectedExportYear]);
 
   const displayBills = useMemo(() => {
     let result = filter === 'All' ? bills : bills.filter(b => b.payStatus === filter);
@@ -216,6 +373,9 @@ export default function GasManagementScreen() {
           </Text>
           <Text style={[styles.headerTitle, { color: scheme.textPrimary }]}>Gas (MNGL)</Text>
         </View>
+        <TouchableOpacity style={styles.exportBtn} onPress={() => setShowExportModal(true)}>
+          <Download size={22} color={Colors.primary} />
+        </TouchableOpacity>
       </View>
 
       {/* Hero Banner */}
@@ -421,6 +581,57 @@ export default function GasManagementScreen() {
             if (selectedCity) firebaseService.getGasConsumersByCity(selectedCity).then(setBPNumbers);
           }}
         />
+      </Modal>
+
+      {/* Export Modal */}
+      <Modal visible={showExportModal} animationType="slide" transparent onRequestClose={() => setShowExportModal(false)}>
+        <View style={styles.modalOverlay}>
+          <Pressable style={styles.modalOverlayBg} onPress={() => setShowExportModal(false)} />
+          <View style={[styles.exportModalContent, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}>
+            <View style={styles.exportModalHeader}>
+              <Text style={[styles.exportModalTitle, { color: scheme.textPrimary }]}>Export Gas Bills</Text>
+              <TouchableOpacity onPress={() => setShowExportModal(false)}>
+                <X size={24} color={scheme.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.exportModalBody}>
+              <Text style={[styles.exportLabel, { color: scheme.textSecondary }]}>SELECT YEAR</Text>
+              <View style={styles.exportChips}>
+                {[2026, 2025, 2024, 2023, 2022].map(year => (
+                  <TouchableOpacity key={year} style={[styles.exportChip, { backgroundColor: isDark ? '#2C2C2E' : '#F2F2F7' }, selectedExportYear === String(year) && { backgroundColor: Colors.primary }]} onPress={() => setSelectedExportYear(String(year))}>
+                    <Text style={[styles.exportChipText, { color: selectedExportYear === String(year) ? '#FFF' : scheme.textPrimary }]}>{year}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text style={[styles.exportLabel, { color: scheme.textSecondary }]}>SELECT CITY</Text>
+              <View style={styles.exportChips}>
+                {['all', 'pune', 'nashik', 'jalgaon'].map(city => (
+                  <TouchableOpacity key={city} style={[styles.exportChip, { backgroundColor: isDark ? '#2C2C2E' : '#F2F2F7' }, selectedExportCity === city && { backgroundColor: Colors.primary }]} onPress={() => setSelectedExportCity(city)}>
+                    <Text style={[styles.exportChipText, { color: selectedExportCity === city ? '#FFF' : scheme.textPrimary }]}>{city === 'all' ? 'All Cities' : city.charAt(0).toUpperCase() + city.slice(1)}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text style={[styles.exportLabel, { color: scheme.textSecondary }]}>SELECT MONTH (Select multiple)</Text>
+              <View style={styles.exportChips}>
+                <TouchableOpacity style={[styles.exportChip, { backgroundColor: isDark ? '#2C2C2E' : '#F2F2F7' }, selectedExportMonth.length === 0 && { backgroundColor: Colors.primary }]} onPress={() => toggleMonth('all')}>
+                  <Text style={[styles.exportChipText, { color: selectedExportMonth.length === 0 ? '#FFF' : scheme.textPrimary }]}>All</Text>
+                </TouchableOpacity>
+                {[{ id: '01', label: 'Jan' }, { id: '02', label: 'Feb' }, { id: '03', label: 'Mar' }, { id: '04', label: 'Apr' }, { id: '05', label: 'May' }, { id: '06', label: 'Jun' }, { id: '07', label: 'Jul' }, { id: '08', label: 'Aug' }, { id: '09', label: 'Sep' }, { id: '10', label: 'Oct' }, { id: '11', label: 'Nov' }, { id: '12', label: 'Dec' }].map(month => (
+                  <TouchableOpacity key={month.id} style={[styles.exportChip, { backgroundColor: isDark ? '#2C2C2E' : '#F2F2F7' }, selectedExportMonth.includes(month.id) && { backgroundColor: Colors.primary }]} onPress={() => toggleMonth(month.id)}>
+                    <Text style={[styles.exportChipText, { color: selectedExportMonth.includes(month.id) ? '#FFF' : scheme.textPrimary }]}>{month.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
+            <View style={styles.exportModalFooter}>
+              <TouchableOpacity style={[styles.exportBtn2, { backgroundColor: Colors.primary }]} onPress={handleExport} disabled={exporting}>
+                {exporting ? <ActivityIndicator size="small" color="#FFF" /> : <><Download size={20} color="#FFF" /><Text style={styles.exportBtnText}>Export PDF</Text></>}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
       </Modal>
     </View>
   );
@@ -701,4 +912,19 @@ const styles = StyleSheet.create({
   uploadText: { fontSize: Typography.fontSize.sm, fontWeight: '500' },
   submitBtn: { borderRadius: BorderRadius.md, paddingVertical: Spacing.md + 2, justifyContent: 'center', alignItems: 'center', minHeight: 52, marginTop: Spacing.md },
   submitBtnText: { color: '#FFFFFF', fontSize: Typography.fontSize.lg, fontWeight: '700' },
+
+  exportBtn: { padding: 8 },
+  modalOverlay: { flex: 1, justifyContent: 'flex-end' },
+  modalOverlayBg: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' },
+  exportModalContent: { borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '90%' },
+  exportModalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: Spacing.lg, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(0,0,0,0.1)' },
+  exportModalTitle: { fontSize: 20, fontWeight: '700' },
+  exportModalBody: { padding: Spacing.lg },
+  exportLabel: { fontSize: 12, fontWeight: '600', marginBottom: Spacing.sm, marginTop: Spacing.md, letterSpacing: 0.5 },
+  exportChips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
+  exportChip: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderRadius: 20, gap: 6 },
+  exportChipText: { fontSize: 13, fontWeight: '500' },
+  exportModalFooter: { padding: Spacing.lg, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(0,0,0,0.1)' },
+  exportBtn2: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: Spacing.md, borderRadius: 12, gap: Spacing.sm },
+  exportBtnText: { color: '#FFF', fontSize: 16, fontWeight: '600' },
 });

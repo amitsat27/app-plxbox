@@ -601,7 +601,7 @@ export default function LoginScreen() {
                           },
                         ]}
                       >
-                        6-Digit PIN
+                        PIN
                       </Text>
                     </TouchableOpacity>
 

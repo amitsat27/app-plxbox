@@ -52,6 +52,7 @@ import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
 import * as Haptics from "expo-haptics";
+import { sectionTemplates, getSmartNotificationData, generateSmartMessage, SmartNotificationData } from "@/src/services/NotificationDataService";
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -78,6 +79,7 @@ interface SmartNotification {
   dayOfWeek?: number;
   enabled: boolean;
   customMessage?: string;
+  templateData?: SmartNotificationData;
 }
 
 interface CustomNotification {
@@ -92,13 +94,13 @@ interface CustomNotification {
   enabled: boolean;
 }
 
-const SECTIONS: { key: Section; label: string; icon: React.ReactNode; lastBillLabel: string }[] = [
-  { key: "electric", label: "Electric Bills", icon: <Zap size={16} color={Colors.primary} />, lastBillLabel: "Last month's electricity bill" },
-  { key: "gas", label: "Gas Bills", icon: <Home size={16} color={Colors.primary} />, lastBillLabel: "Last month's gas bill" },
-  { key: "wifi", label: "WiFi Bills", icon: <Tv size={16} color={Colors.primary} />, lastBillLabel: "Last month's WiFi bill" },
-  { key: "property", label: "Property Tax", icon: <Home size={16} color={Colors.primary} />, lastBillLabel: "Last year's property tax" },
-  { key: "vehicles", label: "Vehicles", icon: <Truck size={16} color={Colors.primary} />, lastBillLabel: "Vehicle expenses" },
-  { key: "appliances", label: "Appliances", icon: <Tv size={16} color={Colors.primary} />, lastBillLabel: "Appliance maintenance" },
+const SECTIONS: { key: Section; label: string; icon: string; lastBillLabel: string }[] = [
+  { key: "electric", label: "Electric Bills", icon: "⚡", lastBillLabel: "Last month's electricity bill" },
+  { key: "gas", label: "Gas Bills", icon: "🔥", lastBillLabel: "Last month's gas bill" },
+  { key: "wifi", label: "WiFi Bills", icon: "📶", lastBillLabel: "Last month's WiFi bill" },
+  { key: "property", label: "Property Tax", icon: "🏠", lastBillLabel: "Last year's property tax" },
+  { key: "vehicles", label: "Vehicles", icon: "🚗", lastBillLabel: "Vehicle expenses" },
+  { key: "appliances", label: "Appliances", icon: "📺", lastBillLabel: "Appliance maintenance" },
 ];
 
 const NOTIFICATION_TYPES = [
@@ -207,21 +209,24 @@ export default function NotificationManagementScreen() {
     const section = SECTIONS.find(s => s.key === smartSection)!;
     const typeLabel = NOTIFICATION_TYPES.find(t => t.key === smartType)?.label || "Alert";
     
-    const title = `${typeLabel}: ${section.label}`;
-    let message = smartCustomMessage || `Check your ${section.label.toLowerCase()}`;
+    // Fetch real data from the respective section
+    const notificationData = await getSmartNotificationData(smartSection);
+    const template = sectionTemplates.find(t => t.key === smartSection);
     
-    // Generate smart message based on section
-    if (!smartCustomMessage) {
-      const lastBillMessages: Record<Section, string> = {
-        electric: "Your last month's electricity usage - check current bill",
-        gas: "Time to check this month's gas cylinder status",
-        wifi: "Your WiFi bill cycle reminder",
-        property: "Property tax payment reminder",
-        vehicles: "Vehicle maintenance check reminder",
-        appliances: "Appliance warranty & service reminder",
-      };
-      message = lastBillMessages[smartSection];
-    }
+    // Generate smart message based on type and real data
+    const generatedMessage = generateSmartMessage(smartType, notificationData);
+    const message = smartCustomMessage || generatedMessage;
+    
+    // Use template icon if available
+    const icon = template?.icon || '📌';
+    const title = `${typeLabel}: ${section.label}`;
+    
+    // Prepare notification content
+    const content: Notifications.NotificationContentInput = {
+      title,
+      body: message,
+      sound: true,
+    };
 
     const newNotif: SmartNotification = {
       id: Date.now().toString(),
@@ -234,6 +239,7 @@ export default function NotificationManagementScreen() {
       dayOfWeek: smartFrequency === "weekly" ? smartDayOfWeek : undefined,
       enabled: true,
       customMessage: smartCustomMessage || undefined,
+      templateData: notificationData,
     };
 
     const trigger = getTrigger(smartFrequency, smartHour, smartMinute, smartDayOfMonth, smartDayOfWeek);
@@ -364,14 +370,26 @@ export default function NotificationManagementScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     const sec = SECTIONS.find(s => s.key === n.section)!;
     const typeLabel = NOTIFICATION_TYPES.find(t => t.key === n.notificationType)?.label || "Alert";
+    const template = sectionTemplates.find(t => t.key === n.section);
+    
+    // Fetch fresh data or use stored template data
+    let notificationData: SmartNotificationData;
+    if (n.templateData) {
+      notificationData = n.templateData;
+    } else {
+      notificationData = await getSmartNotificationData(n.section);
+    }
+    
+    const generatedMessage = generateSmartMessage(n.notificationType, notificationData);
+    const message = n.customMessage || generatedMessage;
+    const icon = template?.icon || '📌';
     const title = `${typeLabel}: ${sec.label}`;
-    const message = n.customMessage || sec.lastBillLabel;
     
     await Notifications.scheduleNotificationAsync({
       content: { title, body: message, sound: true },
       trigger: { type: "date", date: new Date(Date.now() + 5000) } as any,
     });
-    Alert.alert("Test Sent!", `Testing: ${title}\n\nCheck your notifications in 5 seconds.`);
+    Alert.alert("Test Sent!", `Testing: ${title}\n\n${message}\n\nCheck your notifications in 5 seconds.`);
   };
 
   const sendTestForCustom = async (n: CustomNotification) => {
@@ -444,7 +462,7 @@ export default function NotificationManagementScreen() {
                 <View style={styles.chipContainer}>
                   {SECTIONS.map(s => (
                     <TouchableOpacity key={s.key} style={[styles.chip, { backgroundColor: isDark ? "#2C2C2E" : "#F5F5F5" }, smartSection === s.key && { backgroundColor: Colors.primary }]} onPress={() => setSmartSection(s.key)}>
-                      {s.icon}
+                      <Text style={{ fontSize: 14 }}>{s.icon}</Text>
                       <Text style={[styles.chipText, { color: smartSection === s.key ? "#FFF" : scheme.textPrimary }]}>{s.label}</Text>
                     </TouchableOpacity>
                   ))}
@@ -532,14 +550,27 @@ export default function NotificationManagementScreen() {
             ) : smartNotifications.map(n => {
               const sec = SECTIONS.find(s => s.key === n.section)!;
               const type = NOTIFICATION_TYPES.find(t => t.key === n.notificationType)!;
+              const template = sectionTemplates.find(t => t.key === n.section);
+              const icon = template?.icon || '📌';
+              
+              // Use stored template data or fallback to default
+              const displayMessage = n.templateData?.message || n.customMessage || sec.lastBillLabel;
+              const displayAmount = n.templateData?.billAmount;
+              const displayMonth = n.templateData?.billMonth;
+              
               return (
                 <View key={n.id} style={[styles.notifCard, { backgroundColor: isDark ? "#1C1C1E" : "#FFFFFF" }]}>
                   <View style={styles.notifHeader}>
                     <View style={styles.notifInfo}>
-                      <View style={[styles.iconCircle, { backgroundColor: isDark ? "rgba(124,58,237,0.2)" : "rgba(124,58,237,0.1)" }]}>{sec.icon}</View>
+                      <View style={[styles.iconCircle, { backgroundColor: isDark ? "rgba(124,58,237,0.2)" : "rgba(124,58,237,0.1)" }]}>
+                        <Text style={{ fontSize: 18 }}>{icon}</Text>
+                      </View>
                       <View>
                         <Text style={[styles.notifTitle, { color: scheme.textPrimary }]}>{type.label}: {sec.label}</Text>
-                        <Text style={[styles.notifSub, { color: scheme.textSecondary }]}>{n.customMessage || sec.lastBillLabel}</Text>
+                        <Text style={[styles.notifSub, { color: scheme.textSecondary }]}>{displayMessage}</Text>
+                        {displayAmount && (
+                          <Text style={[styles.notifAmount, { color: Colors.primary }]}>₹{displayAmount} {displayMonth && `(${displayMonth})`}</Text>
+                        )}
                       </View>
                     </View>
                     <View style={styles.actionBtns}>
@@ -728,6 +759,7 @@ const styles = StyleSheet.create({
   iconCircle: { width: 36, height: 36, borderRadius: 10, justifyContent: "center", alignItems: "center", marginRight: 12 },
   notifTitle: { fontSize: 14, fontWeight: "600", marginBottom: 2 },
   notifSub: { fontSize: 12 },
+  notifAmount: { fontSize: 13, fontWeight: "700", marginTop: 2 },
   notifMeta: { flexDirection: "row", gap: 8, paddingTop: 10, borderTopWidth: 0.5, marginTop: 10, alignItems: "center" },
   tag: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 },
   tagText: { fontSize: 11, fontWeight: "500", color: "#666" },
