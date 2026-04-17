@@ -27,10 +27,7 @@ import {
     ChevronRight,
     Info,
     LogOut,
-    Monitor,
-    Moon,
     Settings,
-    Sun,
 } from "lucide-react-native";
 import { useAuth } from "@/src/context/AuthContext";
 import { useRouter } from "expo-router";
@@ -222,8 +219,8 @@ export default function SettingsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { logout, user } = useAuth();
-  const { mode, setMode, isDark } = useTheme();
-  const scheme = getColorScheme(isDark);
+  const { isDark } = useTheme();
+  const scheme = getColorScheme(false);
   const [loggingOut, setLoggingOut] = useState(false);
   
   // Notification settings
@@ -284,14 +281,6 @@ export default function SettingsScreen() {
     } catch (error) {
       console.error("Failed to request notification permissions:", error);
       return false;
-    }
-  };
-
-  const handleThemeChange = async (newMode: "light" | "dark" | "auto") => {
-    try {
-      await setMode(newMode);
-    } catch (error) {
-      console.error("Failed to change theme:", error);
     }
   };
 
@@ -359,44 +348,6 @@ export default function SettingsScreen() {
             color={isDark ? "rgba(255,255,255,0.25)" : "rgba(60,60,67,0.3)"}
           />
         </TouchableOpacity>
-
-        {/* Appearance */}
-        <Section title="APPEARANCE">
-          <View style={styles.themeContainer}>
-            <View
-              style={[
-                styles.themeSelector,
-                { backgroundColor: isDark ? "#2C2C2E" : "#E8E8ED" },
-              ]}
-            >
-              {[
-                { key: "light", label: "Light", icon: <Sun size={18} color={Colors.primary} /> },
-                { key: "auto", label: "Auto", icon: <Monitor size={18} color={Colors.primary} /> },
-                { key: "dark", label: "Dark", icon: <Moon size={18} color={Colors.primary} /> },
-              ].map((item) => (
-                <TouchableOpacity
-                  key={item.key}
-                  style={[
-                    styles.themeOption,
-                    mode === item.key && { backgroundColor: isDark ? "#1C1C1E" : "#FFFFFF" },
-                  ]}
-                  onPress={() => handleThemeChange(item.key as "light" | "dark" | "auto")}
-                  activeOpacity={0.7}
-                >
-                  {item.icon}
-                  <Text
-                    style={[
-                      styles.themeLabel,
-                      { color: mode === item.key ? Colors.primary : scheme.textSecondary },
-                    ]}
-                  >
-                    {item.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-        </Section>
 
         {/* Notifications */}
         <Section title="NOTIFICATIONS">

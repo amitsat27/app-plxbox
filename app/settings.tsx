@@ -7,11 +7,11 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { BorderRadius, Spacing, Typography } from "@/constants/designTokens";
 import { useAuth } from "@/src/context/AuthContext";
-import { Colors, getColorScheme } from "@/theme/color";
+import { Colors } from "@/theme/color";
 import { useTheme } from "@/theme/themeProvider";
 import { BlurView } from "expo-blur";
 import { useRouter } from "expo-router";
-import { Bell, BellOff, ChevronLeft, LogOut, Monitor, Moon, Sun } from "lucide-react-native";
+import { Bell, BellOff, ChevronLeft, LogOut, Sun } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import {
     ActivityIndicator,
@@ -26,8 +26,6 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Notifications from "expo-notifications";
-
-type ThemeMode = "light" | "dark" | "auto";
 
 interface SettingSectionProps {
   title: string;
@@ -47,8 +45,7 @@ interface SettingRowProps {
 }
 
 const SettingSection: React.FC<SettingSectionProps> = ({ title, children }) => {
-  const { theme, isDark } = useTheme();
-  const scheme = getColorScheme(isDark);
+  const { theme } = useTheme();
 
   return (
     <View style={styles.sectionContainer}>
@@ -82,7 +79,6 @@ const SettingRow: React.FC<SettingRowProps> = ({
   rightIcon,
 }) => {
   const { theme } = useTheme();
-  const scheme = getColorScheme(theme === undefined);
 
   return (
     <TouchableOpacity
@@ -144,9 +140,7 @@ const SettingRow: React.FC<SettingRowProps> = ({
 export default function SettingsScreen() {
   const router = useRouter();
   const { logout, loading } = useAuth();
-  const { theme, mode, setMode, isDark } = useTheme();
-  const scheme = getColorScheme(isDark);
-  const [selectedTheme, setSelectedTheme] = useState<ThemeMode>(mode);
+  const { theme } = useTheme();
   const [loggingOut, setLoggingOut] = useState(false);
   
   // Notification settings
@@ -227,15 +221,6 @@ export default function SettingsScreen() {
     }
   };
 
-  const handleThemeChange = async (newMode: ThemeMode) => {
-    try {
-      setSelectedTheme(newMode);
-      await setMode(newMode);
-    } catch (error) {
-      console.error("Failed to change theme:", error);
-    }
-  };
-
   const handleLogout = async () => {
     setLoggingOut(true);
     try {
@@ -259,7 +244,7 @@ export default function SettingsScreen() {
       edges={["left", "right", "bottom"]}
     >
       {/* Header */}
-      <BlurView intensity={isDark ? 40 : 20} style={styles.headerBlur}>
+      <BlurView intensity={20} style={styles.headerBlur}>
         <View
           style={[
             styles.header,
@@ -288,64 +273,6 @@ export default function SettingsScreen() {
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
       >
-        {/* Theme Section */}
-        <SettingSection title="APPEARANCE">
-          <View style={styles.themeContainer}>
-            {[
-              {
-                mode: "light" as ThemeMode,
-                label: "Light",
-                icon: <Sun size={24} color={theme.brand.primary} />,
-              },
-              {
-                mode: "auto" as ThemeMode,
-                label: "Auto",
-                icon: <Monitor size={24} color={theme.brand.primary} />,
-              },
-              {
-                mode: "dark" as ThemeMode,
-                label: "Dark",
-                icon: <Moon size={24} color={theme.brand.primary} />,
-              },
-            ].map((option) => (
-              <TouchableOpacity
-                key={option.mode}
-                style={[
-                  styles.themeOption,
-                  {
-                    backgroundColor:
-                      selectedTheme === option.mode
-                        ? theme.brand.primary
-                        : isDark
-                          ? theme.surface.secondary
-                          : theme.surface.tertiary,
-                    borderColor:
-                      selectedTheme === option.mode
-                        ? theme.brand.primary
-                        : theme.border.primary,
-                  },
-                ]}
-                onPress={() => handleThemeChange(option.mode)}
-              >
-                <View style={styles.themeIconContainer}>{option.icon}</View>
-                <Text
-                  style={[
-                    styles.themeLabel,
-                    {
-                      color:
-                        selectedTheme === option.mode
-                          ? theme.text.contrast
-                          : theme.text.primary,
-                    },
-                  ]}
-                >
-                  {option.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </SettingSection>
-
         {/* Display Settings */}
         <SettingSection title="DISPLAY">
           <SettingRow

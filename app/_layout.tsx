@@ -16,8 +16,7 @@ import { Spacing, Typography, BorderRadius } from "../constants/designTokens";
 import { AuthProvider, useAuth } from "../src/context/AuthContext";
 import { NetworkProvider } from "../src/context/NetworkContext";
 import { NotificationProvider } from "../src/context/NotificationContext";
-import { useUIStore } from "../src/stores/uiStore";
-import { Colors, getColorScheme } from "../theme/color";
+import { Colors } from "../theme/color";
 import { ThemeProvider } from "../theme/themeProvider";
 
 const getPaperTheme = (isDark: boolean) => ({
@@ -89,8 +88,6 @@ async function tryHideSplash() {
 }
 
 function ErrorScreen({ message, onRetry }: { message?: string; onRetry?: () => void }) {
-  const { isDarkMode } = useUIStore();
-  const scheme = getColorScheme(isDarkMode);
   const fadeAnim = new Animated.Value(0);
   const scaleAnim = new Animated.Value(0.9);
 
@@ -102,12 +99,12 @@ function ErrorScreen({ message, onRetry }: { message?: string; onRetry?: () => v
   }, []);
 
   return (
-    <View style={[styles.errorContainer, { backgroundColor: isDarkMode ? "#0A0A0F" : "#F8F9FC" }]}>
+    <View style={[styles.errorContainer, { backgroundColor: "#F8F9FC" }]}>
       <Animated.View
         style={[
           styles.errorCard,
           {
-            backgroundColor: isDarkMode ? "#1C1C2E" : "#FFFFFF",
+            backgroundColor: "#FFFFFF",
             opacity: fadeAnim,
             transform: [{ scale: scaleAnim }],
           },
@@ -117,11 +114,11 @@ function ErrorScreen({ message, onRetry }: { message?: string; onRetry?: () => v
           <AlertTriangle size={48} color={Colors.error} strokeWidth={1.5} />
         </View>
 
-        <Text style={[styles.errorTitle, { color: scheme.textPrimary }]}>
+        <Text style={[styles.errorTitle, { color: "#0F172A" }]}>
           Initialization Failed
         </Text>
 
-        <Text style={[styles.errorMessage, { color: scheme.textSecondary }]}>
+        <Text style={[styles.errorMessage, { color: "#475569" }]}>
           {message || "Unable to connect to Firebase. Please check your internet connection and try again."}
         </Text>
 
@@ -136,13 +133,13 @@ function ErrorScreen({ message, onRetry }: { message?: string; onRetry?: () => v
           </TouchableOpacity>
         </View>
 
-        <Text style={[styles.errorHint, { color: scheme.textTertiary }]}>
+        <Text style={[styles.errorHint, { color: "#94A3B8" }]}>
           If the problem persists, restart the app or contact support.
         </Text>
       </Animated.View>
 
       <View style={styles.errorBrand}>
-        <Text style={[styles.errorBrandText, { color: scheme.textTertiary }]}>Powered by Pulsebox</Text>
+        <Text style={[styles.errorBrandText, { color: "#94A3B8" }]}>Powered by Pulsebox</Text>
       </View>
     </View>
   );
@@ -153,8 +150,6 @@ function MainLayout() {
   const segments = useSegments();
   const router = useRouter();
   const [appIsReady, setAppIsReady] = useState(false);
-  const { isDarkMode } = useUIStore();
-  const scheme = getColorScheme(isDarkMode);
 
   useEffect(() => {
     async function prepare() {
@@ -201,7 +196,7 @@ function MainLayout() {
         animationDuration: 250,
         gestureEnabled: true,
         contentStyle: {
-          backgroundColor: scheme.background,
+          backgroundColor: "#F8F9FC",
         },
       }}
     >
@@ -225,13 +220,12 @@ function MainLayout() {
 }
 
 function ThemedApp({ children }: { children: React.ReactNode }) {
-  const { isDarkMode } = useUIStore();
-  const theme = getPaperTheme(isDarkMode);
+  const theme = getPaperTheme(false);
 
   return (
     <PaperProvider theme={theme}>
       <StatusBar 
-        style={isDarkMode ? "light" : "dark"} 
+        style="dark" 
         translucent
         backgroundColor="transparent"
       />

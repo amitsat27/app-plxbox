@@ -106,8 +106,14 @@ const SECTIONS: SectionItem[] = [
     bgTint: { light: 'rgba(16,185,129,0.08)', dark: 'rgba(16,185,129,0.15)' },
     dest: '/reports',
   },
-  
-  
+  {
+    id: 'transactions',
+    title: 'Transaction Analysis',
+    subtitle: 'PDF analysis for GPay/PhonePe',
+    icon: <Wallet size={20} color="#7C3AED" />,
+    bgTint: { light: 'rgba(124,58,237,0.08)', dark: 'rgba(124,58,237,0.15)' },
+    dest: '/transactions',
+  },
   
 
 ];

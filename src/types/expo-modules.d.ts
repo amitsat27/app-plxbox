@@ -45,6 +45,37 @@ declare module "expo-file-system" {
   export function getInfoAsync(uri: string, options?: any): Promise<FileInfo>;
   export function downloadAsync(uri: string, fileUri: string, options?: any): Promise<DownloadResult>;
 
+  // New File/Directory API (expo-file-system v19+)
+  export class Paths {
+    static get document(): Directory;
+    static get cache(): Directory;
+    static get bundle(): Directory;
+  }
+
+  export class Directory {
+    constructor(...uris: (string | File | Directory)[]);
+    get name(): string;
+    get exists(): boolean;
+    get uri(): string;
+    list(): (Directory | File)[];
+    create(): void;
+    createDirectory(name: string): Directory;
+    createFile(name: string, mimeType: string | null): File;
+    delete(): void;
+  }
+
+  export class File {
+    constructor(...uris: (string | File | Directory)[]);
+    get name(): string;
+    get extension(): string;
+    get exists(): boolean;
+    get uri(): string;
+    get parentDirectory(): Directory;
+    create(): void;
+    delete(): void;
+    move(destination: Directory | string): void;
+  }
+
   // Exported FileSystem object for legacy usage
   export const FileSystem: {
     downloadAsync: typeof downloadAsync;
