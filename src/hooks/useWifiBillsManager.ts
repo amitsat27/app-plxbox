@@ -15,8 +15,12 @@ import {
   onSnapshot,
   query,
   getDocs,
+  getDoc,
 } from 'firebase/firestore';
+import { ref, deleteObject } from 'firebase/storage';
 import { getFirebaseDb } from '../config/firebaseConfig';
+import { getFirebaseStorage } from '../config/firebaseConfig';
+import { firebaseService } from '../services/FirebaseService';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -50,6 +54,8 @@ export interface WifiBillFormData {
   lastDateToPay: Date;
   lastPaidBillMonth: Date;
   city: string;
+  fileUri?: string | null;
+  existingDocumentURL?: string;
 }
 
 type Cities = 'pune' | 'nashik' | 'jalgaon';
@@ -170,7 +176,7 @@ export function useWifiBillsManager() {
 
   const addBill = useCallback(async (data: WifiBillFormData) => {
     const db = getFirebaseDb();
-    const docData = {
+    const docData: Record<string, any> = {
       city: data.city,
       ispName: data.ispName.trim(),
       billAmount: String(data.billAmount),
@@ -179,13 +185,24 @@ export function useWifiBillsManager() {
       lastDateToPay: data.lastDateToPay.toISOString().split('T')[0],
       lastPaidBillMonth: data.lastPaidBillMonth.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }),
     };
+
+    // Handle document upload
+    if (data.fileUri) {
+      const uploadedUrl = await firebaseService.uploadComplianceDocument(
+        '',
+        '',
+        'service',
+        data.fileUri
+      );
+      docData.billDocumentURL = uploadedUrl;
+    }
 
     await addDoc(collection(db, 'pulsebox', 'wifibills', data.city), docData);
   }, []);
 
   const updateBill = useCallback(async (billId: string, city: string, data: WifiBillFormData) => {
     const db = getFirebaseDb();
-    const docData = {
+    const docData: Record<string, any> = {
       city: data.city,
       ispName: data.ispName.trim(),
       billAmount: String(data.billAmount),
@@ -195,11 +212,45 @@ export function useWifiBillsManager() {
       lastPaidBillMonth: data.lastPaidBillMonth.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }),
     };
 
+    // Handle document upload/replacement
+    if (data.fileUri) {
+      // Upload new document
+      const uploadedUrl = await firebaseService.uploadComplianceDocument(
+        '',
+        '',
+        'service',
+        data.fileUri
+      );
+      docData.billDocumentURL = uploadedUrl;
+    } else if (data.existingDocumentURL === null) {
+      // User removed existing document
+      docData.billDocumentURL = null;
+    } else if (data.existingDocumentURL) {
+      // Keep existing document
+      docData.billDocumentURL = data.existingDocumentURL;
+    }
+
     await updateDoc(doc(db, 'pulsebox', 'wifibills', city, billId), docData);
   }, []);
 
   const deleteBill = useCallback(async (billId: string, city: string) => {
     const db = getFirebaseDb();
+    const storage = getFirebaseStorage();
+    
+    // Get the bill first to check for document
+    const billSnap = await getDoc(doc(db, 'pulsebox', 'wifibills', city, billId));
+    const billData = billSnap.data();
+    
+    // Delete the document file if exists
+    if (billData?.billDocumentURL) {
+      try {
+        const fileRef = ref(storage, billData.billDocumentURL);
+        await deleteObject(fileRef);
+      } catch (e) {
+        console.log('Could not delete WiFi bill document');
+      }
+    }
+    
     await deleteDoc(doc(db, 'pulsebox', 'wifibills', city, billId));
   }, []);
 

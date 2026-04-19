@@ -10,11 +10,13 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
+import * as WebBrowser from 'expo-web-browser';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import {
   X, Plus, CheckCircle, Clock, CalendarDays,
   FileCheck, Camera as CameraIcon,
-  Image as ImageIcon, IndianRupee,
+  Image as ImageIcon, IndianRupee, FileText,
 } from 'lucide-react-native';
 import { Spacing, Typography, BorderRadius } from '@/constants/designTokens';
 import { Colors, getColorScheme } from '@/theme/color';
@@ -57,6 +59,7 @@ function AddBillModal({
   const [fileUri, setFileUri] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showCurrentDoc, setShowCurrentDoc] = useState(false);
 
   const slideY = useRef(new Animated.Value(600)).current;
   const bg = isDark ? '#1C1C1E' : '#FFFFFF';
@@ -73,6 +76,9 @@ function AddBillModal({
       } else {
         setDueDate(new Date());
       }
+      if (bill.billDocumentURL) {
+        setShowCurrentDoc(true);
+      }
     } else {
       setBillYear(String(new Date().getFullYear()));
       setTaxBillAmount('');
@@ -80,6 +86,7 @@ function AddBillModal({
       setPaymentMode('Cash');
       setDueDate(new Date());
       setFileUri(null);
+      setShowCurrentDoc(false);
     }
   }, [bill]);
 
@@ -110,8 +117,23 @@ function AddBillModal({
         payStatus,
         paymentMode,
       };
+      
+      // Determine existing document URL: 
+      // - If user removed current doc (showCurrentDoc=false and no new file), pass undefined to clear
+      // - Otherwise pass existing URL if no new file uploaded
+      let existingDocURL: string | undefined = bill?.billDocumentURL;
+      if (!fileUri) {
+        if (!showCurrentDoc && bill?.billDocumentURL) {
+          // User removed the existing document
+          existingDocURL = undefined;
+        } else if (!showCurrentDoc) {
+          existingDocURL = undefined;
+        }
+        // else keep existingDocURL as bill.billDocumentURL
+      }
+      
       if (bill) {
-        await firebaseService.updatePropertyTaxBill(city, bill.id, data, fileUri || undefined, bill.billDocumentURL);
+        await firebaseService.updatePropertyTaxBill(city, bill.id, data, fileUri || undefined, existingDocURL);
       } else {
         await firebaseService.addPropertyTaxBill(city, taxIndexNumber, data, fileUri || undefined);
       }
@@ -133,6 +155,23 @@ function AddBillModal({
     if (!res.canceled && res.assets?.[0]?.uri) {
       setFileUri(res.assets[0].uri);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+  };
+
+  const pickPDF = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: 'application/pdf',
+        copyToCacheDirectory: true,
+      });
+      if (result.assets && result.assets[0]?.uri) {
+        setFileUri(result.assets[0].uri);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+    } catch (e: any) {
+      if (e.code !== 'DOCUMENT_PICKER_CANCELED') {
+        Alert.alert('Error', 'Failed to pick PDF');
+      }
     }
   };
 
@@ -353,6 +392,19 @@ function AddBillModal({
 
             {/* Document Upload */}
             <Text style={[styles.fieldLabel, { color: scheme.textTertiary }]}>Document</Text>
+            {showCurrentDoc && bill?.billDocumentURL && !fileUri && (
+              <View style={{ marginBottom: Spacing.sm }}>
+                <TouchableOpacity 
+                  style={{ backgroundColor: isDark ? 'rgba(44,44,46,0.6)' : '#F3F4F6', borderRadius: BorderRadius.md, padding: Spacing.sm }}
+                  onPress={() => WebBrowser.openBrowserAsync(bill.billDocumentURL)}
+                >
+                  <Text style={{ color: Colors.primary, fontSize: Typography.fontSize.sm, textAlign: 'center' }}>View Current Document</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setShowCurrentDoc(false)} style={{ marginTop: Spacing.xs }}>
+                  <Text style={{ color: Colors.error, fontSize: Typography.fontSize.sm, textAlign: 'center' }}>Remove</Text>
+                </TouchableOpacity>
+              </View>
+            )}
             <View style={styles.uploadArea}>
               <TouchableOpacity
                 style={[styles.uploadBtn, {
@@ -367,7 +419,7 @@ function AddBillModal({
                   <CameraIcon size={18} color={Colors.primary} />
                 </View>
                 <Text style={[styles.uploadLabel, { color: fileUri ? '#10B981' : Colors.primary }]}>
-                  {fileUri ? 'Photo Added' : 'Camera'}
+                  {fileUri ? 'Added' : 'Camera'}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -383,7 +435,23 @@ function AddBillModal({
                   <ImageIcon size={18} color={Colors.primary} />
                 </View>
                 <Text style={[styles.uploadLabel, { color: fileUri ? scheme.textPrimary : Colors.primary }]}>
-                  {fileUri ? 'Gallery' : 'Gallery'}
+                  Gallery
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.uploadBtn, {
+                  borderColor: scheme.border,
+                  backgroundColor: isDark ? 'rgba(44,44,46,0.4)' : '#F9FAFB',
+                  borderStyle: fileUri ? 'solid' : 'dashed',
+                }]}
+                onPress={pickPDF}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.uploadIconWrap, { backgroundColor: `${Colors.primary}10` }]}>
+                  <FileText size={18} color={Colors.primary} />
+                </View>
+                <Text style={[styles.uploadLabel, { color: fileUri ? scheme.textPrimary : Colors.primary }]}>
+                  PDF
                 </Text>
               </TouchableOpacity>
             </View>
@@ -435,7 +503,7 @@ const styles = StyleSheet.create({
   sheet: {
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
-    maxHeight: '92%',
+    maxHeight: '98%',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -610,28 +678,29 @@ const styles = StyleSheet.create({
   },
   uploadArea: {
     flexDirection: 'row',
-    gap: Spacing.sm,
+    gap: Spacing.xs,
     marginBottom: Spacing.md,
   },
   uploadBtn: {
     flex: 1,
-    flexDirection: 'column',
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: Spacing.xs,
-    borderRadius: BorderRadius.lg,
-    paddingVertical: Spacing.md + 4,
-    borderWidth: 1.5,
+    borderRadius: BorderRadius.md,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.xs,
+    borderWidth: 1,
   },
   uploadIconWrap: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
+    width: 24,
+    height: 24,
+    borderRadius: 6,
     justifyContent: 'center',
     alignItems: 'center',
   },
   uploadLabel: {
-    fontSize: Typography.fontSize.sm,
+    fontSize: Typography.fontSize.xs,
     fontWeight: '600',
   },
   uploadingRow: {
@@ -659,6 +728,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.2,
   },
+  currentDocContainer: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, padding: Spacing.md, borderRadius: BorderRadius.md, borderWidth: 1, marginBottom: Spacing.sm },
+  currentDocText: { flex: 1, fontSize: Typography.fontSize.sm },
 });
 
 export default AddBillModal;

@@ -214,6 +214,8 @@ function MainLayout() {
       <Stack.Screen name="manage-notifications" options={{ presentation: "modal", headerShown: false }} />
       <Stack.Screen name="profile" options={{ presentation: "card", headerShown: false }} />
       <Stack.Screen name="app-info" options={{ presentation: "card", headerShown: false }} />
+      <Stack.Screen name="vault-backups" options={{ presentation: "card", headerShown: false }} />
+      <Stack.Screen name="data-backups" options={{ presentation: "card", headerShown: false }} />
       {__DEV__ && <Stack.Screen name="debug" options={{ headerShown: false }} />}
     </Stack>
   );

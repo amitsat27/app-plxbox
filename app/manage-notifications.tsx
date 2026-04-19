@@ -53,6 +53,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
 import * as Haptics from "expo-haptics";
 import { sectionTemplates, getSmartNotificationData, generateSmartMessage, SmartNotificationData } from "@/src/services/NotificationDataService";
+import { loadBackupNotificationSettings, setBackupNotificationEnabled } from "@/src/services/BackupNotificationSettings";
 import DateTimePicker, { DateTimePickerEvent } from "@react-native-community/datetimepicker";
 
 interface TimePickerButtonProps {
@@ -193,6 +194,7 @@ type NotificationType = "bill_due" | "reminder" | "alert" | "custom";
 type Frequency = "once" | "daily" | "weekly" | "bimonthly" | "quarterly" | "biannual" | "custom" | "surprise";
 type IntervalUnit = "days" | "weeks" | "months";
 type SurpriseTime = "morning" | "afternoon" | "evening" | "night" | "anytime";
+type SurpriseTopic = "bills" | "maintenance" | "alerts" | "savings";
 
 const SURPRISE_TIMES = [
   { key: "morning", label: "Morning", range: "6AM - 12PM", icon: "🌅", minHour: 6, maxHour: 12 },
@@ -202,9 +204,17 @@ const SURPRISE_TIMES = [
   { key: "anytime", label: "Anytime", range: "Any time", icon: "🎲", minHour: 0, maxHour: 24 },
 ];
 
+const SURPRISE_TOPICS: { key: SurpriseTopic; label: string; icon: string; sections: Section[] }[] = [
+  { key: "bills", label: "Bills", icon: "🧾", sections: ["electric", "gas", "wifi", "property"] },
+  { key: "maintenance", label: "Maintenance", icon: "🛠️", sections: ["vehicles", "appliances", "property"] },
+  { key: "alerts", label: "Alerts", icon: "🚨", sections: ["electric", "gas", "wifi", "property", "vehicles", "appliances"] },
+  { key: "savings", label: "Savings", icon: "💸", sections: ["electric", "gas", "wifi", "property"] },
+];
+
 interface SmartNotification {
   id: string;
   section: Section;
+  surpriseTopic?: SurpriseTopic;
   notificationType: NotificationType;
   frequency: Frequency;
   hour: number;
@@ -274,6 +284,10 @@ export default function NotificationManagementScreen() {
   const [permissionGranted, setPermissionGranted] = useState(false);
   const [editingSmartId, setEditingSmartId] = useState<string | null>(null);
   const [editingCustomId, setEditingCustomId] = useState<string | null>(null);
+  const [backupNotif, setBackupNotif] = useState({
+    vaultBackupEnabled: true,
+    dataBackupEnabled: true,
+  });
 
   const [smartSection, setSmartSection] = useState<Section>("electric");
   const [smartType, setSmartType] = useState<NotificationType>("bill_due");
@@ -285,6 +299,7 @@ export default function NotificationManagementScreen() {
   const [smartCustomInterval, setSmartCustomInterval] = useState(1);
   const [smartCustomUnit, setSmartCustomUnit] = useState<IntervalUnit>("months");
   const [smartSurpriseTime, setSmartSurpriseTime] = useState<SurpriseTime>("anytime");
+  const [smartSurpriseTopic, setSmartSurpriseTopic] = useState<SurpriseTopic>("alerts");
   const [smartCustomMessage, setSmartCustomMessage] = useState("");
 
   const [customTitle, setCustomTitle] = useState("");
@@ -301,7 +316,13 @@ export default function NotificationManagementScreen() {
   useEffect(() => {
     checkPermissions();
     loadNotifications();
+    loadBackupNotificationPrefs();
   }, []);
+
+  const loadBackupNotificationPrefs = async () => {
+    const settings = await loadBackupNotificationSettings();
+    setBackupNotif(settings);
+  };
 
   const checkPermissions = async () => {
     const { status } = await Notifications.getPermissionsAsync();
@@ -339,6 +360,12 @@ export default function NotificationManagementScreen() {
     } catch (error) {
       console.error("Failed to save:", error);
     }
+  };
+
+  const toggleBackupNotification = async (type: "vault" | "data", value: boolean) => {
+    const next = await setBackupNotificationEnabled(type, value);
+    setBackupNotif(next);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
   const scheduleNotification = async (title: string, message: string, trigger: any) => {
@@ -451,6 +478,78 @@ export default function NotificationManagementScreen() {
     } catch (error) {
       console.error("Failed to schedule surprise notification:", error);
     }
+  };
+
+  const pickRandom = <T,>(items: T[]): T => items[Math.floor(Math.random() * items.length)];
+
+  const buildTopicMessage = (topic: SurpriseTopic, data: SmartNotificationData, sectionLabel: string) => {
+    const amountText = data.billAmount ? `₹${data.billAmount}` : "your latest amount";
+    const monthText = data.billMonth || "this period";
+    const dueText = data.dueDate || "soon";
+
+    switch (topic) {
+      case "bills":
+        return pickRandom([
+          `${sectionLabel}: ${amountText} is now ready for ${monthText}.`,
+          `${sectionLabel} update for ${monthText} is available. Check before due date ${dueText}.`,
+          `Quick bill check for ${sectionLabel}. Latest amount: ${amountText}.`,
+        ]);
+      case "maintenance":
+        return pickRandom([
+          `Maintenance check: review ${sectionLabel} status today.`,
+          `${sectionLabel} upkeep reminder for ${monthText}.`,
+          `Time for a quick health check of your ${sectionLabel.toLowerCase()}.`,
+        ]);
+      case "savings":
+        return pickRandom([
+          `Savings tip: compare your ${sectionLabel.toLowerCase()} spend with last cycle (${amountText}).`,
+          `Track ${sectionLabel.toLowerCase()} costs this month to improve savings.`,
+          `Optimization idea: review ${sectionLabel.toLowerCase()} usage and reduce extra spend.`,
+        ]);
+      case "alerts":
+      default:
+        return pickRandom([
+          `${sectionLabel} attention: next important date is ${dueText}.`,
+          `Heads up on ${sectionLabel.toLowerCase()}: review it now to stay on track.`,
+          `${sectionLabel} alert for ${monthText}. Open and verify details.`,
+        ]);
+    }
+  };
+
+  const addSurpriseNotificationByTopic = async () => {
+    const topicConfig = SURPRISE_TOPICS.find(t => t.key === smartSurpriseTopic) || SURPRISE_TOPICS[2];
+    const randomSection = pickRandom(topicConfig.sections);
+    const sectionLabel = SECTIONS.find(s => s.key === randomSection)?.label || "Updates";
+    const notificationData = await getSmartNotificationData(randomSection);
+    const typeLabel = NOTIFICATION_TYPES.find(t => t.key === smartType)?.label || "Alert";
+
+    const randomTopicMessage = buildTopicMessage(smartSurpriseTopic, notificationData, sectionLabel);
+    const message = smartCustomMessage.trim() || randomTopicMessage;
+    const title = `${topicConfig.icon} ${topicConfig.label} ${typeLabel}`;
+
+    const newNotif: SmartNotification = {
+      id: Date.now().toString(),
+      section: randomSection,
+      surpriseTopic: smartSurpriseTopic,
+      notificationType: smartType,
+      frequency: "surprise",
+      hour: smartHour,
+      minute: smartMinute,
+      surpriseTime: smartSurpriseTime,
+      enabled: true,
+      customMessage: message,
+      templateData: notificationData,
+    };
+
+    await scheduleSurpriseNotification(title, message, smartSurpriseTime, "daily");
+
+    const updated = [...smartNotifications, newNotif];
+    await saveSmartNotifications(updated);
+
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    resetSmartForm();
+    setShowAddSmartForm(false);
+    Alert.alert("Success", "Topic-based surprise notification scheduled at random time!");
   };
 
   const getTrigger = (freq: Frequency, hour: number, minute: number, dayOfMonth: number, dayOfWeek: number) => {
@@ -612,6 +711,7 @@ export default function NotificationManagementScreen() {
     setSmartCustomInterval(1);
     setSmartCustomUnit("months");
     setSmartSurpriseTime("anytime");
+    setSmartSurpriseTopic("alerts");
     setSmartCustomMessage("");
   };
 
@@ -716,6 +816,37 @@ export default function NotificationManagementScreen() {
           <Text style={styles.testBtnText}>Send Test</Text>
         </TouchableOpacity>
 
+        <View style={styles.backupPrefsCard}>
+          <Text style={styles.backupPrefsTitle}>Backup Notifications</Text>
+          <Text style={styles.backupPrefsSub}>Control alerts from vault backups and full data backups.</Text>
+
+          <View style={styles.backupNotifRow}>
+            <View style={styles.backupNotifTextWrap}>
+              <Text style={styles.backupNotifLabel}>Vault backup alerts</Text>
+              <Text style={styles.backupNotifHint}>Success and failure updates from vault backup jobs</Text>
+            </View>
+            <Switch
+              value={backupNotif.vaultBackupEnabled}
+              onValueChange={(value) => toggleBackupNotification("vault", value)}
+              trackColor={{ false: "#E5E5EA", true: "#34C759" }}
+              thumbColor="#FFF"
+            />
+          </View>
+
+          <View style={[styles.backupNotifRow, { borderTopWidth: 0.5, borderTopColor: "rgba(0,0,0,0.08)", paddingTop: 10 }]}> 
+            <View style={styles.backupNotifTextWrap}>
+              <Text style={styles.backupNotifLabel}>Data backup alerts</Text>
+              <Text style={styles.backupNotifHint}>Notifications for scheduled and manual app-data backups</Text>
+            </View>
+            <Switch
+              value={backupNotif.dataBackupEnabled}
+              onValueChange={(value) => toggleBackupNotification("data", value)}
+              trackColor={{ false: "#E5E5EA", true: "#34C759" }}
+              thumbColor="#FFF"
+            />
+          </View>
+        </View>
+
         {activeTab === "smart" && (
           <>
             <TouchableOpacity style={styles.addBtn} onPress={() => setShowAddSmartForm(!showAddSmartForm)}>
@@ -739,10 +870,10 @@ export default function NotificationManagementScreen() {
 
                 <Text style={styles.inputLabel}>Section</Text>
                 <View style={styles.chipContainer}>
-                  {SECTIONS.map(s => (
-                    <TouchableOpacity key={s.key} style={[styles.chip, smartSection === s.key && styles.chipSelected]} onPress={() => setSmartSection(s.key)}>
-                      <Text style={{ fontSize: 14 }}>{s.icon}</Text>
-                      <Text style={[styles.chipText, { color: smartSection === s.key ? "#FFF" : "#000000" }]}>{s.label}</Text>
+                  {SURPRISE_TOPICS.map(topic => (
+                    <TouchableOpacity key={topic.key} style={[styles.chip, smartSurpriseTopic === topic.key && styles.chipSelected]} onPress={() => setSmartSurpriseTopic(topic.key)}>
+                      <Text style={{ fontSize: 14 }}>{topic.icon}</Text>
+                      <Text style={[styles.chipText, { color: smartSurpriseTopic === topic.key ? "#FFF" : "#000000" }]}>{topic.label}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -1149,7 +1280,7 @@ export default function NotificationManagementScreen() {
                   <TouchableOpacity style={styles.cancelBtn} onPress={() => { setShowAddSmartForm(false); resetSmartForm(); }}>
                     <Text style={{ color: "#000000" }}>Cancel</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.saveBtn} onPress={addSmartNotification}>
+                  <TouchableOpacity style={styles.saveBtn} onPress={addSurpriseNotificationByTopic}>
                     <Text style={{ color: "#FFF", fontWeight: "600" }}>Save</Text>
                   </TouchableOpacity>
                 </View>
@@ -1166,6 +1297,7 @@ export default function NotificationManagementScreen() {
             ) : smartNotifications.filter(n => n.frequency === "surprise").map(n => {
               const sec = SECTIONS.find(s => s.key === n.section)!;
               const type = NOTIFICATION_TYPES.find(t => t.key === n.notificationType)!;
+              const topic = SURPRISE_TOPICS.find(t => t.key === n.surpriseTopic);
               const surpriseConfig = SURPRISE_TIMES.find(t => t.key === n.surpriseTime) || SURPRISE_TIMES[4];
               const displayMessage = n.customMessage || sec.lastBillLabel;
 
@@ -1177,10 +1309,10 @@ export default function NotificationManagementScreen() {
                         <Text style={{ fontSize: 18 }}>{surpriseConfig.icon}</Text>
                       </View>
                       <View style={styles.notifTextContainer}>
-                        <Text style={styles.notifTitle} numberOfLines={1}>{type.label}: {sec.label}</Text>
+                        <Text style={styles.notifTitle} numberOfLines={1}>{topic ? `${topic.icon} ${topic.label}` : `${type.label}: ${sec.label}`}</Text>
                         <Text style={styles.notifSub} numberOfLines={2}>{displayMessage}</Text>
                         <View style={[styles.tag, { marginTop: 4 }]}>
-                          <Text style={styles.tagText}>{surpriseConfig.label} ({surpriseConfig.range})</Text>
+                          <Text style={styles.tagText}>{(topic ? `${topic.label} • ` : "") + `${surpriseConfig.label} (${surpriseConfig.range})`}</Text>
                         </View>
                       </View>
                     </View>
@@ -1214,6 +1346,13 @@ const styles = StyleSheet.create({
   tabText: { fontSize: 14, fontWeight: "600" },
   testBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, padding: 12, borderRadius: 12, backgroundColor: Colors.primary },
   testBtnText: { color: "#FFF", fontSize: 14, fontWeight: "600" },
+  backupPrefsCard: { backgroundColor: "#FFFFFF", borderRadius: 12, padding: 14, gap: 8 },
+  backupPrefsTitle: { fontSize: 15, fontWeight: "700", color: "#000000" },
+  backupPrefsSub: { fontSize: 12, color: "#8E8E93", marginBottom: 4 },
+  backupNotifRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },
+  backupNotifTextWrap: { flex: 1 },
+  backupNotifLabel: { fontSize: 13, fontWeight: "600", color: "#000000" },
+  backupNotifHint: { fontSize: 11, color: "#8E8E93", marginTop: 2 },
   addBtn: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 14, borderRadius: 12, backgroundColor: "#FFFFFF" },
   addBtnContent: { flexDirection: "row", alignItems: "center", gap: 8 },
   addBtnText: { fontSize: 15, fontWeight: "600", color: Colors.primary },

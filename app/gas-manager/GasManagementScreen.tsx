@@ -14,13 +14,15 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter, useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
+import * as WebBrowser from 'expo-web-browser';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import {
   ChevronLeft, Flame, Plus, MapPin, User,
   Calendar, CheckCircle, Clock, AlertCircle,
-  X, Upload, Camera, IdCard, Phone, Search, Download
+  X, Upload, Camera, IdCard, Phone, Search, Download, FileText
 } from 'lucide-react-native';
 import { Spacing, Typography, BorderRadius } from '@/constants/designTokens';
 import { Colors, getColorScheme } from '@/theme/color';
@@ -723,6 +725,13 @@ function BillFormModal({
   const [dueDate, setDueDate] = useState(bill?.lastDateToPay ? new Date(bill.lastDateToPay) : new Date());
   const [fileUri, setFileUri] = useState<string>();
   const [uploading, setUploading] = useState(false);
+  const [showCurrentDoc, setShowCurrentDoc] = useState(false);
+
+  React.useEffect(() => {
+    if (bill?.billDocumentURL) {
+      setShowCurrentDoc(true);
+    }
+  }, [bill?.billDocumentURL]);
 
   const handleSubmit = async () => {
     const billGenMonth = `${selectedMonth} ${selectedYear}`;
@@ -760,6 +769,23 @@ function BillFormModal({
     if (!res.canceled && !!res.assets && res.assets[0]?.uri) {
       setFileUri(res.assets[0].uri);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+  };
+
+  const pickPDF = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: 'application/pdf',
+        copyToCacheDirectory: true,
+      });
+      if (result.assets && result.assets[0]?.uri) {
+        setFileUri(result.assets[0].uri);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+    } catch (e: any) {
+      if (e.code !== 'DOCUMENT_PICKER_CANCELED') {
+        Alert.alert('Error', 'Failed to pick PDF');
+      }
     }
   };
 
@@ -833,19 +859,33 @@ function BillFormModal({
                 </TouchableOpacity>
               ))}
             </View>
-            {/* Upload */}
+{/* Upload */}
             <Text style={[styles.fieldLabel, { color: scheme.textTertiary }]}>Bill Document</Text>
+            {showCurrentDoc && bill?.billDocumentURL && !fileUri && (
+              <View style={{ marginBottom: Spacing.sm }}>
+                <TouchableOpacity 
+                  style={{ backgroundColor: isDark ? 'rgba(44,44,46,0.6)' : '#F3F4F6', borderRadius: BorderRadius.md, padding: Spacing.sm }}
+                  onPress={() => WebBrowser.openBrowserAsync(bill.billDocumentURL)}
+                >
+                  <Text style={{ color: Colors.primary, fontSize: Typography.fontSize.sm, textAlign: 'center' }}>View Current Document</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setShowCurrentDoc(false)} style={{ marginTop: Spacing.xs }}>
+                  <Text style={{ color: Colors.error, fontSize: Typography.fontSize.sm, textAlign: 'center' }}>Remove</Text>
+                </TouchableOpacity>
+              </View>
+            )}
             <View style={styles.row2}>
               <TouchableOpacity style={[styles.uploadBtn, { flex: 1, borderColor: scheme.border, backgroundColor: isDark ? 'rgba(44,44,46,0.6)' : '#F3F4F6' }]} onPress={takePhoto}>
-                <Camera size={20} color={Colors.primary} />
-                <Text style={[styles.uploadText, { color: Colors.primary }]}>Photo</Text>
+                <Text style={[styles.uploadText, { color: Colors.primary }]}>Camera</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[styles.uploadBtn, { flex: 1, borderColor: scheme.border, backgroundColor: isDark ? 'rgba(44,44,46,0.6)' : '#F3F4F6' }]} onPress={pickFromGallery}>
-                <Upload size={20} color={Colors.primary} />
                 <Text style={[styles.uploadText, { color: Colors.primary }]}>{fileUri ? 'Changed' : 'Gallery'}</Text>
               </TouchableOpacity>
+              <TouchableOpacity style={[styles.uploadBtn, { flex: 1, borderColor: scheme.border, backgroundColor: isDark ? 'rgba(44,44,46,0.6)' : '#F3F4F6' }]} onPress={pickPDF}>
+                <Text style={[styles.uploadText, { color: Colors.primary }]}>PDF</Text>
+              </TouchableOpacity>
             </View>
-            {fileUri && <Text style={{ color: '#10B981', fontSize: Typography.fontSize.xs, marginTop: 4, textAlign: 'center' }}>File selected</Text>}
+            {fileUri && <Text style={{ color: '#10B981', fontSize: Typography.fontSize.xs, marginTop: 4, textAlign: 'center' }}>New file selected</Text>}
             <View style={{ height: 20 }} />
           </ScrollView>
           <TouchableOpacity
@@ -927,4 +967,6 @@ const styles = StyleSheet.create({
   exportModalFooter: { padding: Spacing.lg, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(0,0,0,0.1)' },
   exportBtn2: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: Spacing.md, borderRadius: 12, gap: Spacing.sm },
   exportBtnText: { color: '#FFF', fontSize: 16, fontWeight: '600' },
+  currentDocContainer: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, padding: Spacing.md, borderRadius: BorderRadius.md, borderWidth: 1, marginBottom: Spacing.sm },
+  currentDocText: { flex: 1, fontSize: Typography.fontSize.sm },
 });

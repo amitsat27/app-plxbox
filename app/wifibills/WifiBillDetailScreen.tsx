@@ -13,11 +13,13 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import * as Haptics from "expo-haptics";
 import * as WebBrowser from "expo-web-browser";
 import * as Sharing from "expo-sharing";
+import * as ImagePicker from "expo-image-picker";
+import * as DocumentPicker from "expo-document-picker";
 import { downloadAsync, cacheDirectory } from "expo-file-system/legacy";
 import {
   ChevronLeft, CheckCircle, Clock, AlertCircle,
   CreditCard, MapPin, Calendar, Edit, Trash2, Share2, Wifi,
-  Building2, User, Phone, ReceiptText, Download, ExternalLink, File,
+  Building2, User, Phone, ReceiptText, Download, ExternalLink, File, Upload,
 } from "lucide-react-native";
 import { Spacing, Typography, BorderRadius } from "@/constants/designTokens";
 import { Colors, getColorScheme } from "@/theme/color";
@@ -312,6 +314,58 @@ export default function WifiBillDetailScreen() {
     });
   };
 
+  const handleUploadDocument = async (type: 'camera' | 'gallery' | 'pdf') => {
+    try {
+      let uri = '';
+      
+      if (type === 'camera') {
+        const perm = await ImagePicker.requestCameraPermissionsAsync();
+        if (perm.status !== 'granted') {
+          Alert.alert('Permission denied', 'Camera permission is required');
+          return;
+        }
+        const res = await ImagePicker.launchCameraAsync({ allowsEditing: false, quality: 0.8 });
+        if (!res.canceled && res.assets?.[0]?.uri) {
+          uri = res.assets[0].uri;
+        }
+      } else if (type === 'gallery') {
+        const res = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          allowsEditing: false,
+          quality: 0.8,
+        });
+        if (!res.canceled && res.assets?.[0]?.uri) {
+          uri = res.assets[0].uri;
+        }
+      } else if (type === 'pdf') {
+        const result = await DocumentPicker.getDocumentAsync({
+          type: 'application/pdf',
+          copyToCacheDirectory: true,
+        });
+        if (result.assets && result.assets[0]?.uri) {
+          uri = result.assets[0].uri;
+        }
+      }
+      
+      if (!uri) return;
+      
+      setLoading(true);
+      const uploadedUrl = await firebaseService.uploadComplianceDocument(
+        '',
+        '',
+        'service',
+        uri
+      );
+      
+      Alert.alert('Success', 'Document uploaded successfully');
+      router.replace(`/wifi-bill-detail?billId=${billId}&city=${city}&billDocumentURL=${encodeURIComponent(uploadedUrl)}` as any);
+    } catch (e: any) {
+      Alert.alert('Error', e.message || 'Failed to upload document');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const fullCity = city.charAt(0).toUpperCase() + city.slice(1);
 
   return (
@@ -471,6 +525,41 @@ export default function WifiBillDetailScreen() {
             </View>
           )}
 
+          {/* Document */}
+          <View style={[styles.card, { backgroundColor: isDark ? "#1C1C1E" : "#FFFFFF" }]}>
+            <View style={styles.docHeader}>
+              <Text style={[styles.cardTitle, { color: scheme.textPrimary }]}>Document</Text>
+              <TouchableOpacity 
+                style={[styles.uploadBtn, { backgroundColor: Colors.primary + '15' }]} 
+                onPress={() => {
+                  Alert.alert(
+                    'Upload Document',
+                    'Choose how to upload',
+                    [
+                      { text: 'Camera', onPress: () => handleUploadDocument('camera') },
+                      { text: 'Gallery', onPress: () => handleUploadDocument('gallery') },
+                      { text: 'PDF File', onPress: () => handleUploadDocument('pdf') },
+                      { text: 'Cancel', style: 'cancel' },
+                    ]
+                  );
+                }}
+              >
+                <Upload size={14} color={Colors.primary} />
+                <Text style={[styles.uploadBtnText, { color: Colors.primary }]}>Upload</Text>
+              </TouchableOpacity>
+            </View>
+            
+            {billDocumentURL ? (
+              <DocumentSection url={billDocumentURL} />
+            ) : (
+              <View style={styles.noDocContainer}>
+                <File size={32} color={scheme.textTertiary} />
+                <Text style={[styles.noDocText, { color: scheme.textTertiary }]}>No document attached</Text>
+                <Text style={[styles.noDocSubtext, { color: scheme.textTertiary }]}>Tap Upload to add bill photo or PDF</Text>
+              </View>
+            )}
+          </View>
+
           {/* Delete Button */}
           <TouchableOpacity
             style={[styles.deleteBtn, { backgroundColor: isDark ? "rgba(239,68,68,0.1)" : "rgba(239,68,68,0.05)" }]}
@@ -599,4 +688,10 @@ const styles = StyleSheet.create({
   docActions: { flexDirection: "row", gap: Spacing.sm, marginTop: Spacing.md },
   docActionBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", flex: 1, paddingVertical: Spacing.md, borderRadius: BorderRadius.md, gap: Spacing.xs },
   docActionText: { fontSize: Typography.fontSize.sm, fontWeight: "600" },
+  docHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: Spacing.sm },
+  uploadBtn: { flexDirection: "row", alignItems: "center", gap: Spacing.xs, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderRadius: BorderRadius.md },
+  uploadBtnText: { fontSize: Typography.fontSize.sm, fontWeight: "600" },
+  noDocContainer: { alignItems: "center", paddingVertical: Spacing.xl },
+  noDocText: { fontSize: Typography.fontSize.md, fontWeight: "600", marginTop: Spacing.sm },
+  noDocSubtext: { fontSize: Typography.fontSize.sm, marginTop: Spacing.xs, opacity: 0.7 },
 });

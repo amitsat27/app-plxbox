@@ -5,7 +5,7 @@ import {
   inMemoryPersistence,
   setPersistence
 } from "firebase/auth";
-import { Firestore, getFirestore } from "firebase/firestore";
+import { Firestore, getFirestore, setLogLevel as setFirestoreLogLevel } from "firebase/firestore";
 import { FirebaseStorage, getStorage } from "firebase/storage";
 import { Platform } from "react-native";
 
@@ -61,6 +61,11 @@ export const initializeFirebase = async () => {
     }
 
     // Initialize Firestore and Storage
+    // Firestore may emit transient BloomFilter warnings that are recovered internally.
+    // Keep native logs clean by surfacing only errors.
+    if (isReactNative) {
+      setFirestoreLogLevel("error");
+    }
     db = getFirestore(app);
     storage = getStorage(app);
 

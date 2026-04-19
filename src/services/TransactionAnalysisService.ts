@@ -548,95 +548,90 @@ const analyzeGPayPDF = async (uri: string): Promise<TransactionAnalysis | null> 
   const text = result.text;
   const transactions: Transaction[] = [];
   
-  const gpayPattern = /(\d{2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*,?\s+\d{4})\s+(?:(\d{1,2}:\d{2}\s*(?:AM|PM)))?/gi;
-  const amountPattern = /[₹₨]?\s*([\d,]+\.?\d{0,2})/g;
+  // Extract period from "Transaction statement period 01 March 2026 - 31 March 2026"
+  const periodMatch = text.match(/Transaction statement period\s*(\d{1,2}\s+\w+\s+\d{4})\s*-\s*(\d{1,2}\s+\w+\s+\d{4})/i);
+  const period = periodMatch ? `${periodMatch[1]} - ${periodMatch[2]}` : "Unknown Period";
   
-  const lines = text.split(/\n/);
+  // Extract totals
+  const sentMatch = text.match(/Sent\s*([₹₨]?\s*[\d,]+\.?\d*)/i);
+  const receivedMatch = text.match(/Received\s*([₹₨]?\s*[\d,]+\.?\d*)/i);
+  const totalSent = sentMatch ? parseFloat(sentMatch[1].replace(/[₹₨,\s]/g, "")) : 0;
+  const totalReceived = receivedMatch ? parseFloat(receivedMatch[1].replace(/[₹₨,\s]/g, "")) : 0;
   
-  let currentDate = "";
-  let currentTime = "";
-  let period = text.match(/(\d{1,2}\s+\w+\s+\d{4})\s*-\s*(\d{1,2}\s+\w+\s+\d{4})/i)?.[0] || "Unknown Period";
+  // Split by pages to handle multi-page PDFs
+  const pages = text.split(/Page \d+ of \d+/i);
   
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trim();
+  // Pattern: Date & time Transaction details Amount
+  // Example: "01 Mar, 2026 10:57 AM Paid to Amazon India ... ₹209"
+  // Example: "16 Mar, 2026 03:34 PM Received from ABHIJITH K S ... ₹1"
+  
+  const transactionPattern = /(\d{2}\s+\w{3},?\s+\d{4})\s+(\d{1,2}:\d{2}\s*(?:AM|PM))?\s*(Paid to|Received from)\s+(.+?)(?:\n|UPI Transaction ID:)\s*(?:UPI Transaction ID:\s*([A-Z0-9]+))?\s*(?:Paid (?:by|to)\s+\S+(?:\s+\d+)?\s*)?([₹₨]\s*[\d,]+\.?\d*)?/gi;
+  
+  let match;
+  while ((match = transactionPattern.exec(text)) !== null) {
+    const [, date, time, type, description, reference, amountStr] = match;
     
-    const dateMatch = line.match(/(\d{2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*,?\s+\d{4})/i);
-    if (dateMatch) {
-      currentDate = dateMatch[1];
-      continue;
-    }
+    if (!amountStr) continue;
     
-    const timeMatch = line.match(/(\d{1,2}:\d{2}\s*(?:AM|PM))/i);
-    if (timeMatch) {
-      currentTime = timeMatch[1];
-      continue;
-    }
+    const amount = amountStr.replace(/[₹₨,\s]/g, "");
+    const parsedAmount = parseFloat(amount);
     
-    const paidToMatch = line.match(/Paid to\s+(.+?)(?:\n|$)/i);
-    const receivedFromMatch = line.match(/Received from\s+(.+?)(?:\n|$)/i);
+    if (isNaN(parsedAmount) || parsedAmount <= 0) continue;
     
-    if (paidToMatch || receivedFromMatch) {
-      let amountLine = "";
-      for (let j = i + 1; j < Math.min(i + 3, lines.length); j++) {
-        const amountCheck = lines[j].match(/[₹₨]\s*([\d,]+\.?\d{0,2})/);
-        if (amountCheck) {
-          amountLine = amountCheck[1].replace(/,/g, "");
-          break;
-        }
-      }
-      
-      const amount = amountLine || "0";
-      const description = paidToMatch ? paidToMatch[1] : (receivedFromMatch ? receivedFromMatch[1] : "Unknown");
-      const type = paidToMatch ? "debit" : "credit";
-      
-      if (parseFloat(amount) > 0) {
-        transactions.push({
-          id: `gpay-${transactions.length + 1}`,
-          date: currentDate + (currentTime ? " " + currentTime : ""),
-          amount: amount,
-          type: type as "credit" | "debit",
-          source: "gpay",
-          description: description.substring(0, 100).trim(),
-          reference: "",
-        });
-      }
-    }
+    transactions.push({
+      id: `gpay-${transactions.length + 1}`,
+      date: time ? `${date} ${time}` : date,
+      amount: String(parsedAmount),
+      type: type.toLowerCase().includes("paid") ? "debit" : "credit",
+      source: "gpay",
+      description: description.trim().substring(0, 100),
+      reference: reference || "",
+    });
+  }
+  
+  // Also try simpler pattern for any remaining transactions
+  const simplePattern = /(\d{2}\s+\w{3},?\s+\d{4})\s+(\d{1,2}:\d{2}\s*(?:AM|PM))?\s*((?:Paid to|Received from)\s+[^\n₹]+)([₹₨]\s*[\d,]+\.?\d*)/gi;
+  while ((match = simplePattern.exec(text)) !== null) {
+    const [, date, time, descPart, amountStr] = match;
+    
+    // Skip if already captured
+    const isDuplicate = transactions.some(t => 
+      t.date.includes(date.replace(",", "")) && 
+      t.description.toLowerCase().includes(descPart.replace(/^(paid to|received from)\s+/i, "").trim().toLowerCase().substring(0, 20))
+    );
+    if (isDuplicate) continue;
+    
+    const amount = amountStr.replace(/[₹₨,\s]/g, "");
+    const parsedAmount = parseFloat(amount);
+    
+    if (isNaN(parsedAmount) || parsedAmount <= 0) continue;
+    
+    const isDebit = descPart.toLowerCase().startsWith("paid to");
+    
+    transactions.push({
+      id: `gpay-${transactions.length + 1}`,
+      date: time ? `${date} ${time}` : date,
+      amount: String(parsedAmount),
+      type: isDebit ? "debit" : "credit",
+      source: "gpay",
+      description: descPart.replace(/^(paid to|received from)\s+/i, "").trim().substring(0, 100),
+      reference: "",
+    });
   }
 
   if (transactions.length === 0) {
-    const simpleLines = text.split(/\n/);
-    for (let i = 0; i < simpleLines.length; i++) {
-      const line = simpleLines[i];
-      
-      const amountMatch = line.match(/[₹₨]\s*([\d,]+\.?\d*)/);
-      if (!amountMatch) continue;
-      
-      const hasPaidTo = /Paid to/i.test(line);
-      const hasReceived = /Received from/i.test(line);
-      if (!hasPaidTo && !hasReceived) continue;
-      
-      const dateMatch = i > 0 ? simpleLines[i - 1].match(/(\d{2}\s+\w+\s+\d{4})/i) : null;
-      
-      const amount = amountMatch[1].replace(/,/g, "");
-      const type = hasPaidTo ? "debit" : "credit";
-      const desc = line.replace(/[₹₨][\d,]+\.?\d*/g, "").trim();
-      
-      transactions.push({
-        id: `gpay-${transactions.length + 1}`,
-        date: dateMatch ? dateMatch[1] : "",
-        amount: amount,
-        type: type as "credit" | "debit",
-        source: "gpay",
-        description: desc.substring(0, 100),
-        reference: "",
-      });
-    }
+    return null;
   }
 
-  console.log("GPay parsed transactions:", transactions.length);
+  // Sort by date
+  transactions.sort((a, b) => {
+    const dateA = new Date(a.date.replace(/(\d{2})\s+(\w{3}),?\s+(\d{4})/, "$1 $2 $3"));
+    const dateB = new Date(b.date.replace(/(\d{2})\s+(\w{3}),?\s+(\d{4})/, "$1 $2 $3"));
+    return dateB.getTime() - dateA.getTime();
+  });
 
-  const totalCredit = transactions.filter(t => t.type === "credit").reduce((sum, t) => sum + parseFloat(t.amount || "0"), 0);
-  const totalDebit = transactions.filter(t => t.type === "debit").reduce((sum, t) => sum + parseFloat(t.amount || "0"), 0);
+  const totalCredit = transactions.filter(t => t.type === "credit").reduce((sum, t) => sum + parseFloat(t.amount), 0);
+  const totalDebit = transactions.filter(t => t.type === "debit").reduce((sum, t) => sum + parseFloat(t.amount), 0);
 
   return {
     totalTransactions: transactions.length,

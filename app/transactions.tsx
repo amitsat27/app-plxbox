@@ -4,7 +4,7 @@
  * On Demand: Upload PDF for analysis
  */
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   Alert,
   ActivityIndicator,
@@ -15,6 +15,9 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Modal,
+  TextInput,
+  Share,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Colors } from "@/theme/color";
@@ -34,6 +37,20 @@ import {
   Info,
   CheckCircle2,
   XCircle,
+  ChevronDown,
+  Download,
+  Share2,
+  Eye,
+  PieChart,
+BarChart3,
+  Filter,
+  CreditCard,
+  Wallet,
+  Building2,
+  FileText,
+  Printer,
+  Mail,
+  Tag,
 } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import { Paths, Directory, File } from "expo-file-system";
@@ -55,6 +72,8 @@ const AUTO_POLL_KEY = "auto_poll_enabled";
 const DAILY_ANALYSIS_KEY = "daily_analysis";
 
 type TabType = "daily" | "ondemand";
+type FilterType = "all" | "gpay" | "phonepe" | "upi" | "bank";
+type DateRangeType = "all" | "monthly" | "quarterly" | "yearly";
 
 export default function TransactionsScreen() {
   const insets = useSafeAreaInsets();
@@ -67,6 +86,15 @@ export default function TransactionsScreen() {
   const [autoPollEnabled, setAutoPollEnabled] = useState(false);
   const [isPolling, setIsPolling] = useState(false);
   const [lastPollTime, setLastPollTime] = useState<string>("Never");
+  
+  // Filter states
+  const [selectedSource, setSelectedSource] = useState<FilterType>("all");
+  const [dateRange, setDateRange] = useState<DateRangeType>("all");
+  const [showFilterModal, setShowFilterModal] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+  
+  // Analytics view
+  const [analyticsView, setAnalyticsView] = useState<"summary" | "detailed" | "category">("summary");
   
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -292,6 +320,164 @@ export default function TransactionsScreen() {
     }
   };
 
+  // Filter transactions based on source and date range
+  const filterTransactions = (analysis: TransactionAnalysis | null): Transaction[] => {
+    if (!analysis) return [];
+    
+    let filtered = analysis.transactions;
+    
+    // Filter by source
+    if (selectedSource !== "all") {
+      filtered = filtered.filter(t => t.source === selectedSource);
+    }
+    
+    // Filter by date range
+    if (dateRange !== "all") {
+      const now = new Date();
+      filtered = filtered.filter(t => {
+        const txDate = new Date(t.date.replace(/(\d{2})\s+(\w{3}),?\s+(\d{4})/, "$2 $1, $3"));
+        if (isNaN(txDate.getTime())) return true;
+        
+        const monthDiff = (now.getFullYear() - txDate.getFullYear()) * 12 + (now.getMonth() - txDate.getMonth());
+        
+        switch (dateRange) {
+          case "monthly": return monthDiff < 1;
+          case "quarterly": return monthDiff < 3;
+          case "yearly": return monthDiff < 12;
+          default: return true;
+        }
+      });
+    }
+    
+    return filtered;
+  };
+
+  // Get filtered analysis
+  const getFilteredAnalysis = (analysis: TransactionAnalysis | null): TransactionAnalysis => {
+    const filtered = filterTransactions(analysis);
+    const credit = filtered.filter(t => t.type === "credit").reduce((sum, t) => sum + parseFloat(t.amount || "0"), 0);
+    const debit = filtered.filter(t => t.type === "debit").reduce((sum, t) => sum + parseFloat(t.amount || "0"), 0);
+    
+    return {
+      totalTransactions: filtered.length,
+      gpayTransactions: filtered.filter(t => t.source === "gpay").length,
+      phonepeTransactions: filtered.filter(t => t.source === "phonepe").length,
+      totalCredit: credit,
+      totalDebit: debit,
+      netAmount: credit - debit,
+      transactions: filtered,
+      period: analysis?.period || "Unknown",
+      generatedAt: analysis?.generatedAt || new Date(),
+    };
+  };
+
+  // Category analysis
+  const getCategoryAnalysis = (analysis: TransactionAnalysis | null) => {
+    const filtered = filterTransactions(analysis);
+    const categories: Record<string, { count: number; total: number; type: "credit" | "debit" }> = {};
+    
+    filtered.forEach(t => {
+      const desc = t.description.toLowerCase();
+      let category = "Other";
+      
+      // Categorize based on keywords
+      if (desc.includes("amazon") || desc.includes("flipkart") || desc.includes("myntra") || desc.includes("snapdeal")) {
+        category = "Shopping";
+      } else if (desc.includes("swiggy") || desc.includes("zomato") || desc.includes("food") || desc.includes("restaurant")) {
+        category = "Food";
+      } else if (desc.includes("petrol") || desc.includes("fuel") || desc.includes("ioc") || desc.includes("hpcl") || desc.includes("bpc")) {
+        category = "Fuel";
+      } else if (desc.includes("electric") || desc.includes("msedcl") || desc.includes("mahavitaran") || desc.includes("power")) {
+        category = "Electricity";
+      } else if (desc.includes("gas") || desc.includes("mnngl") || desc.includes("lng")) {
+        category = "Gas";
+      } else if (desc.includes("jio") || desc.includes("airtel") || desc.includes("vi") || desc.includes("bsnl") || desc.includes("prepaid")) {
+        category = "Mobile";
+      } else if (desc.includes("netflix") || desc.includes("spotify") || desc.includes("amazon prime") || desc.includes("hotstar") || desc.includes("youtube")) {
+        category = "Entertainment";
+      } else if (desc.includes("hospital") || desc.includes("doctor") || desc.includes("medical") || desc.includes("pharmacy")) {
+        category = "Healthcare";
+      } else if (desc.includes("school") || desc.includes("college") || desc.includes("tuition") || desc.includes("fee")) {
+        category = "Education";
+      } else if (desc.includes("rent") || desc.includes("emi") || desc.includes("loan")) {
+        category = "Bills & EMI";
+      } else if (desc.includes("transfer") || desc.includes("sent") || desc.includes("received")) {
+        category = "Transfer";
+      } else if (t.type === "credit") {
+        category = "Income";
+      }
+      
+      if (!categories[category]) {
+        categories[category] = { count: 0, total: 0, type: t.type as "credit" | "debit" };
+      }
+      categories[category].count++;
+      categories[category].total += parseFloat(t.amount || "0");
+      categories[category].type = t.type as "credit" | "debit";
+    });
+    
+    return Object.entries(categories)
+      .map(([name, data]) => ({ name, ...data }))
+      .sort((a, b) => b.total - a.total);
+  };
+
+  // Export functionality
+  const exportToCSV = async (analysis: TransactionAnalysis | null) => {
+    if (!analysis) return;
+    
+    const filtered = filterTransactions(analysis);
+    let csv = "Date,Description,Amount,Type,Source,Reference\n";
+    
+    filtered.forEach(t => {
+      csv += `"${t.date}","${t.description.replace(/"/g, '""')}",${t.amount},${t.type},${t.source},"${t.reference}"\n`;
+    });
+    
+    // Add summary
+    const filteredAnalysis = getFilteredAnalysis(analysis);
+    csv += `\nSummary\n`;
+    csv += `Total Transactions,${filteredAnalysis.totalTransactions}\n`;
+    csv += `Total Credit,${filteredAnalysis.totalCredit}\n`;
+    csv += `Total Debit,${filteredAnalysis.totalDebit}\n`;
+    csv += `Net Amount,${filteredAnalysis.netAmount}\n`;
+    
+    try {
+      await Share.share({
+        message: csv,
+        title: "Transaction Export",
+      });
+    } catch (error) {
+      console.error("Export error:", error);
+    }
+  };
+
+  // Share analytics summary
+  const shareAnalytics = async (analysis: TransactionAnalysis | null) => {
+    if (!analysis) return;
+    
+    const filteredAnalysis = getFilteredAnalysis(analysis);
+    const categories = getCategoryAnalysis(analysis);
+    
+    let summary = `📊 Transaction Analysis\n\n`;
+    summary += `📅 Period: ${analysis.period}\n`;
+    summary += `📈 Total Transactions: ${filteredAnalysis.totalTransactions}\n`;
+    summary += `💰 Total Credit: ₹${filteredAnalysis.totalCredit.toLocaleString('en-IN')}\n`;
+    summary += `💸 Total Debit: ₹${filteredAnalysis.totalDebit.toLocaleString('en-IN')}\n`;
+    summary += `📊 Net: ₹${filteredAnalysis.netAmount.toLocaleString('en-IN')}\n\n`;
+    
+    summary += `🔍 Top Categories (Debit):\n`;
+    categories.filter(c => c.type === "debit").slice(0, 5).forEach(c => {
+      summary += `• ${c.name}: ₹${c.total.toLocaleString('en-IN')} (${c.count})\n`;
+    });
+    
+    try {
+      await Share.share({
+        message: summary,
+        title: "Transaction Summary",
+      });
+    } catch (error) {
+      console.error("Share error:", error);
+    }
+  };
+
   const renderSourceCard = (
     source: "gpay" | "phonepe" | "upi" | "bank",
     label: string,
@@ -369,6 +555,67 @@ export default function TransactionsScreen() {
         </View>
       </View>
 
+      {/* Filter and Export Bar */}
+      {dailyAnalysis && (
+        <View style={styles.filterBar}>
+          <TouchableOpacity style={styles.filterButton} onPress={() => setShowFilterModal(true)}>
+            <Filter size={16} color={Colors.primary} />
+            <Text style={styles.filterButtonText}>Filter</Text>
+            <ChevronDown size={14} color={Colors.primary} />
+          </TouchableOpacity>
+          
+          <View style={styles.filterChips}>
+            {selectedSource !== "all" && (
+              <View style={styles.filterChip}>
+                <Text style={styles.filterChipText}>{selectedSource.toUpperCase()}</Text>
+                <TouchableOpacity onPress={() => setSelectedSource("all")}>
+                  <XCircle size={14} color={Colors.primary} />
+                </TouchableOpacity>
+              </View>
+            )}
+            {dateRange !== "all" && (
+              <View style={styles.filterChip}>
+                <Text style={styles.filterChipText}>{dateRange}</Text>
+                <TouchableOpacity onPress={() => setDateRange("all")}>
+                  <XCircle size={14} color={Colors.primary} />
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+          
+          <TouchableOpacity style={styles.exportButton} onPress={() => setShowExportModal(true)}>
+            <Share2 size={16} color={Colors.primary} />
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Analytics View Toggle */}
+      {dailyAnalysis && (
+        <View style={styles.analyticsToggle}>
+          <TouchableOpacity 
+            style={[styles.analyticsToggleBtn, analyticsView === "summary" && styles.analyticsToggleActive]}
+            onPress={() => setAnalyticsView("summary")}
+          >
+            <PieChart size={16} color={analyticsView === "summary" ? Colors.primary : "#8E8E93"} />
+            <Text style={[styles.analyticsToggleText, analyticsView === "summary" && styles.analyticsToggleTextActive]}>Summary</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.analyticsToggleBtn, analyticsView === "detailed" && styles.analyticsToggleActive]}
+            onPress={() => setAnalyticsView("detailed")}
+          >
+            <BarChart3 size={16} color={analyticsView === "detailed" ? Colors.primary : "#8E8E93"} />
+            <Text style={[styles.analyticsToggleText, analyticsView === "detailed" && styles.analyticsToggleTextActive]}>Detailed</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.analyticsToggleBtn, analyticsView === "category" && styles.analyticsToggleActive]}
+            onPress={() => setAnalyticsView("category")}
+          >
+            <Wallet size={16} color={analyticsView === "category" ? Colors.primary : "#8E8E93"} />
+            <Text style={[styles.analyticsToggleText, analyticsView === "category" && styles.analyticsToggleTextActive]}>Category</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {!dailyAnalysis ? (
         <View style={styles.emptyState}>
           <Calendar size={48} color="#C7C7CC" />
@@ -380,30 +627,32 @@ export default function TransactionsScreen() {
       ) : (
         <>
           <View style={styles.summaryContainer}>
-            <Text style={styles.summaryTitle}>Daily Summary</Text>
-            <Text style={styles.summaryPeriod}>{dailyAnalysis.period}</Text>
+            <View style={styles.summaryHeader}>
+              <Text style={styles.summaryTitle}>Daily Summary</Text>
+              <Text style={styles.summaryPeriod}>{dailyAnalysis.period}</Text>
+            </View>
             <View style={styles.summaryGrid}>
               <View style={styles.summaryCard}>
                 <View style={[styles.summaryIcon, { backgroundColor: "rgba(16, 185, 129, 0.1)" }]}>
                   <TrendingUp size={20} color="#10B981" />
                 </View>
                 <Text style={styles.summaryLabel}>Credit</Text>
-                <Text style={[styles.summaryAmount, { color: "#10B981" }]}>{formatCurrency(dailyAnalysis.totalCredit)}</Text>
+                <Text style={[styles.summaryAmount, { color: "#10B981" }]}>{formatCurrency(getFilteredAnalysis(dailyAnalysis).totalCredit)}</Text>
               </View>
               <View style={styles.summaryCard}>
                 <View style={[styles.summaryIcon, { backgroundColor: "rgba(239, 68, 68, 0.1)" }]}>
                   <TrendingDown size={20} color="#EF4444" />
                 </View>
                 <Text style={styles.summaryLabel}>Debit</Text>
-                <Text style={[styles.summaryAmount, { color: "#EF4444" }]}>{formatCurrency(dailyAnalysis.totalDebit)}</Text>
+                <Text style={[styles.summaryAmount, { color: "#EF4444" }]}>{formatCurrency(getFilteredAnalysis(dailyAnalysis).totalDebit)}</Text>
               </View>
               <View style={styles.summaryCard}>
                 <View style={[styles.summaryIcon, { backgroundColor: "rgba(124, 58, 237, 0.1)" }]}>
                   <DollarSign size={20} color="#7C3AED" />
                 </View>
                 <Text style={styles.summaryLabel}>Net</Text>
-                <Text style={[styles.summaryAmount, { color: dailyAnalysis.netAmount >= 0 ? "#10B981" : "#EF4444" }]}>
-                  {formatCurrency(dailyAnalysis.netAmount)}
+                <Text style={[styles.summaryAmount, { color: getFilteredAnalysis(dailyAnalysis).netAmount >= 0 ? "#10B981" : "#EF4444" }]}>
+                  {formatCurrency(getFilteredAnalysis(dailyAnalysis).netAmount)}
                 </Text>
               </View>
               <View style={styles.summaryCard}>
@@ -411,24 +660,45 @@ export default function TransactionsScreen() {
                   <ArrowUpDown size={20} color="#3B82F6" />
                 </View>
                 <Text style={styles.summaryLabel}>Total</Text>
-                <Text style={[styles.summaryAmount, { color: Colors.primary }]}>{dailyAnalysis.totalTransactions}</Text>
+                <Text style={[styles.summaryAmount, { color: Colors.primary }]}>{getFilteredAnalysis(dailyAnalysis).totalTransactions}</Text>
               </View>
             </View>
           </View>
 
-          <View style={styles.sourcesContainer}>
-            <Text style={styles.sectionTitle}>Payment Sources</Text>
-            <View style={styles.sourcesGrid}>
-              {renderSourceCard("gpay", "GPay", "📱", dailyAnalysis)}
-              {renderSourceCard("phonepe", "PhonePe", "📱", dailyAnalysis)}
-              {renderSourceCard("upi", "UPI", "💳", dailyAnalysis)}
-              {renderSourceCard("bank", "Bank", "🏦", dailyAnalysis)}
+          {analyticsView === "category" ? (
+            <View style={styles.sourcesContainer}>
+              <Text style={styles.sectionTitle}>Spending by Category</Text>
+              {getCategoryAnalysis(dailyAnalysis).map((cat, idx) => (
+                <View key={idx} style={styles.categoryCard}>
+                  <View style={styles.categoryHeader}>
+                    <Text style={styles.categoryName}>{cat.name}</Text>
+                    <Text style={styles.categoryAmount}>₹{cat.total.toLocaleString('en-IN')}</Text>
+                  </View>
+                  <View style={styles.categoryBar}>
+                    <View style={[styles.categoryBarFill, { width: `${Math.min((cat.total / getFilteredAnalysis(dailyAnalysis).totalDebit) * 100, 100)}%` }]} />
+                  </View>
+                  <View style={styles.categoryMeta}>
+                    <Text style={styles.categoryCount}>{cat.count} transactions</Text>
+                    <Text style={styles.categoryPercent}>{((cat.total / getFilteredAnalysis(dailyAnalysis).totalDebit) * 100).toFixed(1)}% of total</Text>
+                  </View>
+                </View>
+              ))}
             </View>
-          </View>
+          ) : (
+            <View style={styles.sourcesContainer}>
+              <Text style={styles.sectionTitle}>Payment Sources</Text>
+              <View style={styles.sourcesGrid}>
+                {renderSourceCard("gpay", "GPay", "📱", getFilteredAnalysis(dailyAnalysis))}
+                {renderSourceCard("phonepe", "PhonePe", "📱", getFilteredAnalysis(dailyAnalysis))}
+                {renderSourceCard("upi", "UPI", "💳", getFilteredAnalysis(dailyAnalysis))}
+                {renderSourceCard("bank", "Bank", "🏦", getFilteredAnalysis(dailyAnalysis))}
+              </View>
+            </View>
+          )}
 
           <View style={styles.transactionsSection}>
-            <Text style={styles.sectionTitle}>Recent Transactions</Text>
-            {dailyAnalysis.transactions.slice(0, 5).map((item) => (
+            <Text style={styles.sectionTitle}>{selectedSource !== "all" || dateRange !== "all" ? "Filtered Transactions" : "Recent Transactions"}</Text>
+            {getFilteredAnalysis(dailyAnalysis).transactions.slice(0, 10).map((item) => (
               <View key={item.id} style={styles.transactionCard}>
                 <View style={styles.transactionLeft}>
                   <View style={[styles.transactionIcon, { backgroundColor: item.type === "credit" ? "rgba(16, 185, 129, 0.1)" : "rgba(239, 68, 68, 0.1)" }]}>
@@ -587,6 +857,115 @@ export default function TransactionsScreen() {
       </View>
 
       {activeTab === "daily" ? renderDailyTab() : renderOnDemandTab()}
+
+      {/* Filter Modal */}
+      <Modal visible={showFilterModal} transparent animationType="slide" onRequestClose={() => setShowFilterModal(false)}>
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowFilterModal(false)}>
+          <TouchableOpacity style={styles.modalContent} activeOpacity={1}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Filter Transactions</Text>
+              <TouchableOpacity onPress={() => setShowFilterModal(false)} style={styles.modalClose}>
+                <XCircle size={24} color="#8E8E93" />
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.modalSection}>
+              <Text style={styles.modalSectionTitle}>Payment Source</Text>
+              {(["all", "gpay", "phonepe", "upi", "bank"] as const).map((source) => (
+                <TouchableOpacity 
+                  key={source}
+                  style={[styles.modalOption, selectedSource === source && styles.modalOptionActive]}
+                  onPress={() => { setSelectedSource(source); setShowFilterModal(false); }}
+                >
+                  <Text style={[styles.modalOptionText, selectedSource === source && styles.modalOptionTextActive]}>
+                    {source === "all" ? "All Sources" : source.toUpperCase()}
+                  </Text>
+                  {selectedSource === source && <CheckCircle2 size={20} color={Colors.primary} />}
+                </TouchableOpacity>
+              ))}
+            </View>
+            
+            <View style={styles.modalSection}>
+              <Text style={styles.modalSectionTitle}>Date Range</Text>
+              {([
+                { value: "all", label: "All Time" },
+                { value: "monthly", label: "Last Month" },
+                { value: "quarterly", label: "Last 3 Months" },
+                { value: "yearly", label: "Last Year" },
+              ] as const).map((option) => (
+                <TouchableOpacity 
+                  key={option.value}
+                  style={[styles.modalOption, dateRange === option.value && styles.modalOptionActive]}
+                  onPress={() => { setDateRange(option.value); setShowFilterModal(false); }}
+                >
+                  <Text style={[styles.modalOptionText, dateRange === option.value && styles.modalOptionTextActive]}>
+                    {option.label}
+                  </Text>
+                  {dateRange === option.value && <CheckCircle2 size={20} color={Colors.primary} />}
+                </TouchableOpacity>
+              ))}
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Export Modal */}
+      <Modal visible={showExportModal} transparent animationType="slide" onRequestClose={() => setShowExportModal(false)}>
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowExportModal(false)}>
+          <TouchableOpacity style={styles.modalContent} activeOpacity={1}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Export & Share</Text>
+              <TouchableOpacity onPress={() => setShowExportModal(false)} style={styles.modalClose}>
+                <XCircle size={24} color="#8E8E93" />
+              </TouchableOpacity>
+            </View>
+            
+            <TouchableOpacity style={styles.exportModalOption} onPress={() => { exportToCSV(dailyAnalysis); setShowExportModal(false); }}>
+              <View style={styles.exportModalIcon}>
+                <FileText size={20} color={Colors.primary} />
+              </View>
+              <View style={styles.exportModalText}>
+                <Text style={styles.exportModalTitle}>Export as CSV</Text>
+                <Text style={styles.exportModalSubtitle}>Download as spreadsheet</Text>
+              </View>
+              <ChevronDown size={20} color="#8E8E93" />
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.exportModalOption} onPress={() => { shareAnalytics(dailyAnalysis); setShowExportModal(false); }}>
+              <View style={styles.exportModalIcon}>
+                <Share2 size={20} color={Colors.primary} />
+              </View>
+              <View style={styles.exportModalText}>
+                <Text style={styles.exportModalTitle}>Share Summary</Text>
+                <Text style={styles.exportModalSubtitle}>Share via message, WhatsApp, etc.</Text>
+              </View>
+              <ChevronDown size={20} color="#8E8E93" />
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.exportModalOption} onPress={() => { setShowExportModal(false); Alert.alert("Coming Soon", "PDF export feature is under development."); }}>
+              <View style={styles.exportModalIcon}>
+                <Printer size={20} color={Colors.primary} />
+              </View>
+              <View style={styles.exportModalText}>
+                <Text style={styles.exportModalTitle}>Export as PDF</Text>
+                <Text style={styles.exportModalSubtitle}>Generate formatted PDF report</Text>
+              </View>
+              <ChevronDown size={20} color="#8E8E93" />
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.exportModalOption} onPress={() => { setShowExportModal(false); Alert.alert("Coming Soon", "Email export feature is under development."); }}>
+              <View style={styles.exportModalIcon}>
+                <Mail size={20} color={Colors.primary} />
+              </View>
+              <View style={styles.exportModalText}>
+                <Text style={styles.exportModalTitle}>Email Report</Text>
+                <Text style={styles.exportModalSubtitle}>Send report to your email</Text>
+              </View>
+              <ChevronDown size={20} color="#8E8E93" />
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -694,4 +1073,49 @@ const styles = StyleSheet.create({
   demoSubtitle: { fontSize: 12, color: "#8E8E93" },
   
   clearBtn: { padding: 4 },
+  
+  // Filter bar styles
+  filterBar: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 12, backgroundColor: "#FFFFFF", borderBottomWidth: 1, borderBottomColor: "rgba(0,0,0,0.05)" },
+  filterButton: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, backgroundColor: "rgba(124, 58, 237, 0.1)" },
+  filterButtonText: { fontSize: 13, color: Colors.primary, fontWeight: "600" },
+  filterChips: { flex: 1, flexDirection: "row", gap: 8, marginLeft: 12 },
+  filterChip: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 16, backgroundColor: "rgba(124, 58, 237, 0.1)" },
+  filterChipText: { fontSize: 11, color: Colors.primary, fontWeight: "600" },
+  exportButton: { padding: 10, borderRadius: 8, backgroundColor: "rgba(124, 58, 237, 0.1)" },
+  
+  // Analytics toggle styles
+  analyticsToggle: { flexDirection: "row", paddingHorizontal: 16, paddingVertical: 8, backgroundColor: "#FFFFFF", gap: 8 },
+  analyticsToggleBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 10, borderRadius: 8, backgroundColor: "#F3F4F6" },
+  analyticsToggleActive: { backgroundColor: "rgba(124, 58, 237, 0.1)" },
+  analyticsToggleText: { fontSize: 12, color: "#8E8E93", fontWeight: "600" },
+  analyticsToggleTextActive: { color: Colors.primary },
+  
+  // Category card styles
+  categoryCard: { backgroundColor: "#FFFFFF", borderRadius: 12, padding: 14, marginBottom: 10 },
+  categoryHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
+  categoryName: { fontSize: 14, fontWeight: "600", color: "#000000" },
+  categoryAmount: { fontSize: 14, fontWeight: "700", color: "#EF4444" },
+  categoryBar: { height: 8, borderRadius: 4, backgroundColor: "#F3F4F6", marginBottom: 6 },
+  categoryBarFill: { height: 8, borderRadius: 4, backgroundColor: Colors.primary },
+  categoryMeta: { flexDirection: "row", justifyContent: "space-between" },
+  categoryCount: { fontSize: 11, color: "#8E8E93" },
+  categoryPercent: { fontSize: 11, color: "#8E8E93" },
+  
+  // Modal styles
+  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
+  modalContent: { backgroundColor: "#FFFFFF", borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, maxHeight: "70%" },
+  modalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20 },
+  modalTitle: { fontSize: 18, fontWeight: "700", color: "#000000" },
+  modalClose: { padding: 8 },
+  modalSection: { marginBottom: 20 },
+  modalSectionTitle: { fontSize: 14, fontWeight: "600", color: "#000000", marginBottom: 12 },
+  modalOption: { flexDirection: "row", alignItems: "center", paddingVertical: 14, paddingHorizontal: 16, borderRadius: 12, backgroundColor: "#F8F9FC", marginBottom: 8 },
+  modalOptionActive: { backgroundColor: "rgba(124, 58, 237, 0.1)", borderWidth: 1, borderColor: Colors.primary },
+  modalOptionText: { fontSize: 14, color: "#000000", marginLeft: 12 },
+  modalOptionTextActive: { color: Colors.primary, fontWeight: "600" },
+  exportModalOption: { flexDirection: "row", alignItems: "center", paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: "rgba(0,0,0,0.05)" },
+  exportModalIcon: { width: 40, height: 40, borderRadius: 20, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(124, 58, 237, 0.1)" },
+  exportModalText: { marginLeft: 12, flex: 1 },
+  exportModalTitle: { fontSize: 15, fontWeight: "600", color: "#000000" },
+  exportModalSubtitle: { fontSize: 12, color: "#8E8E93", marginTop: 2 },
 });

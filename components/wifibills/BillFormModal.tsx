@@ -10,6 +10,8 @@ import {
   ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
+import * as DocumentPicker from "expo-document-picker";
+import * as WebBrowser from "expo-web-browser";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import * as Haptics from "expo-haptics";
 import {
@@ -31,6 +33,7 @@ export interface EditFormState {
   lastDateToPay: string;
   lastPaidBillMonth: string;
   city: string;
+  billDocumentURL?: string;
 }
 
 const MONTH_NAMES = [
@@ -65,6 +68,55 @@ export function BillFormModal({ visible, onClose, initialValues, onSave, isLoadi
   const [dueDate, setDueDate] = useState(new Date());
   const [billMonth, setBillMonth] = useState(new Date());
   const [showPicker, setShowPicker] = useState<"date" | "month" | null>(null);
+  const [fileUri, setFileUri] = useState<string | null>(null);
+  const [showCurrentDoc, setShowCurrentDoc] = useState(false);
+
+  // Handle initialValues change - set showCurrentDoc when editing
+  useEffect(() => {
+    if (editing && initialValues?.billDocumentURL) {
+      setShowCurrentDoc(true);
+    }
+  }, [initialValues?.billDocumentURL, editing]);
+
+  const pickFromGallery = async () => {
+    const res = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: false, quality: 0.8,
+    });
+    if (!res.canceled && !!res.assets && res.assets[0]?.uri) {
+      setFileUri(res.assets[0].uri);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+  };
+
+  const takePhoto = async () => {
+    const perm = await ImagePicker.requestCameraPermissionsAsync();
+    if (perm.status !== 'granted') return;
+    const res = await ImagePicker.launchCameraAsync({
+      allowsEditing: false, quality: 0.8,
+    });
+    if (!res.canceled && !!res.assets && res.assets[0]?.uri) {
+      setFileUri(res.assets[0].uri);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+  };
+
+  const pickPDF = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: 'application/pdf',
+        copyToCacheDirectory: true,
+      });
+      if (result.assets && result.assets[0]?.uri) {
+        setFileUri(result.assets[0].uri);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+    } catch (e: any) {
+      if (e.code !== 'DOCUMENT_PICKER_CANCELED') {
+        Alert.alert('Error', 'Failed to pick PDF');
+      }
+    }
+  };
 
   // Bottom sheet animation
   const slideY = useRef(new Animated.Value(500)).current;
@@ -109,6 +161,8 @@ export function BillFormModal({ visible, onClose, initialValues, onSave, isLoadi
     onSave({
       ispName, billAmount, payStatus, paymentMode,
       lastDateToPay: dueDate, lastPaidBillMonth: billMonth, city,
+      fileUri,
+      existingDocumentURL: !fileUri && showCurrentDoc ? initialValues?.billDocumentURL : undefined,
     });
   };
 
@@ -239,6 +293,50 @@ export function BillFormModal({ visible, onClose, initialValues, onSave, isLoadi
                     onChange={(v) => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setPaymentMode(v); }}
                     isDark={isDark}
                   />
+                </Field>
+
+                {/* Bill Document */}
+                <Field label="Bill Document" icon={<FileText size={15} color="#7C3AED" />}>
+                  {showCurrentDoc && initialValues?.billDocumentURL && !fileUri && (
+                    <View style={{ marginBottom: Spacing.sm }}>
+                      <TouchableOpacity 
+                        style={{ backgroundColor: isDark ? 'rgba(44,44,46,0.6)' : '#F3F4F6', borderRadius: BorderRadius.md, padding: Spacing.sm }}
+                        onPress={() => initialValues.billDocumentURL && WebBrowser.openBrowserAsync(initialValues.billDocumentURL)}
+                      >
+                        <Text style={{ color: Colors.primary, fontSize: Typography.fontSize.sm, textAlign: 'center' }}>View Current Document</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => setShowCurrentDoc(false)} style={{ marginTop: Spacing.xs }}>
+                        <Text style={{ color: Colors.error, fontSize: Typography.fontSize.sm, textAlign: 'center' }}>Remove</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                  <View style={styles.uploadRow}>
+                    <TouchableOpacity
+                      style={[styles.uploadBtn, { borderColor: scheme.border, backgroundColor: isDark ? 'rgba(44,44,46,0.6)' : '#F3F4F6' }]}
+                      onPress={takePhoto}
+                      activeOpacity={0.7}
+                    >
+                      <Camera size={18} color={Colors.primary} />
+                      <Text style={[styles.uploadText, { color: Colors.primary }]}>Camera</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.uploadBtn, { borderColor: scheme.border, backgroundColor: isDark ? 'rgba(44,44,46,0.6)' : '#F3F4F6' }]}
+                      onPress={pickFromGallery}
+                      activeOpacity={0.7}
+                    >
+                      <Upload size={18} color={Colors.primary} />
+                      <Text style={[styles.uploadText, { color: Colors.primary }]}>{fileUri ? 'Changed' : 'Gallery'}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.uploadBtn, { borderColor: scheme.border, backgroundColor: isDark ? 'rgba(44,44,46,0.6)' : '#F3F4F6' }]}
+                      onPress={pickPDF}
+                      activeOpacity={0.7}
+                    >
+                      <FileText size={18} color={Colors.primary} />
+                      <Text style={[styles.uploadText, { color: Colors.primary }]}>PDF</Text>
+                    </TouchableOpacity>
+                  </View>
+                  {fileUri && <Text style={{ color: '#10B981', fontSize: Typography.fontSize.xs, marginTop: 4, textAlign: 'center' }}>New file selected</Text>}
                 </Field>
               </ScrollView>
 
@@ -706,4 +804,11 @@ const styles = StyleSheet.create({
     fontSize: 10,
     marginTop: 2,
   },
+  
+  // Upload styles
+  uploadRow: { flexDirection: 'row', gap: Spacing.sm },
+  uploadBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.xs, padding: Spacing.md, borderRadius: BorderRadius.md, justifyContent: 'center', borderWidth: 1, borderStyle: 'dashed' },
+  uploadText: { fontSize: Typography.fontSize.sm, fontWeight: '500' },
+  currentDocContainer: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, padding: Spacing.md, borderRadius: BorderRadius.md, borderWidth: 1, marginBottom: Spacing.sm },
+  currentDocText: { flex: 1, fontSize: Typography.fontSize.sm },
 });

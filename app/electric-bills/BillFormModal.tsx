@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
+import * as WebBrowser from 'expo-web-browser';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { X, Upload, Camera, FileText } from 'lucide-react-native';
 import { Spacing, Typography, BorderRadius } from '@/constants/designTokens';
@@ -39,12 +40,19 @@ export function BillFormModal({ bill, city, consumerNumber, onClose, onSave }: {
   const [dueDate, setDueDate] = useState(bill?.lastDateToPay || new Date());
   const [fileUri, setFileUri] = useState<string>();
   const [uploading, setUploading] = useState(false);
+  const [showCurrentDoc, setShowCurrentDoc] = useState(false);
 
   useEffect(() => {
     const l = parseFloat(lastReading) || 0;
     const c = parseFloat(currentReading) || 0;
     setTotalUnits(String(Math.max(0, c - l)));
   }, [lastReading, currentReading]);
+
+  useEffect(() => {
+    if (bill?.billDocumentURL) {
+      setShowCurrentDoc(true);
+    }
+  }, [bill?.billDocumentURL]);
 
   const handleSubmit = async () => {
     const month = `${selectedMonth} ${selectedYear}`;
@@ -191,6 +199,19 @@ export function BillFormModal({ bill, city, consumerNumber, onClose, onSave }: {
             </View>
 
             <Text style={[styles.label, { color: scheme.textTertiary }]}>Bill Document</Text>
+            {showCurrentDoc && bill?.billDocumentURL && !fileUri && (
+              <View style={{ marginBottom: Spacing.sm }}>
+                <TouchableOpacity 
+                  style={{ backgroundColor: isDark ? 'rgba(44,44,46,0.6)' : '#F3F4F6', borderRadius: BorderRadius.md, padding: Spacing.sm }}
+                  onPress={() => WebBrowser.openBrowserAsync(bill.billDocumentURL)}
+                >
+                  <Text style={{ color: Colors.primary, fontSize: Typography.fontSize.sm, textAlign: 'center' }}>View Current Document</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setShowCurrentDoc(false)} style={{ marginTop: Spacing.xs }}>
+                  <Text style={{ color: Colors.error, fontSize: Typography.fontSize.sm, textAlign: 'center' }}>Remove</Text>
+                </TouchableOpacity>
+              </View>
+            )}
             <View style={styles.uploadRow}>
               <TouchableOpacity style={[styles.uploadBtn, { borderColor: scheme.border, backgroundColor: isDark ? 'rgba(44,44,46,0.6)' : '#F3F4F6' }]} onPress={takePhoto}>
                 <Camera size={20} color={Colors.primary} />
@@ -205,7 +226,7 @@ export function BillFormModal({ bill, city, consumerNumber, onClose, onSave }: {
                 <Text style={[styles.uploadText, { color: Colors.primary }]}>PDF/Files</Text>
               </TouchableOpacity>
             </View>
-            {fileUri && <Text style={{ color: '#10B981', fontSize: Typography.fontSize.xs, marginTop: 4, textAlign: 'center' }}>File selected</Text>}
+            {fileUri && <Text style={{ color: '#10B981', fontSize: Typography.fontSize.xs, marginTop: 4, textAlign: 'center' }}>New file selected</Text>}
           </ScrollView>
 
           <TouchableOpacity style={[styles.submit, { backgroundColor: Colors.primary, opacity: uploading ? 0.5 : 1 }]} onPress={handleSubmit} disabled={uploading}>
@@ -244,6 +265,8 @@ const styles = StyleSheet.create({
   uploadBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, borderRadius: BorderRadius.md, padding: Spacing.md, justifyContent: 'center', borderWidth: 1, borderStyle: 'dashed' },
   uploadRow: { flexDirection: 'row', gap: Spacing.sm },
   uploadText: { fontSize: Typography.fontSize.sm, fontWeight: '500' },
+  currentDocContainer: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, padding: Spacing.md, borderRadius: BorderRadius.md, borderWidth: 1, marginBottom: Spacing.sm },
+  currentDocText: { flex: 1, fontSize: Typography.fontSize.sm },
   submit: { borderRadius: BorderRadius.md, paddingVertical: Spacing.md + 2, justifyContent: 'center', alignItems: 'center', minHeight: 52, marginTop: Spacing.md },
   submitText: { color: '#FFFFFF', fontSize: Typography.fontSize.lg, fontWeight: '700' },
 });

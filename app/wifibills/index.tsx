@@ -276,6 +276,7 @@ export default function WifiBillsScreen() {
       billAmount: String(bill.billAmount), payStatus: bill.payStatus,
       paymentMode: bill.paymentMode, lastDateToPay: bill.lastDateToPay,
       lastPaidBillMonth: bill.lastPaidBillMonth, city: bill.city,
+      billDocumentURL: bill.billDocumentURL,
     });
     setModalVisible(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);

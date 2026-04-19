@@ -13,13 +13,14 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import * as WebBrowser from 'expo-web-browser';
 import * as Sharing from 'expo-sharing';
+import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
 import { downloadAsync, cacheDirectory } from 'expo-file-system/legacy';
 import {
   ChevronLeft, CheckCircle, Clock, AlertCircle,
   CreditCard, MapPin, User, Phone,
   Edit, Trash2, Share2, Download, Calendar, FileText, Home, X, Camera, Upload, ExternalLink, File
 } from 'lucide-react-native';
-import * as ImagePicker from 'expo-image-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Spacing, Typography, BorderRadius } from '@/constants/designTokens';
 import { doc, getDoc } from 'firebase/firestore';
@@ -158,6 +159,7 @@ function EditBillModal({ visible, onClose, onSave, bill, city }: {
   const [fileUri, setFileUri] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [removeCurrentDoc, setRemoveCurrentDoc] = useState(false);
 
   // Reset form when modal opens
   React.useEffect(() => {
@@ -185,8 +187,21 @@ function EditBillModal({ visible, onClose, onSave, bill, city }: {
         payStatus,
         paymentMode,
       };
-      // Use update since we're on the detail screen (bill exists)
-      await firebaseService.updatePropertyTaxBill(city, bill.billDocumentURL.split('/').pop()?.split('?')[0] || '', data, fileUri || undefined, bill.billDocumentURL);
+      
+      // Determine existing document URL
+      let existingDocURL: string | undefined = bill.billDocumentURL;
+      if (!fileUri && removeCurrentDoc && bill.billDocumentURL) {
+        // User wants to remove existing document
+        existingDocURL = undefined;
+      }
+      
+      await firebaseService.updatePropertyTaxBill(
+        city, 
+        bill.billDocumentURL.split('/').pop()?.split('?')[0] || '', 
+        data, 
+        fileUri || undefined, 
+        existingDocURL
+      );
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       onSave();
     } catch (e: any) {
@@ -209,6 +224,22 @@ function EditBillModal({ visible, onClose, onSave, bill, city }: {
     if (perm.status !== 'granted') return;
     const res = await ImagePicker.launchCameraAsync({ allowsEditing: false, quality: 0.8 });
     if (!res.canceled && res.assets?.[0]?.uri) setFileUri(res.assets[0].uri);
+  };
+
+  const pickDocument = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: 'application/pdf',
+        copyToCacheDirectory: true,
+      });
+      if (result.assets && result.assets[0]?.uri) {
+        setFileUri(result.assets[0].uri);
+      }
+    } catch (e: any) {
+      if (e.code !== 'DOCUMENT_PICKER_CANCELED') {
+        Alert.alert('Error', 'Failed to pick document');
+      }
+    }
   };
 
   return (
@@ -281,6 +312,22 @@ function EditBillModal({ visible, onClose, onSave, bill, city }: {
 
             {/* Upload */}
             <Text style={[editStyles.fieldLabel, { color: scheme.textTertiary }]}>Bill Document</Text>
+            {bill.billDocumentURL && !fileUri && !removeCurrentDoc && (
+              <View style={{ marginBottom: Spacing.sm }}>
+                <TouchableOpacity 
+                  style={{ backgroundColor: isDark ? 'rgba(44,44,46,0.6)' : '#F3F4F6', borderRadius: BorderRadius.md, padding: Spacing.sm }}
+                  onPress={() => WebBrowser.openBrowserAsync(bill.billDocumentURL)}
+                >
+                  <Text style={{ color: Colors.primary, fontSize: Typography.fontSize.sm, textAlign: 'center' }}>View Current Document</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setRemoveCurrentDoc(true)} style={{ marginTop: Spacing.xs }}>
+                  <Text style={{ color: Colors.error, fontSize: Typography.fontSize.sm, textAlign: 'center' }}>Remove</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+            {removeCurrentDoc && (
+              <Text style={{ color: Colors.error, fontSize: Typography.fontSize.xs, textAlign: 'center', marginBottom: Spacing.xs }}>Document will be removed on save</Text>
+            )}
             <View style={editStyles.row2}>
               <TouchableOpacity style={[editStyles.uploadBtn, { borderColor: scheme.border, backgroundColor: isDark ? 'rgba(44,44,46,0.6)' : '#F3F4F6' }]} onPress={takePhoto}>
                 <Camera size={20} color={Colors.primary} />
@@ -289,6 +336,10 @@ function EditBillModal({ visible, onClose, onSave, bill, city }: {
               <TouchableOpacity style={[editStyles.uploadBtn, { borderColor: scheme.border, backgroundColor: isDark ? 'rgba(44,44,46,0.6)' : '#F3F4F6' }]} onPress={pickFile}>
                 <Upload size={20} color={Colors.primary} />
                 <Text style={{ color: Colors.primary, fontSize: Typography.fontSize.sm, fontWeight: '500' }}>{fileUri ? 'Changed' : 'Gallery'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[editStyles.uploadBtn, { borderColor: scheme.border, backgroundColor: isDark ? 'rgba(44,44,46,0.6)' : '#F3F4F6' }]} onPress={pickDocument}>
+                <FileText size={20} color={Colors.primary} />
+                <Text style={{ color: Colors.primary, fontSize: Typography.fontSize.sm, fontWeight: '500' }}>PDF</Text>
               </TouchableOpacity>
             </View>
             {fileUri && <Text style={{ color: '#10B981', fontSize: Typography.fontSize.xs, textAlign: 'center', marginTop: 4 }}>File selected</Text>}
@@ -401,6 +452,58 @@ function PropertyBillDetailScreen() {
     await Share.share({ message: msg });
   };
 
+  const handleUploadDocument = async (type: 'camera' | 'gallery' | 'pdf') => {
+    try {
+      let uri = '';
+      
+      if (type === 'camera') {
+        const perm = await ImagePicker.requestCameraPermissionsAsync();
+        if (perm.status !== 'granted') {
+          Alert.alert('Permission denied', 'Camera permission is required');
+          return;
+        }
+        const res = await ImagePicker.launchCameraAsync({ allowsEditing: false, quality: 0.8 });
+        if (!res.canceled && res.assets?.[0]?.uri) {
+          uri = res.assets[0].uri;
+        }
+      } else if (type === 'gallery') {
+        const res = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          allowsEditing: false,
+          quality: 0.8,
+        });
+        if (!res.canceled && res.assets?.[0]?.uri) {
+          uri = res.assets[0].uri;
+        }
+      } else if (type === 'pdf') {
+        const result = await DocumentPicker.getDocumentAsync({
+          type: 'application/pdf',
+          copyToCacheDirectory: true,
+        });
+        if (result.assets && result.assets[0]?.uri) {
+          uri = result.assets[0].uri;
+        }
+      }
+      
+      if (!uri) return;
+      
+      setActionLoading(true);
+      const uploadedUrl = await firebaseService.uploadComplianceDocument(
+        '',
+        '',
+        'service',
+        uri
+      );
+      
+      Alert.alert('Success', 'Document uploaded successfully');
+      fetchBill();
+    } catch (e: any) {
+      Alert.alert('Error', e.message || 'Failed to upload document');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   if (billLoading) {
     return (
       <View style={{ flex: 1, backgroundColor: isDark ? '#000000' : '#F2F2F7' }}>
@@ -483,16 +586,39 @@ function PropertyBillDetailScreen() {
         )}
 
         {/* Document */}
-        {bill.billDocumentURL ? (
-          <DocumentSection url={bill.billDocumentURL} />
-        ) : (
-          <View style={[styles.card, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}>
-            <View style={styles.downloadLink}>
-              <Download size={18} color={scheme.textTertiary} />
-              <Text style={[styles.downloadText, { color: scheme.textTertiary }]}>No document attached</Text>
-            </View>
+        <View style={[styles.card, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}>
+          <View style={styles.docHeader}>
+            <Text style={[styles.cardTitle, { color: scheme.textPrimary }]}>Document</Text>
+            <TouchableOpacity 
+              style={[styles.uploadBtn, { backgroundColor: Colors.primary + '15' }]} 
+              onPress={() => {
+                Alert.alert(
+                  'Upload Document',
+                  'Choose how to upload',
+                  [
+                    { text: 'Camera', onPress: () => handleUploadDocument('camera') },
+                    { text: 'Gallery', onPress: () => handleUploadDocument('gallery') },
+                    { text: 'PDF File', onPress: () => handleUploadDocument('pdf') },
+                    { text: 'Cancel', style: 'cancel' },
+                  ]
+                );
+              }}
+            >
+              <Upload size={14} color={Colors.primary} />
+              <Text style={[styles.uploadBtnText, { color: Colors.primary }]}>Upload</Text>
+            </TouchableOpacity>
           </View>
-        )}
+          
+          {bill.billDocumentURL ? (
+            <DocumentSection url={bill.billDocumentURL} />
+          ) : (
+            <View style={styles.noDocContainer}>
+              <File size={32} color={scheme.textTertiary} />
+              <Text style={[styles.noDocText, { color: scheme.textTertiary }]}>No document attached</Text>
+              <Text style={[styles.noDocSubtext, { color: scheme.textTertiary }]}>Tap Upload to add bill photo or PDF</Text>
+            </View>
+          )}
+        </View>
 
         {/* Share */}
         <TouchableOpacity style={[styles.shareBtn, { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' }]} onPress={handleShare}>
@@ -548,6 +674,12 @@ const styles = StyleSheet.create({
   docActionText: { fontSize: Typography.fontSize.sm, fontWeight: '600' },
   downloadLink: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, paddingVertical: Spacing.md, justifyContent: 'center' },
   downloadText: { fontSize: Typography.fontSize.sm, fontWeight: '600' },
+  docHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: Spacing.sm },
+  uploadBtn: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderRadius: BorderRadius.md },
+  uploadBtnText: { fontSize: Typography.fontSize.sm, fontWeight: '600' },
+  noDocContainer: { alignItems: 'center', paddingVertical: Spacing.xl },
+  noDocText: { fontSize: Typography.fontSize.md, fontWeight: '600', marginTop: Spacing.sm },
+  noDocSubtext: { fontSize: Typography.fontSize.sm, marginTop: Spacing.xs, opacity: 0.7 },
 
   shareBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm,

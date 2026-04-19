@@ -1305,7 +1305,7 @@ class FirebaseService {
     let billDocURL: string = '';
 
     if (fileUri) {
-      billDocURL = await this.uploadBillFile(fileUri, billData.billMonth, onProgress);
+      billDocURL = await this.uploadBillFile(fileUri, billData.billMonth, location, consumerNumber, onProgress);
     }
 
     const docData = {
@@ -1339,7 +1339,7 @@ class FirebaseService {
     let billDocURL = existingBillDocumentURL || '';
 
     if (fileUri) {
-      billDocURL = await this.uploadBillFile(fileUri, billData.billMonth, onProgress);
+      billDocURL = await this.uploadBillFile(fileUri, billData.billMonth, location, billId, onProgress);
     }
 
     const docData: Record<string, any> = {
@@ -1378,11 +1378,12 @@ class FirebaseService {
   }
 
   /** Upload bill file to Firebase Storage */
-  private async uploadBillFile(fileUri: string, billMonth: string, onProgress?: (pct: number) => void): Promise<string> {
+  private async uploadBillFile(fileUri: string, billMonth: string, location: string, consumerNumber?: string, onProgress?: (pct: number) => void): Promise<string> {
     const storage = getFirebaseStorage();
     const extMatch = fileUri.match(/\.([a-zA-Z0-9]+)(\?.*)?$/);
     const extension = extMatch ? extMatch[1].toLowerCase() : 'jpeg';
-    const fileName = `${billMonth.replace(/\s+/g, '_')}_bill_${Date.now()}.${extension}`;
+    const timestamp = Date.now();
+    const fileName = `${location}_${consumerNumber || 'unknown'}_${billMonth.replace(/\s+/g, '_')}_${timestamp}.${extension}`;
     const fileRef = ref(storage, `documents/electricBills/${fileName}`);
 
     const response = await fetch(fileUri);
@@ -1520,7 +1521,7 @@ class FirebaseService {
     let billMimeType = '';
 
     if (fileUri) {
-      const result = await this.uploadGasBillFile(fileUri, billData.billGenerationMonth, onProgress);
+      const result = await this.uploadGasBillFile(fileUri, billData.billGenerationMonth, location, undefined, onProgress);
       billDocURL = result.url;
       billFileExtension = result.extension;
       billMimeType = result.mimeType;
@@ -1562,7 +1563,7 @@ class FirebaseService {
     let billMimeType = '';
 
     if (fileUri) {
-      const result = await this.uploadGasBillFile(fileUri, billData.billGenerationMonth, onProgress);
+      const result = await this.uploadGasBillFile(fileUri, billData.billGenerationMonth, location, billId, onProgress);
       billDocURL = result.url;
       billFileExtension = result.extension;
       billMimeType = result.mimeType;
@@ -1608,17 +1609,31 @@ class FirebaseService {
 
   async deleteWifiBill(location: string, billId: string): Promise<void> {
     const db = getDb();
+    const storage = getFirebaseStorage();
+
+    // Try to delete associated file
+    try {
+      const billSnap = await getDoc(doc(db, 'pulsebox', 'wifibills', location, billId));
+      const data = billSnap.data();
+      if (data?.billDocumentURL) {
+        const fileRef = ref(storage, data.billDocumentURL);
+        await deleteObject(fileRef);
+      }
+    } catch (e) {
+      console.log('No storage file to delete or error:', e);
+    }
+
     await deleteDoc(doc(db, 'pulsebox', 'wifibills', location, billId));
   }
 
   /** Upload gas bill file to Firebase Storage */
   /** Upload gas bill file to Firebase Storage. Returns { url, extension, mimeType } */
-  private async uploadGasBillFile(fileUri: string, billMonth: string, onProgress?: (pct: number) => void): Promise<{ url: string; extension: string; mimeType: string }> {
+  private async uploadGasBillFile(fileUri: string, billMonth: string, location: string, billId?: string, onProgress?: (pct: number) => void): Promise<{ url: string; extension: string; mimeType: string }> {
     const storage = getFirebaseStorage();
-    const fileName = `${billMonth.replace(/\s+/g, '_')}_gas_bill_${Date.now()}`;
-    // detect extension from the original file URI
     const extMatch = fileUri.match(/\.([a-zA-Z0-9]+)(\?.*)?$/);
     const extension = extMatch ? extMatch[1].toLowerCase() : 'jpg';
+    const timestamp = Date.now();
+    const fileName = `${location}_${billMonth.replace(/\s+/g, '_')}_gas_bill_${billId || timestamp}_${timestamp}.${extension}`;
     const mimeType = extension === 'pdf' ? 'application/pdf'
       : extension === 'png' ? 'image/png'
         : extension === 'gif' ? 'image/gif'
@@ -1627,7 +1642,7 @@ class FirebaseService {
               : extension === 'dng' ? 'image/x-adobe-dng'
                 : 'image/jpeg';
 
-    const fileRef = ref(storage, `documents/mnglBills/${fileName}.${extension}`);
+    const fileRef = ref(storage, `documents/mnglBills/${fileName}`);
     const response = await fetch(fileUri);
     const blob = await response.blob();
 
@@ -1786,10 +1801,45 @@ class FirebaseService {
     onProgress?: (pct: number) => void,
   ): Promise<void> {
     const db = getDb();
-    let billDocURL = existingBillDocumentURL || '';
+    const storage = getFirebaseStorage();
+    
+    // Get existing bill to check for old document
+    let oldDocURL = '';
+    try {
+      const billSnap = await getDoc(doc(db, 'pulsebox', 'propertytaxbills', location, billId));
+      const data = billSnap.data();
+      oldDocURL = data?.billDocumentURL || '';
+    } catch (e) {
+      console.log('Could not fetch existing bill');
+    }
 
-    if (fileUri) {
+    let billDocURL = existingBillDocumentURL;
+
+    // If user explicitly wants to remove document (undefined passed and no new file)
+    if (!fileUri && existingBillDocumentURL === undefined && oldDocURL) {
+      // User wants to remove the document - delete old file
+      try {
+        const fileRef = ref(storage, oldDocURL);
+        await deleteObject(fileRef);
+      } catch (e) {
+        console.log('Could not delete old file');
+      }
+      billDocURL = undefined; // Set to undefined to clear in Firestore
+    } else if (fileUri) {
+      // Upload new file
       billDocURL = await this.uploadPropertyTaxBillFile(fileUri, billData.billYear, onProgress);
+      // Delete old file if exists and different from new
+      if (oldDocURL && oldDocURL !== billDocURL) {
+        try {
+          const fileRef = ref(storage, oldDocURL);
+          await deleteObject(fileRef);
+        } catch (e) {
+          console.log('Could not delete old file');
+        }
+      }
+    } else if (existingBillDocumentURL) {
+      // Keep existing document
+      billDocURL = existingBillDocumentURL;
     }
 
     const docData: Record<string, any> = {
@@ -1798,7 +1848,7 @@ class FirebaseService {
       lastDateToPay: billData.lastDateToPay,
       payStatus: billData.payStatus,
       paymentMode: billData.paymentMode,
-      billDocumentURL: billDocURL,
+      billDocumentURL: billDocURL || null,
     };
 
     await updateDoc(doc(db, 'pulsebox', 'propertytaxbills', location, billId), docData);
@@ -1826,7 +1876,9 @@ class FirebaseService {
   /** Upload property tax bill file to Firebase Storage */
   private async uploadPropertyTaxBillFile(fileUri: string, billYear: string, onProgress?: (pct: number) => void): Promise<string> {
     const storage = getFirebaseStorage();
-    const fileName = `${billYear}_property_tax_bill`;
+    const extMatch = fileUri.match(/\.([a-zA-Z0-9]+)(\?.*)?$/);
+    const extension = extMatch ? extMatch[1].toLowerCase() : 'jpg';
+    const fileName = `${billYear}_property_tax_bill_${Date.now()}.${extension}`;
     const fileRef = ref(storage, `documents/propertyTaxBills/${fileName}`);
 
     const response = await fetch(fileUri);

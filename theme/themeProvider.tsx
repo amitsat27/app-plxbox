@@ -160,8 +160,15 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
 
   // Determine if dark mode based on preference
   useEffect(() => {
-    // FORCE LIGHT MODE - Dark mode disabled
-    setIsDark(false);
+    if (mode === "dark") {
+      setIsDark(true);
+      return;
+    }
+    if (mode === "light") {
+      setIsDark(false);
+      return;
+    }
+    setIsDark(systemColorScheme === "dark");
   }, [mode, systemColorScheme]);
 
   // Save theme preference to Firebase

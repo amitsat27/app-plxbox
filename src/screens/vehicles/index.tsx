@@ -8,6 +8,7 @@ import {
   View, Text, StyleSheet, FlatList, Platform,
   TouchableOpacity, RefreshControl, TextInput, ScrollView,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Image } from 'expo-image';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, withDelay } from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,7 +16,7 @@ import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import {
   Plus, Search, X, AlertCircle, Wrench, Shield, FileText,
-  Car, TrendingUp, AlertTriangle, Eye, Clock,
+  Car, TrendingUp, AlertTriangle, Eye, Clock, Sparkles,
 } from 'lucide-react-native';
 import { Colors, getVehicleTypeColor, getColorScheme } from '@/theme/color';
 import { useTheme } from '@/theme/themeProvider';
@@ -160,6 +161,7 @@ export default function VehiclesScreen() {
       <Animated.View style={[{ flex: 1 }, listAnimatedStyle]}>
         <FlatList
           data={[
+            { key: 'hero' },
             { key: 'summary' },
             { key: 'insights' },
             ...(vehicleStats.alerts.length > 0 ? [{ key: 'alerts' }] : []),
@@ -167,6 +169,7 @@ export default function VehiclesScreen() {
             ...filteredVehicles.map((v) => ({ key: `v-${v.id}`, vehicle: v })),
           ]}
           renderItem={({ item, index }) => {
+            if (item.key === 'hero') return <GarageHero stats={vehicleStats} />;
             if (item.key === 'summary') return <FleetSummary stats={vehicleStats} />;
             if (item.key === 'insights') return <InsightsRow stats={vehicleStats} />;
             if (item.key === 'alerts' && 'alerts' in vehicleStats)
@@ -220,6 +223,48 @@ export default function VehiclesScreen() {
   );
 }
 
+/* ─── Garage Hero ─── */
+
+function GarageHero({ stats }: { stats: ReturnType<typeof useVehicles> }) {
+  const { isDark } = useTheme();
+
+  return (
+    <LinearGradient
+      colors={isDark ? ['#0F172A', '#1E293B'] : ['#1D4ED8', '#0891B2']}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={styles.garageHero}
+    >
+      <View style={styles.garageGlow} />
+      <View style={styles.garageHeroTop}>
+        <View>
+          <Text style={styles.garageHeroKicker}>VEHICLE DASHBOARD</Text>
+          <Text style={styles.garageHeroTitle}>Smart Garage</Text>
+        </View>
+        <View style={styles.garageHeroBadge}>
+          <Sparkles size={14} color="#FFFFFF" />
+          <Text style={styles.garageHeroBadgeText}>Live</Text>
+        </View>
+      </View>
+
+      <View style={styles.garageHeroStats}>
+        <View style={styles.garageHeroStatBox}>
+          <Text style={styles.garageHeroStatValue}>{stats.total}</Text>
+          <Text style={styles.garageHeroStatLabel}>Total</Text>
+        </View>
+        <View style={styles.garageHeroStatBox}>
+          <Text style={styles.garageHeroStatValue}>{stats.active}</Text>
+          <Text style={styles.garageHeroStatLabel}>Active</Text>
+        </View>
+        <View style={styles.garageHeroStatBox}>
+          <Text style={styles.garageHeroStatValue}>{stats.alerts.length}</Text>
+          <Text style={styles.garageHeroStatLabel}>Alerts</Text>
+        </View>
+      </View>
+    </LinearGradient>
+  );
+}
+
 /* ─── Fleet Summary ─── */
 
 function FleetSummary({ stats }: { stats: ReturnType<typeof useVehicles> }) {
@@ -229,8 +274,8 @@ function FleetSummary({ stats }: { stats: ReturnType<typeof useVehicles> }) {
   const alertColor = criticalCount > 0 ? '#EF4444' : '#F59E0B';
 
   return (
-    <View style={styles.summaryWrap}>
-      <View style={[styles.summaryHeader, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}>
+    <View style={[styles.sectionSurface, { backgroundColor: isDark ? '#0F172A' : '#FFFFFF' }]}>
+      <View style={[styles.summaryHeader, { backgroundColor: isDark ? '#1C1C1E' : '#F8FAFF' }]}>
         <Car size={16} color={Colors.primary} />
         <Text style={[styles.summaryTitle, { color: isDark ? '#F8FAFC' : '#1E293B' }]}>Fleet Overview</Text>
       </View>
@@ -241,9 +286,9 @@ function FleetSummary({ stats }: { stats: ReturnType<typeof useVehicles> }) {
       </View>
       {stats.total > 0 && (
         <View style={styles.insightRow}>
-          <InsightChip emoji="✅" label="Active" value={`${stats.active}`} />
-          <InsightChip emoji="⚠️" label="Alerts" value={`${stats.alerts.length}`} color={alertColor} />
-          <InsightChip emoji="📍" label="City" value={getCityLabel(stats)} />
+          <InsightChip icon={<TrendingUp size={14} color="#10B981" />} label="Active" value={`${stats.active}`} />
+          <InsightChip icon={<AlertTriangle size={14} color={alertColor} />} label="Alerts" value={`${stats.alerts.length}`} color={alertColor} />
+          <InsightChip icon={<Shield size={14} color="#3B82F6" />} label="City" value={getCityLabel(stats)} />
         </View>
       )}
     </View>
@@ -268,7 +313,7 @@ function InsightsRow({ stats }: { stats: ReturnType<typeof useVehicles> }) {
     : null;
 
   return (
-    <View style={styles.insightsSection}>
+    <View style={[styles.sectionSurface, { backgroundColor: isDark ? '#0F172A' : '#FFFFFF' }]}>
       <Text style={[styles.sectionTitle, { color: isDark ? '#F8FAFC' : '#1E293B' }]}>Smart Insights</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.insightsScroll}>
         <SmartInsightCard
@@ -313,6 +358,7 @@ function InsightsRow({ stats }: { stats: ReturnType<typeof useVehicles> }) {
 function AlertsSection({ alerts, scheme }: { alerts: VehicleAlert[]; scheme: ReturnType<typeof getColorScheme> }) {
   const { isDark } = useTheme();
   return (
+    <View style={[styles.sectionSurface, { backgroundColor: isDark ? '#0F172A' : '#FFFFFF' }]}>
     <View style={[styles.alertCard, { backgroundColor: isDark ? 'rgba(245,158,11,0.06)' : 'rgba(245,158,11,0.04)', borderColor: `${Colors.warning}20` }]}>
       <View style={styles.alertHeader}>
         <View style={[styles.alertIconWrap, { backgroundColor: `${Colors.warning}15` }]}>
@@ -339,6 +385,7 @@ function AlertsSection({ alerts, scheme }: { alerts: VehicleAlert[]; scheme: Ret
           </View>
         );
       })}
+    </View>
     </View>
   );
 }
@@ -385,11 +432,11 @@ function FilterRow({ current, onChange, alertCount, scheme }: { current: string;
 
 /* ─── Helpers ─── */
 
-function InsightChip({ emoji, label, value, color }: { emoji: string; label: string; value: string; color?: string }) {
+function InsightChip({ icon, label, value, color }: { icon: React.ReactNode; label: string; value: string; color?: string }) {
   const { isDark } = useTheme();
   return (
     <View style={[styles.insightBubble, { backgroundColor: isDark ? '#1C1C1E' : '#F8F9FA' }]}>
-      <Text style={{ fontSize: 14 }}>{emoji}</Text>
+      {icon}
       <Text style={[styles.insightLabel, { color: isDark ? '#94A3B8' : '#6B7280' }]}>{label}</Text>
       <Text style={[styles.insightValue, { color: color || (isDark ? '#F8FAFC' : '#1E293B') }]}>{value}</Text>
     </View>
@@ -418,6 +465,92 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   searchInput: { flex: 1, fontSize: 14 },
+
+  garageHero: {
+    borderRadius: 22,
+    padding: 16,
+    marginBottom: 10,
+    overflow: 'hidden',
+  },
+  garageGlow: {
+    position: 'absolute',
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    right: -30,
+    top: -30,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+  },
+  garageHeroTop: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+  },
+  garageHeroKicker: {
+    color: 'rgba(255,255,255,0.86)',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.9,
+  },
+  garageHeroTitle: {
+    color: '#FFFFFF',
+    fontSize: 24,
+    fontWeight: '900',
+    letterSpacing: -0.6,
+    marginTop: 2,
+  },
+  garageHeroBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
+  garageHeroBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  garageHeroStats: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 14,
+  },
+  garageHeroStatBox: {
+    flex: 1,
+    borderRadius: 12,
+    paddingVertical: 10,
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.16)',
+  },
+  garageHeroStatValue: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  garageHeroStatLabel: {
+    color: 'rgba(255,255,255,0.84)',
+    fontSize: 10,
+    fontWeight: '700',
+    marginTop: 1,
+  },
+
+  sectionSurface: {
+    borderRadius: 18,
+    padding: 12,
+    marginBottom: 8,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.08,
+        shadowRadius: 14,
+      },
+      android: { elevation: 2 },
+    }),
+  },
 
   summaryWrap: { marginBottom: 6 },
   summaryHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, borderRadius: 14 },
