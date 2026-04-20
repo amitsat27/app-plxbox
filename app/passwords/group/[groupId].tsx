@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, ChevronRight, Folder, Key, Plus } from 'lucide-react-native';
+import { ArrowLeft, ChevronRight, Clock3, Folder, Globe, Key, Plus } from 'lucide-react-native';
 import { Colors } from '@/theme/color';
 import { BorderRadius, Spacing, Typography } from '@/constants/designTokens';
 import { useTheme } from '@/theme/themeProvider';
@@ -41,9 +41,9 @@ export default function PasswordGroupScreen() {
   const { user } = useAuth();
 
   const scheme = {
-    background: isDark ? '#000000' : '#F2F2F7',
-    card: isDark ? '#1C1C1E' : '#FFFFFF',
-    text: isDark ? '#FFFFFF' : '#000000',
+    background: isDark ? Colors.darkBackground : '#F2F2F7',
+    card: isDark ? Colors.darkCard : '#FFFFFF',
+    text: isDark ? Colors.darkText : '#000000',
     textSecondary: '#8E8E93',
     border: isDark ? '#38383A' : '#E5E5EA',
   };
@@ -158,6 +158,68 @@ export default function PasswordGroupScreen() {
     return next;
   }, [filterBy, groupEntries, searchQuery, sortBy]);
 
+  const childGroups = useMemo(() => {
+    if (!currentGroup) return [];
+
+    if (groupPath) {
+      const prefix = `${groupPath}/`;
+      return groups.filter((group) => {
+        if (!group.fullPath || !group.fullPath.startsWith(prefix)) return false;
+        const remainder = group.fullPath.slice(prefix.length);
+        return remainder.length > 0 && !remainder.includes('/');
+      });
+    }
+
+    const byParent = groups.filter((group) => group.parentId === currentGroup.id);
+    if (byParent.length > 0) return byParent;
+
+    if (currentGroup.fullPath) {
+      const prefix = `${currentGroup.fullPath}/`;
+      return groups.filter((group) => {
+        if (!group.fullPath || !group.fullPath.startsWith(prefix)) return false;
+        const remainder = group.fullPath.slice(prefix.length);
+        return remainder.length > 0 && !remainder.includes('/');
+      });
+    }
+
+    return [];
+  }, [currentGroup, groupPath, groups]);
+
+  const openChildGroup = (group: PasswordGroup) => {
+    router.push({
+      pathname: '/passwords/group/[groupId]',
+      params: {
+        groupId: group.id,
+        vaultId: vaultId!,
+        groupPath: group.fullPath,
+      },
+    });
+  };
+
+  const formatRelativeTime = (timestamp?: number) => {
+    if (!timestamp) return 'Updated just now';
+    const diffMs = Date.now() - timestamp;
+    const diffMin = Math.floor(diffMs / 60000);
+    if (diffMin < 1) return 'Updated just now';
+    if (diffMin < 60) return `Updated ${diffMin}m ago`;
+    const diffHr = Math.floor(diffMin / 60);
+    if (diffHr < 24) return `Updated ${diffHr}h ago`;
+    const diffDay = Math.floor(diffHr / 24);
+    if (diffDay < 7) return `Updated ${diffDay}d ago`;
+    return `Updated ${new Date(timestamp).toLocaleDateString('en-IN')}`;
+  };
+
+  const getUrlHost = (url?: string) => {
+    const clean = (url || '').trim();
+    if (!clean) return '';
+    try {
+      const parsed = new URL(clean.startsWith('http') ? clean : `https://${clean}`);
+      return parsed.hostname.replace(/^www\./, '');
+    } catch {
+      return clean.replace(/^https?:\/\//, '').split('/')[0];
+    }
+  };
+
   const handleCreateEntry = async () => {
     if (!vaultId) return;
     if (!entryForm.title.trim() || !entryForm.password.trim()) {
@@ -263,7 +325,7 @@ export default function PasswordGroupScreen() {
               <View style={[styles.bgOrb, { backgroundColor: isDark ? 'rgba(124,58,237,0.18)' : 'rgba(124,58,237,0.12)' }]} />
               <PasswordHero
                 title={currentGroup.name}
-                subtitle="A focused workspace for the selected group, with fast search and an uncluttered entry list."
+                subtitle={`${currentGroup.fullPath || currentGroup.name} • ${childGroups.length} subgroups`}
                 accent={Colors.primary}
                 icon={<Folder size={18} color="#FFF" />}
                 statLabel="entries"
@@ -300,6 +362,54 @@ export default function PasswordGroupScreen() {
               </View>
             </View>
 
+            {childGroups.length > 0 ? (
+              <View style={styles.subgroupSection}>
+                <PasswordSectionHeader
+                  title="Subgroups"
+                  subtitle={`${childGroups.length} available`}
+                />
+                <View style={styles.subgroupStack}>
+                  {childGroups.map((group) => {
+                    const subgroupEntryCount = entries.filter((entry) => entry.groupId === group.id).length;
+                    return (
+                      <TouchableOpacity
+                        key={group.id}
+                        style={[
+                          styles.subgroupCard,
+                          {
+                            backgroundColor: scheme.card,
+                            shadowColor: '#000',
+                            shadowOffset: { width: 0, height: 6 },
+                            shadowOpacity: isDark ? 0.3 : 0.09,
+                            shadowRadius: isDark ? 10 : 14,
+                            elevation: isDark ? 2 : 3,
+                          },
+                        ]}
+                        onPress={() => openChildGroup(group)}
+                        activeOpacity={0.86}
+                      >
+                        <View style={[styles.subgroupIconWrap, { backgroundColor: isDark ? 'rgba(124,58,237,0.2)' : 'rgba(124,58,237,0.12)' }]}>
+                          <Folder size={16} color={Colors.primary} />
+                        </View>
+                        <View style={styles.subgroupInfo}>
+                          <Text style={[styles.subgroupName, { color: scheme.text }]} numberOfLines={1}>{group.name}</Text>
+                          <Text style={[styles.subgroupMeta, { color: scheme.textSecondary }]} numberOfLines={1}>
+                            {group.fullPath || group.name}
+                          </Text>
+                          <View style={styles.subgroupMetaRow}>
+                            <View style={[styles.subgroupPill, { backgroundColor: isDark ? 'rgba(124,58,237,0.2)' : 'rgba(124,58,237,0.12)' }]}>
+                              <Text style={styles.subgroupPillText}>{subgroupEntryCount} entries</Text>
+                            </View>
+                          </View>
+                        </View>
+                        <ChevronRight size={18} color={scheme.textSecondary} />
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+            ) : null}
+
             <PasswordSectionHeader
               title="Entries"
               subtitle={`${visibleEntries.length} visible`}
@@ -318,7 +428,17 @@ export default function PasswordGroupScreen() {
                 {visibleEntries.map((entry) => (
                   <TouchableOpacity
                     key={entry.id}
-                    style={[styles.entryCard, { backgroundColor: scheme.card, borderColor: scheme.border }]}
+                    style={[
+                      styles.entryCard,
+                      {
+                        backgroundColor: scheme.card,
+                        shadowColor: '#000',
+                        shadowOffset: { width: 0, height: 6 },
+                        shadowOpacity: isDark ? 0.3 : 0.09,
+                        shadowRadius: isDark ? 10 : 14,
+                        elevation: isDark ? 2 : 3,
+                      },
+                    ]}
                     onPress={() =>
                       router.push({
                         pathname: '/passwords/[id]',
@@ -328,11 +448,30 @@ export default function PasswordGroupScreen() {
                     activeOpacity={0.86}
                   >
                     <View style={styles.entryAccent} />
+                    <View style={[styles.entryTypeIcon, { backgroundColor: isDark ? 'rgba(124,58,237,0.18)' : 'rgba(124,58,237,0.10)' }]}>
+                      <Key size={14} color={Colors.primary} />
+                    </View>
                     <View style={styles.entryInfoBlock}>
                       <Text style={[styles.groupName, { color: scheme.text }]}>{entry.title}</Text>
                       <Text style={[styles.entrySubtext, { color: scheme.textSecondary }]}>
                         {entry.username || 'No username'}
                       </Text>
+                      <View style={styles.entryMetaRow}>
+                        {!!entry.url?.trim() && (
+                          <View style={[styles.entryMetaChip, { backgroundColor: isDark ? 'rgba(255,255,255,0.09)' : 'rgba(15,23,42,0.06)' }]}>
+                            <Globe size={11} color={scheme.textSecondary} />
+                            <Text style={[styles.entryMetaChipText, { color: scheme.textSecondary }]} numberOfLines={1}>
+                              {getUrlHost(entry.url)}
+                            </Text>
+                          </View>
+                        )}
+                        <View style={[styles.entryMetaChip, { backgroundColor: isDark ? 'rgba(255,255,255,0.09)' : 'rgba(15,23,42,0.06)' }]}>
+                          <Clock3 size={11} color={scheme.textSecondary} />
+                          <Text style={[styles.entryMetaChipText, { color: scheme.textSecondary }]}>
+                            {formatRelativeTime(entry.modifiedAt || entry.createdAt)}
+                          </Text>
+                        </View>
+                      </View>
                     </View>
                     {!!entry.username?.trim() && (
                       <View style={[styles.userBadge, { backgroundColor: isDark ? 'rgba(59,130,246,0.22)' : 'rgba(59,130,246,0.14)' }]}>
@@ -495,27 +634,102 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderRadius: BorderRadius.lg,
-    borderWidth: 1,
     padding: Spacing.md,
     marginBottom: Spacing.sm,
-    overflow: 'hidden',
+    overflow: 'visible',
   },
   entryStack: {
     marginTop: Spacing.sm,
+  },
+  subgroupSection: {
+    marginTop: Spacing.sm,
+  },
+  subgroupStack: {
+    marginTop: Spacing.sm,
+    gap: Spacing.sm,
+  },
+  subgroupCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: BorderRadius.lg,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm + 2,
+  },
+  subgroupIconWrap: {
+    width: 30,
+    height: 30,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: Spacing.sm,
+  },
+  subgroupInfo: {
+    flex: 1,
+    minWidth: 0,
+  },
+  subgroupName: {
+    fontSize: Typography.fontSize.sm,
+    fontWeight: '700',
+  },
+  subgroupMeta: {
+    fontSize: Typography.fontSize.xs,
+    marginTop: 2,
+  },
+  subgroupMetaRow: {
+    marginTop: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  subgroupPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  subgroupPillText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: Colors.primary,
   },
   entryAccent: {
     width: 4,
     height: 34,
     borderRadius: 999,
     backgroundColor: Colors.primary,
-    marginRight: Spacing.md,
+    marginRight: Spacing.sm,
+  },
+  entryTypeIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: Spacing.sm,
   },
   entryInfoBlock: {
     flex: 1,
-    marginLeft: Spacing.sm,
+    minWidth: 0,
   },
   groupName: {
     fontSize: Typography.fontSize.md,
+    fontWeight: '600',
+  },
+  entryMetaRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 7,
+  },
+  entryMetaChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    maxWidth: '100%',
+  },
+  entryMetaChipText: {
+    fontSize: 11,
     fontWeight: '600',
   },
   userBadge: {

@@ -8,6 +8,7 @@ import { Platform, StyleSheet, View } from 'react-native';
 import { Tabs } from 'expo-router';
 import { Home, Grid3X3, Settings } from 'lucide-react-native';
 import { useTheme } from '@/theme/themeProvider';
+import { Colors } from '@/theme/color';
 
 const ACTIVE_COLOR = '#7C3AED';
 const INACTIVE_COLOR = '#9CA3AF';
@@ -15,7 +16,7 @@ const INACTIVE_COLOR = '#9CA3AF';
 export default function TabLayout() {
   const { isDark } = useTheme();
 
-  const tabBarBg = isDark ? '#000000' : '#FFFFFF';
+  const tabBarBg = isDark ? Colors.darkBackground : '#FFFFFF';
   const borderColor = isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.08)';
 
   return (

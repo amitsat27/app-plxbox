@@ -66,7 +66,7 @@ function DocumentSection({ url }: { url: string }) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     await WebBrowser.openBrowserAsync(safeUrl, {
       presentationStyle: Platform.OS === 'ios' ? WebBrowser.WebBrowserPresentationStyle.PAGE_SHEET : WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
-      toolbarColor: isDark ? '#1C1C1E' : '#FFFFFF',
+      toolbarColor: isDark ? Colors.darkCard : '#FFFFFF',
       controlsColor: '#7C3AED',
     });
   };
@@ -271,7 +271,7 @@ export default function BillDetailScreen() {
   };
 
   return (
-    <View style={[styles.screen, { backgroundColor: isDark ? '#000000' : '#F2F2F7' }]}>
+    <View style={[styles.screen, { backgroundColor: isDark ? Colors.darkBackground : '#F2F2F7' }]}>
       {/* Loading overlay */}
       {loading && <View style={[styles.loadingOverlay, { backgroundColor: isDark ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.7)' }]}><ActivityIndicator size="large" color={Colors.primary} /></View>}
 

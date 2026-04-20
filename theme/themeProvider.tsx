@@ -66,10 +66,10 @@ export const LIGHT_THEME = {
 export const DARK_THEME = {
   // ============== SURFACE COLORS ==============
   surface: {
-    primary: "#0F172A", // Very dark blue - primary surfaces
-    secondary: "#1E293B", // Dark slate - secondary surfaces
-    tertiary: "#334155", // Medium dark - tertiary surfaces
-    overlay: "#1E1B4B", // Dark overlay
+    primary: "#0A1F3D", // Very dark blue-tinted - primary surfaces
+    secondary: "#1A2E47", // Dark slate with blue shift - secondary surfaces
+    tertiary: "#2D4563", // Medium dark with blue tint - tertiary surfaces
+    overlay: "#1A1F4B", // Dark blue-tinted overlay
   },
 
   // ============== BRAND COLORS ==============
@@ -100,9 +100,9 @@ export const DARK_THEME = {
 
   // ============== BORDER & DIVIDER ==============
   border: {
-    primary: "rgba(167, 139, 250, 0.25)", // Violet tint (brighter)
-    secondary: "rgba(248, 250, 252, 0.1)", // Gray tint
-    subtle: "rgba(71, 85, 105, 0.4)", // Subtle dark
+    primary: "rgba(139, 169, 255, 0.28)", // Blue-tinted border
+    secondary: "rgba(248, 250, 252, 0.12)", // Gray-blue tint
+    subtle: "rgba(45, 69, 99, 0.5)", // Subtle blue-dark
   },
 
   // ============== SHADOWS ==============

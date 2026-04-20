@@ -363,7 +363,7 @@ export default function GasManagementScreen() {
   const onBillSaved = () => { setShowBillModal(false); setEditingBill(null); };
 
   return (
-    <View style={[styles.screen, { backgroundColor: isDark ? '#000000' : '#F2F2F7' }]}>
+    <View style={[styles.screen, { backgroundColor: isDark ? Colors.darkBackground : '#F2F2F7' }]}>
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top }]}>
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>

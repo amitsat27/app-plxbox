@@ -68,24 +68,25 @@ export const Colors = {
   // ============================================
   // NEUTRAL / SURFACE COLORS (Glass-ready)
   // ============================================
-  background: "#0A0A1A", // Very dark cosmic blue (not pure black)
+  background: "#050D1E", // Very dark blue-tinted (not pure black)
   backgroundLight: "#F8FAFC", // Light mode background (off-white)
-  backgroundDark: "#050510", // Even darker for dark mode
-  surface: "rgba(20, 20, 40, 0.70)", // Glass surface dark (with blur)
+  backgroundDark: "#030710", // Even darker with blue tint for dark mode
+  surface: "rgba(15, 25, 50, 0.70)", // Glass surface dark with blue tint (with blur)
   surfaceLight: "rgba(255, 255, 255, 0.75)", // Glass surface light
-  surfaceDark: "rgba(10, 10, 20, 0.80)", // Dark mode glass
-  surfaceVariant: "rgba(30, 30, 60, 0.50)",
+  surfaceDark: "rgba(10, 15, 30, 0.80)", // Dark mode glass with blue tint
+  surfaceVariant: "rgba(25, 40, 70, 0.50)", // Blue-tinted variant
   surfaceVariantLight: "rgba(248, 250, 252, 0.80)",
 
   // Card backgrounds - glassmorphic
   cardBackground: "rgba(255, 255, 255, 0.65)",
-  cardBackgroundDark: "rgba(20, 20, 40, 0.75)",
+  cardBackgroundDark: "rgba(20, 35, 60, 0.75)", // Blue-tinted dark card
   cardBackgroundElevated: "rgba(255, 255, 255, 0.85)",
-  cardBackgroundElevatedDark: "rgba(30, 30, 60, 0.90)",
+  cardBackgroundElevatedDark: "rgba(30, 45, 75, 0.90)", // Blue-tinted elevated dark card
+
 
   // Borders - subtle with tint
   border: "rgba(124, 58, 237, 0.15)", // Purple tint (15%)
-  borderDark: "rgba(167, 139, 250, 0.25)", // Brighter purple in dark
+  borderDark: "rgba(139, 169, 255, 0.28)", // Blue-tinted border in dark mode
   borderLight: "rgba(124, 58, 237, 0.08)",
 
   // ============================================
@@ -222,9 +223,9 @@ export const Colors = {
   // GLASS & BLUR (Dynamic for dark/light)
   // ============================================
   glassLight: "rgba(255, 255, 255, 0.65)",
-  glassDark: "rgba(20, 20, 40, 0.75)",
+  glassDark: "rgba(20, 35, 60, 0.75)", // Blue-tinted glass for dark mode
   glassTintLight: "rgba(124, 58, 237, 0.05)", // Subtle violet tint
-  glassTintDark: "rgba(167, 139, 250, 0.08)", // Brighter violet tint
+  glassTintDark: "rgba(139, 169, 255, 0.10)", // Blue-tinted glow for dark mode
 
   // ============================================
   // ON COLORS (Text/icons on colored surfaces)
@@ -292,6 +293,14 @@ export const Colors = {
     { color: "#4A044E", position: { x: 100, y: 0 } },
   ],
 
+  // ============================================
+  // DARK MODE CONVENIENCE COLORS (Blue-tinted)
+  // ============================================
+  darkBackground: "#030710", // Pure dark background (blue-tinted)
+  darkCard: "#1F2E45", // Dark card/surface (blue-tinted)
+  darkCardAlt: "#192541", // Alternate dark card shade
+  darkText: "#F8FAFC", // Light text on dark
+  
   // ============================================
   // LEGACY COMPATIBILITY (Map old names to new)
   // ============================================

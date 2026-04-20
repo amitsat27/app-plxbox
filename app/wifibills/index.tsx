@@ -6,14 +6,14 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated, Alert, Platform, ActivityIndicator,
-  RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View, Modal, Pressable,
+  RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View, Modal, Pressable, TextInput,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, useFocusEffect } from "expo-router";
 import * as Haptics from "expo-haptics";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
-import { ChevronLeft, Plus, Wifi, Download, X } from "lucide-react-native";
+import { ChevronLeft, Plus, Wifi, Download, X, Search, ArrowUpNarrowWide, ArrowDownWideNarrow } from "lucide-react-native";
 import { Spacing, Typography } from "@/constants/designTokens";
 import { getColorScheme } from "@/theme/color";
 import { useTheme } from "@/theme/themeProvider";
@@ -39,6 +39,11 @@ export default function WifiBillsScreen() {
   const [editBillData, setEditBillData] = useState<EditFormState | null>(null);
   const [formLoading, setFormLoading] = useState(false);
   const [filterCity, setFilterCity] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<"All" | "Paid" | "Pending">("All");
+  const [sortField, setSortField] = useState<"date" | "amount" | "isp">("date");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [showExportModal, setShowExportModal] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [selectedExportMonth, setSelectedExportMonth] = useState<string[]>([]);
@@ -91,8 +96,33 @@ export default function WifiBillsScreen() {
 
   const displayBills = useMemo(() => {
     let filtered = filterCity ? bills.filter((b) => b.city === filterCity) : [...bills];
-    return filtered.sort((a, b) => new Date(b.lastDateToPay).getTime() - new Date(a.lastDateToPay).getTime());
-  }, [bills, filterCity]);
+
+    if (statusFilter !== "All") {
+      filtered = filtered.filter((b) => b.payStatus === statusFilter);
+    }
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      filtered = filtered.filter((b) =>
+        (b.ispName || "").toLowerCase().includes(q) ||
+        (b.city || "").toLowerCase().includes(q) ||
+        (b.lastPaidBillMonth || "").toLowerCase().includes(q) ||
+        (b.paymentMode || "").toLowerCase().includes(q) ||
+        (b.payStatus || "").toLowerCase().includes(q)
+      );
+    }
+
+    const dir = sortDir === "asc" ? 1 : -1;
+    return [...filtered].sort((a, b) => {
+      if (sortField === "amount") {
+        return dir * ((a.billAmount || 0) - (b.billAmount || 0));
+      }
+      if (sortField === "isp") {
+        return dir * (a.ispName || "").localeCompare(b.ispName || "");
+      }
+      return dir * (new Date(a.lastDateToPay).getTime() - new Date(b.lastDateToPay).getTime());
+    });
+  }, [bills, filterCity, searchQuery, sortDir, sortField, statusFilter]);
 
   const handleAdd = useCallback((d: WifiBillFormData) => {
     setFormLoading(true);
@@ -349,6 +379,84 @@ export default function WifiBillsScreen() {
           <FilterBar bills={bills} filterCity={filterCity} setFilterCity={setFilterCity} />
         </Animated.View>
 
+        <Animated.View style={{ opacity: fade, transform: [{ translateY: slide }] }}>
+          <View style={styles.controlsWrap}>
+            <View style={styles.controlsRow}>
+              <TouchableOpacity
+                style={[styles.iconControlBtn, { backgroundColor: showSearch ? Colors.primary : (isDark ? 'rgba(44,44,46,0.5)' : 'rgba(243,243,245,0.6)') }]}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setShowSearch((prev) => !prev);
+                  if (showSearch) setSearchQuery("");
+                }}
+              >
+                <Search size={13} color={showSearch ? '#FFFFFF' : scheme.textSecondary} />
+              </TouchableOpacity>
+
+              {(["All", "Paid", "Pending"] as const).map((item) => (
+                <TouchableOpacity
+                  key={item}
+                  style={[styles.filterChip2, { backgroundColor: statusFilter === item ? Colors.primary : (isDark ? 'rgba(44,44,46,0.5)' : 'rgba(243,243,245,0.6)') }]}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    setStatusFilter(item);
+                  }}
+                >
+                  <Text style={[styles.filterChip2Text, { color: statusFilter === item ? '#FFFFFF' : scheme.textSecondary }]}>{item}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {showSearch ? (
+              <View style={[styles.searchRow, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF', borderColor: scheme.border }]}>
+                <Search size={15} color={scheme.textTertiary} />
+                <TextInput
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                  placeholder="Search ISP, city, month, status"
+                  placeholderTextColor={scheme.textTertiary}
+                  style={[styles.searchInput, { color: scheme.textPrimary }]}
+                />
+                {searchQuery.length > 0 ? (
+                  <TouchableOpacity onPress={() => setSearchQuery("")}>
+                    <X size={14} color={scheme.textTertiary} />
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+            ) : null}
+
+            <View style={styles.sortRow}>
+              <TouchableOpacity
+                style={[styles.iconControlBtn, { backgroundColor: isDark ? 'rgba(44,44,46,0.6)' : 'rgba(243,243,245,0.7)' }]}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
+                }}
+              >
+                {sortDir === "asc" ? (
+                  <ArrowUpNarrowWide size={13} color={Colors.primary} />
+                ) : (
+                  <ArrowDownWideNarrow size={13} color={Colors.primary} />
+                )}
+              </TouchableOpacity>
+
+              {([
+                { key: "date", label: "Date" },
+                { key: "amount", label: "Amount" },
+                { key: "isp", label: "ISP" },
+              ] as const).map((item) => (
+                <TouchableOpacity
+                  key={item.key}
+                  style={[styles.sortChip, { backgroundColor: sortField === item.key ? Colors.primary : 'transparent' }]}
+                  onPress={() => setSortField(item.key)}
+                >
+                  <Text style={[styles.sortChipText, { color: sortField === item.key ? '#FFFFFF' : scheme.textTertiary }]}>{item.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </Animated.View>
+
         {/* Bill List */}
         <Animated.View style={{ opacity: fade, transform: [{ translateY: slide }] }}>
           {loading ? (
@@ -537,4 +645,63 @@ const styles = StyleSheet.create({
   exportModalFooter: { padding: Spacing.lg, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(0,0,0,0.1)' },
   exportBtn2: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: Spacing.md, borderRadius: 12, gap: Spacing.sm },
   exportBtnText: { color: '#FFF', fontSize: 16, fontWeight: '600' },
+  controlsWrap: {
+    marginTop: Spacing.sm,
+    marginBottom: Spacing.xs,
+    gap: Spacing.xs,
+  },
+  controlsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.xs,
+  },
+  iconControlBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 10,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  filterChip2: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 5,
+    borderRadius: 999,
+    minHeight: 30,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  filterChip2Text: {
+    fontSize: Typography.fontSize.xs,
+    fontWeight: "700",
+  },
+  searchRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.xs,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xs,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: Typography.fontSize.sm,
+  },
+  sortRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.xs,
+  },
+  sortChip: {
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 5,
+    borderRadius: 999,
+    minHeight: 28,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  sortChipText: {
+    fontSize: Typography.fontSize.xs,
+    fontWeight: "700",
+  },
 });

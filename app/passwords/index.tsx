@@ -45,9 +45,9 @@ export default function PasswordsScreen() {
   const { user } = useAuth();
 
   const getColorScheme = (dark: boolean) => ({
-    background: dark ? '#000000' : '#F2F2F7',
-    card: dark ? '#1C1C1E' : '#FFFFFF',
-    text: dark ? '#FFFFFF' : '#000000',
+    background: dark ? Colors.darkBackground : '#F2F2F7',
+    card: dark ? Colors.darkCard : '#FFFFFF',
+    text: dark ? Colors.darkText : '#000000',
     textSecondary: dark ? '#8E8E93' : '#8E8E93',
     primary: Colors.primary,
     border: dark ? '#38383A' : '#E5E5EA',

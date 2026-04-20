@@ -17,6 +17,7 @@ import * as Haptics from 'expo-haptics';
 import {
   Plus, Search, X, AlertCircle, Wrench, Shield, FileText,
   Car, TrendingUp, AlertTriangle, Eye, Clock, Sparkles,
+  ArrowUpNarrowWide, ArrowDownWideNarrow,
 } from 'lucide-react-native';
 import { Colors, getVehicleTypeColor, getColorScheme } from '@/theme/color';
 import { useTheme } from '@/theme/themeProvider';
@@ -47,6 +48,8 @@ export default function VehiclesScreen() {
   const [searchActive, setSearchActive] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'active' | 'inactive' | 'alerts'>('all');
+  const [sortField, setSortField] = useState<'name' | 'year' | 'created'>('name');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
   const listOpacity = useSharedValue(0);
   const listTranslateY = useSharedValue(20);
@@ -84,8 +87,25 @@ export default function VehiclesScreen() {
         (v.registrationNumber || '').toLowerCase().includes(q)
       );
     }
+
+    const dir = sortDir === 'asc' ? 1 : -1;
+    result = [...result].sort((left, right) => {
+      if (sortField === 'year') {
+        return dir * ((left.year || 0) - (right.year || 0));
+      }
+      if (sortField === 'created') {
+        const leftTime = left.createdAt instanceof Date ? left.createdAt.getTime() : 0;
+        const rightTime = right.createdAt instanceof Date ? right.createdAt.getTime() : 0;
+        return dir * (leftTime - rightTime);
+      }
+
+      const leftName = `${left.name || ''} ${left.make || ''} ${left.model || ''}`.trim().toLowerCase();
+      const rightName = `${right.name || ''} ${right.make || ''} ${right.model || ''}`.trim().toLowerCase();
+      return dir * leftName.localeCompare(rightName);
+    });
+
     return result;
-  }, [vehicles, filterType, searchQuery, vehicleStats.alerts]);
+  }, [vehicles, filterType, searchQuery, sortDir, sortField, vehicleStats.alerts]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -166,6 +186,7 @@ export default function VehiclesScreen() {
             { key: 'insights' },
             ...(vehicleStats.alerts.length > 0 ? [{ key: 'alerts' }] : []),
             { key: 'filters' },
+            { key: 'sort' },
             ...filteredVehicles.map((v) => ({ key: `v-${v.id}`, vehicle: v })),
           ]}
           renderItem={({ item, index }) => {
@@ -176,6 +197,14 @@ export default function VehiclesScreen() {
               return <AlertsSection alerts={vehicleStats.alerts} scheme={scheme} />;
             if (item.key === 'filters') return (
               <FilterRow current={filterType} onChange={setFilterType} alertCount={vehicleStats.alerts.length} scheme={scheme} />
+            );
+            if (item.key === 'sort') return (
+              <SortRow
+                current={sortField}
+                direction={sortDir}
+                onToggleDirection={() => setSortDir((prev) => (prev === 'asc' ? 'desc' : 'asc'))}
+                onChange={setSortField}
+              />
             );
             const veh = 'vehicle' in item ? item.vehicle : undefined;
             if (veh) return (
@@ -220,6 +249,68 @@ export default function VehiclesScreen() {
         <Plus size={24} color={isDark ? '#000' : '#FFF'} />
       </TouchableOpacity>
     </View>
+  );
+}
+
+function SortRow({
+  current,
+  direction,
+  onChange,
+  onToggleDirection,
+}: {
+  current: 'name' | 'year' | 'created';
+  direction: 'asc' | 'desc';
+  onChange: (value: 'name' | 'year' | 'created') => void;
+  onToggleDirection: () => void;
+}) {
+  const { isDark } = useTheme();
+
+  const options: Array<{ key: 'name' | 'year' | 'created'; label: string }> = [
+    { key: 'name', label: 'Name' },
+    { key: 'year', label: 'Year' },
+    { key: 'created', label: 'Added' },
+  ];
+
+  return (
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -16 }}>
+      <View style={{ paddingHorizontal: 16, flexDirection: 'row', gap: 8 }}>
+        <TouchableOpacity
+          style={[styles.sortToggle, { backgroundColor: isDark ? '#1C1C1E' : '#F2F2F7' }]}
+          onPress={() => {
+            Haptics.selectionAsync();
+            onToggleDirection();
+          }}
+        >
+          {direction === 'asc' ? (
+            <ArrowUpNarrowWide size={14} color={Colors.warning} />
+          ) : (
+            <ArrowDownWideNarrow size={14} color={Colors.warning} />
+          )}
+        </TouchableOpacity>
+
+        {options.map((option) => {
+          const active = current === option.key;
+          return (
+            <TouchableOpacity
+              key={option.key}
+              style={[
+                styles.filterChip,
+                {
+                  backgroundColor: active ? Colors.warning : isDark ? '#1C1C1E' : '#F2F2F7',
+                  borderColor: active ? Colors.warning : 'transparent',
+                },
+              ]}
+              onPress={() => {
+                Haptics.selectionAsync();
+                onChange(option.key);
+              }}
+            >
+              <Text style={[styles.filterLabel, { color: active ? '#000' : isDark ? '#A1A1AA' : '#6B7280' }]}>{option.label}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </ScrollView>
   );
 }
 
@@ -463,6 +554,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 10,
     borderRadius: 14, paddingHorizontal: 14, paddingVertical: 10, marginTop: 8,
     borderWidth: 1,
+  },
+  sortToggle: {
+    width: 36,
+    height: 36,
+    borderRadius: 999,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   searchInput: { flex: 1, fontSize: 14 },
 

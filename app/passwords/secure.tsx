@@ -56,9 +56,9 @@ export default function SecureVaultScreen() {
   const { user } = useAuth();
 
   const getColorScheme = (dark: boolean) => ({
-    background: dark ? '#000000' : '#F2F2F7',
-    card: dark ? '#1C1C1E' : '#FFFFFF',
-    text: dark ? '#FFFFFF' : '#000000',
+    background: dark ? Colors.darkBackground : '#F2F2F7',
+    card: dark ? Colors.darkCard : '#FFFFFF',
+    text: dark ? Colors.darkText : '#000000',
     textSecondary: dark ? '#8E8E93' : '#8E8E93',
     primary: Colors.primary,
     border: dark ? '#38383A' : '#E5E5EA',
@@ -468,6 +468,12 @@ export default function SecureVaultScreen() {
     );
   };
 
+  const normalizedGroupSettingsName = groupSettingsName.trim();
+  const canSaveGroupSettings =
+    !!selectedGroupForSettings &&
+    normalizedGroupSettingsName.length > 0 &&
+    normalizedGroupSettingsName !== selectedGroupForSettings.name;
+
   const handleDeleteGroupLongPress = (group: PasswordGroup) => {
     Alert.alert(
       'Delete Group',
@@ -616,12 +622,20 @@ export default function SecureVaultScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: scheme.background }]}> 
-      <View style={styles.header}>
+      <View
+        style={[
+          styles.header,
+          {
+            backgroundColor: isDark ? 'rgba(16,16,18,0.96)' : 'rgba(255,255,255,0.82)',
+            borderBottomColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(15,23,42,0.08)',
+          },
+        ]}
+      >
         <TouchableOpacity style={styles.backButton} onPress={handleLockVault}>
           <ArrowLeft size={24} color={scheme.text} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
-          <Text style={[styles.headerTitle, { color: scheme.text }]}>
+          <Text style={[styles.headerTitle, { color: scheme.text }]} numberOfLines={1}>
             {vault?.name || 'Secure Vault'}
           </Text>
           <Text style={[styles.headerSubtitle, { color: scheme.textSecondary }]}>
@@ -694,7 +708,7 @@ export default function SecureVaultScreen() {
                 />
               </View>
 
-              <View style={[styles.backupPanel, { backgroundColor: scheme.card, borderColor: scheme.border }]}> 
+              <View style={[styles.backupPanel, { backgroundColor: scheme.card }]}> 
                 <View style={styles.backupHeaderRow}>
                   <View style={styles.backupTitleWrap}>
                     <Shield size={17} color={Colors.primary} />
@@ -1081,7 +1095,22 @@ export default function SecureVaultScreen() {
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                 style={[styles.modalContent, { backgroundColor: scheme.card }]}
               >
-                <Text style={[styles.modalTitle, { color: scheme.text }]}>Group Settings</Text>
+                <View style={styles.groupSettingsHeader}>
+                  <View style={[styles.groupSettingsIconWrap, { backgroundColor: isDark ? 'rgba(124,58,237,0.2)' : 'rgba(124,58,237,0.12)' }]}>
+                    <Settings size={16} color={Colors.primary} />
+                  </View>
+                  <View style={styles.groupSettingsHeaderTextWrap}>
+                    <Text style={[styles.modalTitle, styles.groupSettingsTitle, { color: scheme.text }]}>Group Settings</Text>
+                    <Text style={[styles.groupSettingsSubtitle, { color: scheme.textSecondary }]}>Rename this group or remove it from this vault.</Text>
+                  </View>
+                </View>
+
+                <View style={[styles.groupSettingsInfoCard, { backgroundColor: scheme.background }]}> 
+                  <Text style={[styles.groupSettingsInfoLabel, { color: scheme.textSecondary }]}>Selected group</Text>
+                  <Text style={[styles.groupSettingsInfoValue, { color: scheme.text }]} numberOfLines={1}>
+                    {selectedGroupForSettings?.name || 'Group'}
+                  </Text>
+                </View>
 
                 <Text style={[styles.inputLabel, { color: scheme.textSecondary }]}>Group Name</Text>
                 <TextInput
@@ -1091,32 +1120,37 @@ export default function SecureVaultScreen() {
                   placeholder="Group name"
                   placeholderTextColor={scheme.textSecondary}
                 />
+                <Text style={[styles.groupSettingsHint, { color: scheme.textSecondary }]}>Use a short, descriptive name so entries are easier to scan.</Text>
 
                 <TouchableOpacity
-                  style={[styles.deleteSettingsBtn, { borderColor: 'rgba(239,68,68,0.4)', backgroundColor: 'rgba(239,68,68,0.12)' }]}
+                  style={[styles.deleteSettingsBtn, { backgroundColor: isDark ? 'rgba(239,68,68,0.2)' : 'rgba(239,68,68,0.12)' }]}
                   onPress={handleDeleteFromSettings}
                   disabled={groupSettingsSaving}
                 >
                   <Text style={styles.deleteSettingsText}>Delete Group</Text>
                 </TouchableOpacity>
 
-                <View style={styles.modalButtons}>
+                <View style={styles.groupSettingsActionRow}>
                   <TouchableOpacity
-                    style={[styles.modalButton, { backgroundColor: scheme.background }]}
+                    style={[styles.modalButton, styles.groupSettingsActionBtn, { backgroundColor: scheme.background }]}
                     onPress={() => {
                       setShowGroupSettingsModal(false);
                       setSelectedGroupForSettings(null);
                     }}
                     disabled={groupSettingsSaving}
                   >
-                    <Text style={{ color: scheme.text }}>Cancel</Text>
+                    <Text style={[styles.groupSettingsActionText, { color: scheme.text }]}>Cancel</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    style={[styles.modalButton, { backgroundColor: Colors.primary }]}
+                    style={[
+                      styles.modalButton,
+                      styles.groupSettingsActionBtn,
+                      { backgroundColor: canSaveGroupSettings ? Colors.primary : isDark ? 'rgba(124,58,237,0.35)' : 'rgba(124,58,237,0.28)' },
+                    ]}
                     onPress={handleSaveGroupSettings}
-                    disabled={groupSettingsSaving}
+                    disabled={groupSettingsSaving || !canSaveGroupSettings}
                   >
-                    {groupSettingsSaving ? <ActivityIndicator size="small" color="#FFF" /> : <Text style={{ color: '#FFF', fontWeight: '700' }}>Save</Text>}
+                    {groupSettingsSaving ? <ActivityIndicator size="small" color="#FFF" /> : <Text style={styles.groupSettingsPrimaryActionText}>Save Changes</Text>}
                   </TouchableOpacity>
                 </View>
               </KeyboardAvoidingView>
@@ -1260,10 +1294,14 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
   },
   backupPanel: {
-    borderWidth: 1,
     borderRadius: BorderRadius.lg,
     padding: Spacing.md,
     gap: Spacing.sm,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 2,
   },
   backupHeaderRow: {
     flexDirection: 'row',
@@ -1380,7 +1418,6 @@ const styles = StyleSheet.create({
     padding: Spacing.md,
     borderRadius: 24,
     marginBottom: 0,
-    borderWidth: 1,
     shadowColor: '#000',
     shadowOpacity: 0.04,
     shadowRadius: 18,
@@ -1431,7 +1468,6 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     marginBottom: 0,
     overflow: 'hidden',
-    borderWidth: 1,
     shadowColor: '#000',
     shadowOpacity: 0.03,
     shadowRadius: 14,
@@ -1553,7 +1589,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   deleteSettingsBtn: {
-    borderWidth: 1,
     borderRadius: BorderRadius.md,
     paddingVertical: Spacing.sm + 2,
     alignItems: 'center',
@@ -1586,5 +1621,71 @@ const styles = StyleSheet.create({
   },
   restoreModeTextActive: {
     color: '#FFF',
+  },
+  groupSettingsHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.sm,
+    marginBottom: Spacing.sm,
+  },
+  groupSettingsIconWrap: {
+    width: 30,
+    height: 30,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+  },
+  groupSettingsHeaderTextWrap: {
+    flex: 1,
+  },
+  groupSettingsTitle: {
+    textAlign: 'left',
+    marginBottom: 2,
+  },
+  groupSettingsSubtitle: {
+    fontSize: Typography.fontSize.sm,
+    lineHeight: 18,
+  },
+  groupSettingsInfoCard: {
+    borderRadius: BorderRadius.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    marginTop: Spacing.sm,
+  },
+  groupSettingsInfoLabel: {
+    fontSize: Typography.fontSize.xs,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  groupSettingsInfoValue: {
+    marginTop: 3,
+    fontSize: Typography.fontSize.md,
+    fontWeight: '700',
+  },
+  groupSettingsHint: {
+    marginTop: 6,
+    fontSize: Typography.fontSize.xs,
+    lineHeight: 17,
+  },
+  groupSettingsActionText: {
+    fontWeight: '600',
+  },
+  groupSettingsPrimaryActionText: {
+    color: '#FFF',
+    fontWeight: '700',
+  },
+  groupSettingsActionRow: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+    marginTop: Spacing.xl,
+    paddingTop: Spacing.xs,
+    marginBottom: Spacing.lg,
+  },
+  groupSettingsActionBtn: {
+    minHeight: 40,
+    paddingVertical: Spacing.sm  + 3,
+    paddingHorizontal: Spacing.sm,
   },
 });

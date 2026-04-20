@@ -294,6 +294,7 @@ export default function SettingsScreen() {
   const [notifyDue, setNotifyDue] = useState(true);
   const [notifyReminders, setNotifyReminders] = useState(true);
   const [notifySound, setNotifySound] = useState(true);
+  const [notificationPermissionGranted, setNotificationPermissionGranted] = useState<boolean | null>(null);
 
   const [security, setSecurity] = useState<SecurityState>(DEFAULT_SECURITY);
   const [defaults, setDefaults] = useState<DefaultPreferenceState>(DEFAULT_PREFERENCES);
@@ -311,6 +312,7 @@ export default function SettingsScreen() {
 
   useEffect(() => {
     loadNotificationSettings();
+    loadNotificationPermissionStatus();
     loadSecuritySettings();
     loadDefaultPreferences();
     loadNightlyVaultBackupSettings();
@@ -361,6 +363,25 @@ export default function SettingsScreen() {
     return "U";
   }, [user?.displayName, user?.email]);
 
+  const enabledNotificationCount = useMemo(
+    () => [notifyBills, notifyDue, notifyReminders, notifySound].filter(Boolean).length,
+    [notifyBills, notifyDue, notifyReminders, notifySound],
+  );
+
+  const notificationPreset = useMemo<"all" | "essential" | "quiet" | "custom">(() => {
+    if (notifyBills && notifyDue && notifyReminders && notifySound) return "all";
+    if (notifyBills && notifyDue && !notifyReminders && !notifySound) return "essential";
+    if (!notifyBills && !notifyDue && !notifyReminders && !notifySound) return "quiet";
+    return "custom";
+  }, [notifyBills, notifyDue, notifyReminders, notifySound]);
+
+  const notificationStatusLabel =
+    notificationPermissionGranted === true
+      ? "Permission on"
+      : notificationPermissionGranted === false
+        ? "Permission off"
+        : "Permission unknown";
+
   const loadNotificationSettings = async () => {
     try {
       const saved = await AsyncStorage.getItem(STORAGE_KEYS.notifications);
@@ -372,6 +393,24 @@ export default function SettingsScreen() {
       setNotifySound(parsed.notifySound ?? true);
     } catch (error) {
       console.error("Failed to load notification settings:", error);
+    }
+  };
+
+  const loadNotificationPermissionStatus = async () => {
+    try {
+      const { status } = await Notifications.getPermissionsAsync();
+      if (status === "granted") {
+        setNotificationPermissionGranted(true);
+        return;
+      }
+      if (status === "denied") {
+        setNotificationPermissionGranted(false);
+        return;
+      }
+      setNotificationPermissionGranted(null);
+    } catch (error) {
+      console.error("Failed to load notification permission status:", error);
+      setNotificationPermissionGranted(null);
     }
   };
 
@@ -684,14 +723,52 @@ export default function SettingsScreen() {
     try {
       const { status } = await Notifications.requestPermissionsAsync();
       if (status !== "granted") {
+        setNotificationPermissionGranted(false);
         Alert.alert("Permissions Required", "Please enable notifications in device settings to receive alerts.");
         return false;
       }
+      setNotificationPermissionGranted(true);
       return true;
     } catch (error) {
       console.error("Failed to request notification permissions:", error);
+      setNotificationPermissionGranted(null);
       return false;
     }
+  };
+
+  const applyNotificationPreset = async (preset: "all" | "essential" | "quiet") => {
+    const next =
+      preset === "all"
+        ? {
+            notifyBills: true,
+            notifyDue: true,
+            notifyReminders: true,
+            notifySound: true,
+          }
+        : preset === "essential"
+          ? {
+              notifyBills: true,
+              notifyDue: true,
+              notifyReminders: false,
+              notifySound: false,
+            }
+          : {
+              notifyBills: false,
+              notifyDue: false,
+              notifyReminders: false,
+              notifySound: false,
+            };
+
+    if (next.notifyBills || next.notifyDue || next.notifyReminders || next.notifySound) {
+      const granted = await requestNotificationPermissions();
+      if (!granted) return;
+    }
+
+    setNotifyBills(next.notifyBills);
+    setNotifyDue(next.notifyDue);
+    setNotifyReminders(next.notifyReminders);
+    setNotifySound(next.notifySound);
+    await persistNotificationSettings(next);
   };
 
   const handleBiometricToggle = async (next: boolean) => {
@@ -929,6 +1006,7 @@ export default function SettingsScreen() {
     try {
       await Promise.all([
         loadNotificationSettings(),
+        loadNotificationPermissionStatus(),
         loadSecuritySettings(),
         loadDefaultPreferences(),
         loadNightlyVaultBackupSettings(),
@@ -976,7 +1054,12 @@ export default function SettingsScreen() {
         </LinearGradient>
 
         <SectionBlock title="General">
-          <SettingRow icon={<BellRing size={18} color={Colors.primary} />} label="Manage Notifications" sublabel="Smart, custom and surprise notifications" onPress={() => router.push("/manage-notifications")} />
+          <SettingRow
+            icon={<BellRing size={18} color={Colors.primary} />}
+            label="Manage Notifications"
+            sublabel={`${enabledNotificationCount}/4 enabled • ${notificationStatusLabel}`}
+            onPress={() => router.push("/manage-notifications")}
+          />
           <RowDivider />
           <SettingRow icon={<Shield size={18} color={Colors.primary} />} label="Open Default Tab" value={defaults.defaultTab} onPress={() => router.push(defaults.defaultTab === "home" ? "/(tabs)" : defaults.defaultTab === "explore" ? "/(tabs)/sections" : "/(tabs)/settings")} />
         </SectionBlock>
@@ -1113,6 +1196,42 @@ export default function SettingsScreen() {
         </SectionBlock>
 
         <SectionBlock title="Advanced">
+          <View style={styles.inlineBlock}>
+            <Text style={[styles.inlineLabel, { color: scheme.textSecondary }]}>Notification presets</Text>
+            <View style={styles.segmentRow}>
+              {([
+                { key: "all", label: "All" },
+                { key: "essential", label: "Essential" },
+                { key: "quiet", label: "Quiet" },
+              ] as const).map((option) => (
+                <TouchableOpacity
+                  key={option.key}
+                  style={[
+                    styles.segmentChip,
+                    {
+                      backgroundColor: notificationPreset === option.key
+                        ? Colors.primary
+                        : isDark
+                          ? "rgba(255,255,255,0.08)"
+                          : "rgba(15,23,42,0.06)",
+                    },
+                  ]}
+                  onPress={() => applyNotificationPreset(option.key)}
+                >
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      fontWeight: "700",
+                      color: notificationPreset === option.key ? "#FFFFFF" : scheme.textSecondary,
+                    }}
+                  >
+                    {option.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+          <RowDivider />
           <View style={styles.inlineBlock}>
             <Text style={[styles.inlineLabel, { color: scheme.textSecondary }]}>Default start section</Text>
             <View style={styles.segmentRow}>

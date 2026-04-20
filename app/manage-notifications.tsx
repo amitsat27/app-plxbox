@@ -776,6 +776,27 @@ export default function NotificationManagementScreen() {
     return `${hour12}:${m.toString().padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
   };
 
+  const activeSmartCount = smartNotifications.filter((n) => n.enabled && n.frequency !== "surprise").length;
+  const activeCustomCount = customNotifications.filter((n) => n.enabled).length;
+  const activeSurpriseCount = smartNotifications.filter((n) => n.enabled && n.frequency === "surprise").length;
+  const totalActiveCount = activeSmartCount + activeCustomCount + activeSurpriseCount;
+
+  const toggleAllNotifications = async (enabled: boolean) => {
+    const nextSmart = smartNotifications.map((item) => ({ ...item, enabled }));
+    const nextCustom = customNotifications.map((item) => ({ ...item, enabled }));
+    await saveSmartNotifications(nextSmart);
+    await saveCustomNotifications(nextCustom);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
+  const clearDisabledNotifications = async () => {
+    const nextSmart = smartNotifications.filter((item) => item.enabled);
+    const nextCustom = customNotifications.filter((item) => item.enabled);
+    await saveSmartNotifications(nextSmart);
+    await saveCustomNotifications(nextCustom);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
@@ -815,6 +836,43 @@ export default function NotificationManagementScreen() {
           <Bell size={16} color="#FFF" />
           <Text style={styles.testBtnText}>Send Test</Text>
         </TouchableOpacity>
+
+        <View style={styles.overviewCard}>
+          <View style={styles.overviewHeader}>
+            <Text style={styles.overviewTitle}>Notification Overview</Text>
+            <Text style={styles.overviewBadge}>{totalActiveCount} Active</Text>
+          </View>
+          <Text style={styles.overviewSub}>
+            {permissionGranted ? "Device permission is enabled." : "Device permission is disabled."}
+          </Text>
+
+          <View style={styles.overviewStatsRow}>
+            <View style={styles.overviewStatItem}>
+              <Text style={styles.overviewStatValue}>{activeSmartCount}</Text>
+              <Text style={styles.overviewStatLabel}>Smart</Text>
+            </View>
+            <View style={styles.overviewStatItem}>
+              <Text style={styles.overviewStatValue}>{activeCustomCount}</Text>
+              <Text style={styles.overviewStatLabel}>Custom</Text>
+            </View>
+            <View style={styles.overviewStatItem}>
+              <Text style={styles.overviewStatValue}>{activeSurpriseCount}</Text>
+              <Text style={styles.overviewStatLabel}>Surprise</Text>
+            </View>
+          </View>
+
+          <View style={styles.bulkRow}>
+            <TouchableOpacity style={styles.bulkBtn} onPress={() => toggleAllNotifications(true)}>
+              <Text style={styles.bulkBtnText}>Enable All</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.bulkBtn} onPress={() => toggleAllNotifications(false)}>
+              <Text style={styles.bulkBtnText}>Pause All</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.bulkBtnDanger} onPress={clearDisabledNotifications}>
+              <Text style={styles.bulkBtnDangerText}>Clean Disabled</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
 
         <View style={styles.backupPrefsCard}>
           <Text style={styles.backupPrefsTitle}>Backup Notifications</Text>
@@ -1346,6 +1404,20 @@ const styles = StyleSheet.create({
   tabText: { fontSize: 14, fontWeight: "600" },
   testBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, padding: 12, borderRadius: 12, backgroundColor: Colors.primary },
   testBtnText: { color: "#FFF", fontSize: 14, fontWeight: "600" },
+  overviewCard: { backgroundColor: "#FFFFFF", borderRadius: 12, padding: 14, gap: 10 },
+  overviewHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  overviewTitle: { fontSize: 15, fontWeight: "700", color: "#000000" },
+  overviewBadge: { fontSize: 12, fontWeight: "700", color: Colors.primary, backgroundColor: "rgba(124,58,237,0.1)", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999 },
+  overviewSub: { fontSize: 12, color: "#6B7280" },
+  overviewStatsRow: { flexDirection: "row", gap: 8 },
+  overviewStatItem: { flex: 1, borderRadius: 10, backgroundColor: "#F8FAFC", alignItems: "center", paddingVertical: 10 },
+  overviewStatValue: { fontSize: 18, fontWeight: "800", color: "#111827" },
+  overviewStatLabel: { fontSize: 11, fontWeight: "600", color: "#6B7280", marginTop: 2 },
+  bulkRow: { flexDirection: "row", gap: 8 },
+  bulkBtn: { flex: 1, borderRadius: 10, backgroundColor: "#EEF2FF", alignItems: "center", justifyContent: "center", paddingVertical: 9 },
+  bulkBtnText: { fontSize: 12, fontWeight: "700", color: "#3730A3" },
+  bulkBtnDanger: { flex: 1, borderRadius: 10, backgroundColor: "#FEF2F2", alignItems: "center", justifyContent: "center", paddingVertical: 9 },
+  bulkBtnDangerText: { fontSize: 12, fontWeight: "700", color: "#B91C1C" },
   backupPrefsCard: { backgroundColor: "#FFFFFF", borderRadius: 12, padding: 14, gap: 8 },
   backupPrefsTitle: { fontSize: 15, fontWeight: "700", color: "#000000" },
   backupPrefsSub: { fontSize: 12, color: "#8E8E93", marginBottom: 4 },

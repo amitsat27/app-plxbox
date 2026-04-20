@@ -29,7 +29,7 @@ export default function ProfileScreen() {
   const scheme = getColorScheme(isDark);
 
   return (
-    <View style={[styles.container, { backgroundColor: isDark ? "#000000" : "#F2F2F7" }]}>
+    <View style={[styles.container, { backgroundColor: isDark ? Colors.darkBackground : "#F2F2F7" }]}>
       {/* Header */}
       <BlurView intensity={isDark ? 60 : 80} style={styles.headerBlur}>
         <View style={[styles.header, { paddingTop: insets.top }]}>
@@ -49,7 +49,7 @@ export default function ProfileScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Profile Card */}
-        <View style={[styles.profileCard, { backgroundColor: isDark ? "#1C1C1E" : "#FFFFFF" }]}>
+        <View style={[styles.profileCard, { backgroundColor: isDark ? Colors.darkCard : "#FFFFFF" }]}>
           <View style={[styles.avatarContainer, { backgroundColor: Colors.primary }]}>
             {user?.photoURL ? (
               <Image source={{ uri: user.photoURL }} style={styles.avatar} />

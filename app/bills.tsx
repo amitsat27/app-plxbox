@@ -193,8 +193,7 @@ export default function BillsScreen() {
 
       {/* Search & Filter Bar */}
       <View style={styles.searchFilterRow}>
-        <View style={[styles.searchBar, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}>
-          <Search size={18} color={scheme.textTertiary} />
+        <View style={[styles.searchBar, { backgroundColor: isDark ? Colors.darkCard : '#FFFFFF' }]}>
           <TextInput
             style={[styles.searchInput, { color: scheme.textPrimary }]}
             placeholder="Search bills..."
@@ -209,7 +208,7 @@ export default function BillsScreen() {
           )}
         </View>
         <TouchableOpacity
-          style={[styles.filterBtn, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}
+          style={[styles.filterBtn, { backgroundColor: isDark ? Colors.darkCard : '#FFFFFF' }]}
           onPress={() => setShowFilterModal(true)}
         >
           <Filter size={20} color={activeFiltersCount > 0 ? Colors.primary : scheme.textSecondary} />
@@ -225,7 +224,7 @@ export default function BillsScreen() {
 
       {/* Stats Cards */}
       <View style={styles.statsContainer}>
-        <View style={[styles.statCard, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}>
+        <View style={[styles.statCard, { backgroundColor: isDark ? Colors.darkCard : '#FFFFFF' }]}>
           <Wallet size={20} color={Colors.primary} />
           <Text style={[styles.statLabel, { color: scheme.textTertiary }]}>Total</Text>
           <Text style={[styles.statValue, { color: scheme.textPrimary }]}>₹{stats.total.toLocaleString('en-IN')}</Text>
@@ -276,7 +275,7 @@ export default function BillsScreen() {
           
           return (
             <View 
-              style={[styles.billCard, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}
+              style={[styles.billCard, { backgroundColor: isDark ? Colors.darkCard : '#FFFFFF' }]}
             >
               <View style={styles.cardHeader}>
                 <View style={styles.headerLeft}>
@@ -364,7 +363,7 @@ export default function BillsScreen() {
       {/* Sort Modal */}
       <Modal visible={showSortModal} transparent animationType="fade">
         <Pressable style={styles.modalOverlay} onPress={() => setShowSortModal(false)}>
-          <View style={[styles.modalContent, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}>
+          <View style={[styles.modalContent, { backgroundColor: isDark ? Colors.darkCard : '#FFFFFF' }]}>
             <Text style={[styles.modalTitle, { color: scheme.textPrimary }]}>Sort by</Text>
             {SORT_OPTIONS.map(option => (
               <TouchableOpacity
@@ -389,7 +388,7 @@ export default function BillsScreen() {
         <View style={styles.filterModalContainer}>
           <Pressable style={styles.filterModalBackdrop} onPress={() => setShowFilterModal(false)} />
           <View style={[styles.filterModalContent, { backgroundColor: isDark ? '#000' : '#F2F2F7' }]}>
-            <View style={[styles.filterModalHeader, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}>
+            <View style={[styles.filterModalHeader, { backgroundColor: isDark ? Colors.darkCard : '#FFFFFF' }]}>
               <Text style={[styles.modalTitle, { color: scheme.textPrimary }]}>Filter</Text>
               <TouchableOpacity onPress={clearFilters}>
                 <Text style={styles.clearText}>Clear all</Text>
@@ -437,7 +436,7 @@ export default function BillsScreen() {
               </View>
             </ScrollView>
 
-            <View style={[styles.filterModalFooter, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}>
+            <View style={[styles.filterModalFooter, { backgroundColor: isDark ? Colors.darkCard : '#FFFFFF' }]}>
               <TouchableOpacity
                 style={[styles.cancelBtn, { borderColor: scheme.textTertiary }]}
                 onPress={() => setShowFilterModal(false)}

@@ -15,7 +15,8 @@ import {
   ChevronRight,
 } from 'lucide-react-native';
 import { BorderRadius, Spacing, Typography } from '@/constants/designTokens';
-import { Colors } from '@/theme/color';
+import { Colors, getColorScheme } from '@/theme/color';
+import { useTheme } from '@/theme/themeProvider';
 
 export type ChipOption = {
   key: string;
@@ -108,20 +109,26 @@ export function PasswordHero({
 }
 
 export function PasswordSearchBar({ value, onChangeText, placeholder, onClear }: PasswordSearchBarProps) {
+  const { isDark } = useTheme();
+  const scheme = getColorScheme(isDark);
+
   return (
-    <View style={styles.searchShell}>
-      <Search size={18} color="#8E8E93" />
+    <View style={[styles.searchShell, { backgroundColor: isDark ? 'rgba(44,44,46,0.7)' : '#F3F4F6' }]}>
+      <Search size={18} color={scheme.textTertiary} />
       <TextInput
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor="#8E8E93"
-        style={styles.searchInput}
+        placeholderTextColor={scheme.textTertiary}
+        style={[styles.searchInput, { color: scheme.textPrimary }]}
         returnKeyType="search"
       />
       {value.length > 0 && onClear ? (
-        <TouchableOpacity onPress={onClear} style={styles.searchClearBtn}>
-          <Text style={styles.searchClearText}>Clear</Text>
+        <TouchableOpacity
+          onPress={onClear}
+          style={[styles.searchClearBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.14)' : '#E5E7EB' }]}
+        >
+          <Text style={[styles.searchClearText, { color: scheme.textPrimary }]}>Clear</Text>
         </TouchableOpacity>
       ) : null}
     </View>
@@ -129,12 +136,15 @@ export function PasswordSearchBar({ value, onChangeText, placeholder, onClear }:
 }
 
 export function PasswordChipBar({ options, value, onChange, label }: PasswordChipBarProps) {
+  const { isDark } = useTheme();
+  const scheme = getColorScheme(isDark);
+
   return (
     <View style={styles.chipSection}>
       {label ? (
         <View style={styles.chipLabelRow}>
-          <SlidersHorizontal size={14} color="#8E8E93" />
-          <Text style={styles.chipLabel}>{label}</Text>
+          <SlidersHorizontal size={14} color={scheme.textTertiary} />
+          <Text style={[styles.chipLabel, { color: scheme.textSecondary }]}>{label}</Text>
         </View>
       ) : null}
       <View style={styles.chipRow}>
@@ -144,9 +154,13 @@ export function PasswordChipBar({ options, value, onChange, label }: PasswordChi
             <TouchableOpacity
               key={option.key}
               onPress={() => onChange(option.key)}
-              style={[styles.chip, selected && styles.chipSelected]}
+              style={[
+                styles.chip,
+                { backgroundColor: isDark ? 'rgba(44,44,46,0.7)' : '#F3F4F6' },
+                selected && styles.chipSelected,
+              ]}
             >
-              <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{option.label}</Text>
+              <Text style={[styles.chipText, { color: scheme.textPrimary }, selected && styles.chipTextSelected]}>{option.label}</Text>
             </TouchableOpacity>
           );
         })}
@@ -156,11 +170,14 @@ export function PasswordChipBar({ options, value, onChange, label }: PasswordChi
 }
 
 export function PasswordSectionHeader({ title, subtitle, action }: PasswordSectionHeaderProps) {
+  const { isDark } = useTheme();
+  const scheme = getColorScheme(isDark);
+
   return (
     <View style={styles.sectionHeader}>
       <View>
-        <Text style={styles.sectionTitle}>{title}</Text>
-        {subtitle ? <Text style={styles.sectionSubtitle}>{subtitle}</Text> : null}
+        <Text style={[styles.sectionTitle, { color: scheme.textPrimary }]}>{title}</Text>
+        {subtitle ? <Text style={[styles.sectionSubtitle, { color: scheme.textSecondary }]}>{subtitle}</Text> : null}
       </View>
       {action}
     </View>
@@ -168,11 +185,14 @@ export function PasswordSectionHeader({ title, subtitle, action }: PasswordSecti
 }
 
 export function PasswordEmptyState({ title, subtitle, actionLabel, onAction, icon }: PasswordEmptyStateProps) {
+  const { isDark } = useTheme();
+  const scheme = getColorScheme(isDark);
+
   return (
-    <View style={styles.emptyState}>
+    <View style={[styles.emptyState, { backgroundColor: isDark ? 'rgba(28,28,30,0.9)' : '#F9FAFB' }]}>
       <View style={styles.emptyIconWrap}>{icon || <Sparkles size={22} color={Colors.primary} />}</View>
-      <Text style={styles.emptyTitle}>{title}</Text>
-      <Text style={styles.emptySubtitle}>{subtitle}</Text>
+      <Text style={[styles.emptyTitle, { color: scheme.textPrimary }]}>{title}</Text>
+      <Text style={[styles.emptySubtitle, { color: scheme.textSecondary }]}>{subtitle}</Text>
       {actionLabel && onAction ? (
         <TouchableOpacity style={styles.emptyActionBtn} onPress={onAction}>
           <Text style={styles.emptyActionText}>{actionLabel}</Text>
@@ -278,7 +298,6 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: Typography.fontSize.md,
-    color: '#111827',
   },
   searchClearBtn: {
     paddingHorizontal: Spacing.sm,
@@ -289,7 +308,6 @@ const styles = StyleSheet.create({
   searchClearText: {
     fontSize: Typography.fontSize.xs,
     fontWeight: '600',
-    color: '#374151',
   },
   chipSection: {
     gap: Spacing.sm,
@@ -302,7 +320,6 @@ const styles = StyleSheet.create({
   chipLabel: {
     fontSize: Typography.fontSize.sm,
     fontWeight: '600',
-    color: '#6B7280',
   },
   chipRow: {
     flexDirection: 'row',
@@ -313,7 +330,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.full,
-    backgroundColor: '#F3F4F6',
   },
   chipSelected: {
     backgroundColor: Colors.primary,
@@ -321,7 +337,6 @@ const styles = StyleSheet.create({
   chipText: {
     fontSize: Typography.fontSize.sm,
     fontWeight: '600',
-    color: '#374151',
   },
   chipTextSelected: {
     color: '#FFF',
@@ -334,19 +349,16 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: Typography.fontSize.lg,
     fontWeight: '800',
-    color: '#111827',
   },
   sectionSubtitle: {
     marginTop: 2,
     fontSize: Typography.fontSize.sm,
-    color: '#6B7280',
   },
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
     padding: Spacing.xl,
     borderRadius: BorderRadius.xl,
-    backgroundColor: '#F9FAFB',
   },
   emptyIconWrap: {
     width: 52,
@@ -360,13 +372,11 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: Typography.fontSize.lg,
     fontWeight: '800',
-    color: '#111827',
     textAlign: 'center',
   },
   emptySubtitle: {
     marginTop: 6,
     fontSize: Typography.fontSize.sm,
-    color: '#6B7280',
     textAlign: 'center',
     lineHeight: 20,
   },

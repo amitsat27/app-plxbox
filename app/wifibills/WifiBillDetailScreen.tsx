@@ -8,7 +8,7 @@ import {
   View, Text, StyleSheet, ScrollView, Platform, TouchableOpacity,
   Alert, Share, ActivityIndicator, Animated, Image,
 } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import * as Haptics from "expo-haptics";
 import * as WebBrowser from "expo-web-browser";
@@ -113,8 +113,7 @@ function DocumentSection({ url }: { url: string }) {
   const tryImageFirst = noExt && !imageError;
 
   return (
-    <View style={[styles.card, { backgroundColor: isDark ? "#1C1C1E" : "#FFFFFF" }]}>
-      <Text style={[styles.cardTitle, { color: scheme.textPrimary }]}>Bill Document</Text>
+    <View>
       {(showImagePreview || tryImageFirst) && (
         <View>
           {imageLoading && (
@@ -358,7 +357,20 @@ export default function WifiBillDetailScreen() {
       );
       
       Alert.alert('Success', 'Document uploaded successfully');
-      router.replace(`/wifi-bill-detail?billId=${billId}&city=${city}&billDocumentURL=${encodeURIComponent(uploadedUrl)}` as any);
+      router.replace({
+        pathname: "/wifibills/WifiBillDetailScreen",
+        params: {
+          billId,
+          city,
+          ispName,
+          lastPaidBillMonth: billMonth,
+          billAmount: String(billAmount),
+          payStatus,
+          paymentMode,
+          lastDateToPay: dueDateStr,
+          billDocumentURL: uploadedUrl,
+        },
+      } as any);
     } catch (e: any) {
       Alert.alert('Error', e.message || 'Failed to upload document');
     } finally {
@@ -367,9 +379,14 @@ export default function WifiBillDetailScreen() {
   };
 
   const fullCity = city.charAt(0).toUpperCase() + city.slice(1);
+  const formattedDueDate = dueDate
+    ? dueDate.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+    : "No due date";
+  const hasConsumerData = !!consumerInfo;
+  const hasDocument = !!billDocumentURL;
 
   return (
-    <View style={[styles.screen, { backgroundColor: isDark ? "#000000" : "#F2F2F7" }]}>
+    <View style={[styles.screen, { backgroundColor: isDark ? Colors.darkBackground : "#F2F2F7" }]}>
       {loading && (
         <View style={[styles.loadingOverlay, { backgroundColor: isDark ? "rgba(0,0,0,0.7)" : "rgba(255,255,255,0.7)" }]}>
           <ActivityIndicator size="large" color={Colors.primary} />
@@ -385,12 +402,22 @@ export default function WifiBillDetailScreen() {
           <Text style={[styles.headerTitle, { color: scheme.textPrimary }]} numberOfLines={1}>{ispName}</Text>
           <Text style={[styles.headerSub, { color: scheme.textTertiary }]}>{billMonth}</Text>
         </View>
-        <TouchableOpacity style={styles.iconBtn} onPress={handleEdit} activeOpacity={0.6}>
-          <Edit size={18} color={Colors.primary} />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.iconBtn} onPress={handleShare} activeOpacity={0.6}>
-          <Share2 size={18} color={scheme.textTertiary} />
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            style={[styles.iconBtn, { backgroundColor: isDark ? "rgba(124,58,237,0.14)" : "rgba(124,58,237,0.12)" }]}
+            onPress={handleEdit}
+            activeOpacity={0.7}
+          >
+            <Edit size={16} color={Colors.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.iconBtn, { backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)" }]}
+            onPress={handleShare}
+            activeOpacity={0.7}
+          >
+            <Share2 size={16} color={scheme.textSecondary} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Content */}
@@ -420,6 +447,25 @@ export default function WifiBillDetailScreen() {
             <View style={styles.heroMeta}>
               <Wifi size={16} color={scheme.textTertiary} />
               <Text style={[styles.heroCity, { color: scheme.textSecondary }]}>{fullCity}</Text>
+            </View>
+
+            <View style={styles.heroChipsWrap}>
+              <View style={[styles.heroChip, { backgroundColor: isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.04)" }]}>
+                <Calendar size={13} color={scheme.textTertiary} />
+                <Text style={[styles.heroChipText, { color: scheme.textSecondary }]} numberOfLines={1}>{formattedDueDate}</Text>
+              </View>
+              <View style={[styles.heroChip, { backgroundColor: isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.04)" }]}>
+                <File size={13} color={scheme.textTertiary} />
+                <Text style={[styles.heroChipText, { color: scheme.textSecondary }]}>
+                  {hasDocument ? "Document added" : "No document"}
+                </Text>
+              </View>
+              <View style={[styles.heroChip, { backgroundColor: isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.04)" }]}>
+                <User size={13} color={scheme.textTertiary} />
+                <Text style={[styles.heroChipText, { color: scheme.textSecondary }]}>
+                  {hasConsumerData ? "Consumer linked" : "Consumer not linked"}
+                </Text>
+              </View>
             </View>
 
             {/* Due info for pending bills */}
@@ -587,7 +633,8 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.md,
   },
   iconBtn: { padding: 4, borderRadius: 8 },
-  headerCenter: { flex: 1, alignItems: "center", marginRight: Spacing.lg * 2.5 },
+  headerCenter: { flex: 1, marginHorizontal: Spacing.md },
+  headerActions: { flexDirection: "row", alignItems: "center", gap: Spacing.sm },
   headerTitle: { fontSize: Typography.fontSize.lg, fontWeight: "700" },
   headerSub: { fontSize: Typography.fontSize.xs },
 
@@ -629,6 +676,27 @@ const styles = StyleSheet.create({
     marginTop: Spacing.sm,
   },
   heroCity: { fontSize: Typography.fontSize.sm, fontWeight: "500" },
+  heroChipsWrap: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    gap: Spacing.xs,
+    marginTop: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+  },
+  heroChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    borderRadius: BorderRadius.pill,
+    paddingHorizontal: Spacing.sm + 2,
+    paddingVertical: Spacing.xs,
+    maxWidth: "100%",
+  },
+  heroChipText: {
+    fontSize: Typography.fontSize.xs,
+    fontWeight: "600",
+  },
 
   // Banners
   dueBanner: {

@@ -285,7 +285,7 @@ export default function ReportsScreen() {
   return (
     <View style={[styles.container, { backgroundColor: isDark ? '#000' : '#F2F2F7' }]}>
       {/* Header */}
-      <View style={[styles.headerWrapper, { paddingTop: insets.top, backgroundColor: isDark ? '#000000' : '#FFFFFF' }]}>
+      <View style={[styles.headerWrapper, { paddingTop: insets.top, backgroundColor: isDark ? Colors.darkBackground : '#FFFFFF' }]}>
         <View style={styles.header}>
           <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
             <ChevronLeft size={28} color={scheme.textPrimary} />
@@ -304,7 +304,7 @@ export default function ReportsScreen() {
         {/* Summary Cards */}
         <View style={styles.summaryGrid}>
           {summaryCards.map((c) => (
-            <View key={c.label} style={[styles.summaryCard, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}>
+            <View key={c.label} style={[styles.summaryCard, { backgroundColor: isDark ? Colors.darkCard : '#FFFFFF' }]}>
               <View style={[styles.summaryIconWrap, { backgroundColor: isDark ? `${c.color}22` : `${c.color}11` }]}>
                 {c.icon}
               </View>
@@ -326,7 +326,7 @@ export default function ReportsScreen() {
           <Text style={[styles.sectionTitle, { color: scheme.textPrimary }]}>CATEGORY BREAKDOWN</Text>
         </View>
         
-        <View style={[styles.breakdownCard, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}>
+        <View style={[styles.breakdownCard, { backgroundColor: isDark ? Colors.darkCard : '#FFFFFF' }]}>
           {categories.map((cat, i) => {
             const config = CATEGORY_CONFIG[cat.category] || { icon: <Receipt size={20} color="#7C3AED" />, color: '#7C3AED', label: cat.label };
             const pct = totalBillsAmount > 0 ? (cat.totalAmount / totalBillsAmount) * 100 : 0;
@@ -363,7 +363,7 @@ export default function ReportsScreen() {
           <Text style={[styles.sectionTitle, { color: scheme.textPrimary }]}>QUICK INSIGHTS</Text>
         </View>
 
-        <View style={[styles.insightsCard, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}>
+        <View style={[styles.insightsCard, { backgroundColor: isDark ? Colors.darkCard : '#FFFFFF' }]}>
           <View style={styles.insightRow}>
             <View style={[styles.insightIcon, { backgroundColor: '#10B98122' }]}>
               <TrendingUp size={20} color="#10B981" />
@@ -416,7 +416,7 @@ export default function ReportsScreen() {
           <Text style={[styles.sectionTitle, { color: scheme.textPrimary }]}>AVERAGE PER CATEGORY</Text>
         </View>
 
-        <View style={[styles.avgCard, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}>
+        <View style={[styles.avgCard, { backgroundColor: isDark ? Colors.darkCard : '#FFFFFF' }]}>
           {categories.map((cat, i) => {
             const config = CATEGORY_CONFIG[cat.category] || { color: '#7C3AED', label: cat.label };
             const avg = cat.count > 0 ? cat.totalAmount / cat.count : 0;
@@ -441,7 +441,7 @@ export default function ReportsScreen() {
       <Modal visible={showExportModal} transparent animationType="slide">
         <View style={styles.exportModalContainer}>
           <Pressable style={styles.exportBackdrop} onPress={() => setShowExportModal(false)} />
-          <View style={[styles.exportModalContent, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}>
+          <View style={[styles.exportModalContent, { backgroundColor: isDark ? Colors.darkCard : '#FFFFFF' }]}>
             <View style={styles.exportModalHeader}>
               <Text style={[styles.exportModalTitle, { color: scheme.textPrimary }]}>Export Report</Text>
               <TouchableOpacity onPress={() => setShowExportModal(false)}>

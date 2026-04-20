@@ -128,7 +128,7 @@ export function BillFormModal({ bill, city, consumerNumber, onClose, onSave }: {
   return (
     <View style={[styles.screen, { paddingTop: Math.max(insets.top, Spacing.xl), paddingBottom: Math.max(insets.bottom, Spacing.md) }]}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={insets.top}>
-        <View style={[styles.card, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}>
+        <View style={[styles.card, { backgroundColor: isDark ? Colors.darkCard : '#FFFFFF' }]}>
           <View style={styles.header}>
             <Text style={[styles.title, { color: scheme.textPrimary }]}>{bill ? 'Edit Bill' : 'Add Electric Bill'}</Text>
             <TouchableOpacity style={{ padding: 8 }} onPress={onClose}>

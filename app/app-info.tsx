@@ -49,7 +49,7 @@ export default function AppInfoScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: isDark ? "#000000" : "#F2F2F7" }]}>
+    <View style={[styles.container, { backgroundColor: isDark ? Colors.darkBackground : "#F2F2F7" }]}>
       {/* Header */}
       <BlurView intensity={isDark ? 60 : 80} style={styles.headerBlur}>
         <View style={[styles.header, { paddingTop: insets.top }]}>
@@ -69,7 +69,7 @@ export default function AppInfoScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* App Logo */}
-        <View style={[styles.logoCard, { backgroundColor: isDark ? "#1C1C1E" : "#FFFFFF" }]}>
+        <View style={[styles.logoCard, { backgroundColor: isDark ? Colors.darkCard : "#FFFFFF" }]}>
           <Image
             source={require("@/assets/images/icon.png")}
             style={styles.appLogo}

@@ -56,7 +56,7 @@ function DocumentSection({ url }: { url: string }) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     await WebBrowser.openBrowserAsync(url, {
       presentationStyle: Platform.OS === 'ios' ? WebBrowser.WebBrowserPresentationStyle.PAGE_SHEET : WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
-      toolbarColor: isDark ? '#1C1C1E' : '#FFFFFF',
+      toolbarColor: isDark ? Colors.darkCard : '#FFFFFF',
       controlsColor: '#7C3AED',
     });
   };
@@ -145,7 +145,7 @@ const detailStyles = StyleSheet.create({
 // ── Edit Modal (inline, matches WiFi BillFormModal pattern) ──
 function EditBillModal({ visible, onClose, onSave, bill, city }: {
   visible: boolean; onClose: () => void; onSave: () => void;
-  bill: { billYear: string; taxBillAmount: string; billDocumentURL: string; payStatus: string; paymentMode: string; lastDateToPay: Date | null; taxIndexNumber: string; };
+  bill: { id?: string; billYear: string; taxBillAmount: string; billDocumentURL: string; payStatus: string; paymentMode: string; lastDateToPay: Date | null; taxIndexNumber: string; };
   city: string;
 }) {
   const { isDark } = useTheme();
@@ -195,11 +195,15 @@ function EditBillModal({ visible, onClose, onSave, bill, city }: {
         existingDocURL = undefined;
       }
       
+      if (!bill.id) {
+        throw new Error('Missing bill id for update');
+      }
+
       await firebaseService.updatePropertyTaxBill(
-        city, 
-        bill.billDocumentURL.split('/').pop()?.split('?')[0] || '', 
-        data, 
-        fileUri || undefined, 
+        city,
+        bill.id,
+        data,
+        fileUri || undefined,
         existingDocURL
       );
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -533,7 +537,7 @@ function PropertyBillDetailScreen() {
   }
 
   return (
-    <View style={[styles.screen, { backgroundColor: isDark ? '#000000' : '#F2F2F7' }]}>
+    <View style={[styles.screen, { backgroundColor: isDark ? Colors.darkBackground : '#F2F2F7' }]}>
       {actionLoading && <View style={[styles.loadingOverlay, { backgroundColor: isDark ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.7)' }]}><ActivityIndicator size="large" color={Colors.primary} /></View>}
 
       {/* Header */}

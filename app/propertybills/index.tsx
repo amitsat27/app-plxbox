@@ -231,7 +231,7 @@ export default function PropertyTaxScreen() {
         {/* Search & Sort Controls */}
         {bills.length > 0 && showSearch && (
           <View style={{ paddingHorizontal: Spacing.lg, marginTop: Spacing.xs, marginBottom: Spacing.sm }}>
-            <View style={[styles.searchBar, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF', borderColor: scheme.border }]}>
+            <View style={[styles.searchBar, { backgroundColor: isDark ? Colors.darkCard : '#FFFFFF', borderColor: scheme.border }]}>
               <Search size={16} color={scheme.textTertiary} />
               <TextInput
                 style={[styles.searchInput, { color: scheme.textPrimary }]}
